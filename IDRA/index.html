@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Acceso Restringido | Informe Afectivo</title>
+    
+    <!-- Fuentes -->
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;600;700&family=Quicksand:wght@500;700&display=swap" rel="stylesheet">
+    
+    <!-- Librerías -->
+    <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        :root {
+            --bg-color: #fffcf8;
+            --text-main: #5d5d5d;
+            --text-title: #4a4a4a;
+            --pastel-pink: #ffcdd2;
+            --pastel-blue: #b3e5fc;
+            --pastel-lavender: #e1bee7;
+            --pastel-mint: #b2dfdb;
+            --pastel-red: #ef5350;
+            --card-shadow: 0 10px 30px rgba(225, 190, 231, 0.3);
+        }
+
+        body {
+            font-family: 'Nunito', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 0;
+            line-height: 1.8;
+            overflow-x: hidden;
+        }
+
+        /* --- PANTALLA DE BLOQUEO --- */
+        #lock-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+            transition: opacity 0.5s ease, visibility 0.5s;
+        }
+
+        .lock-card {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: var(--card-shadow);
+            text-align: center;
+            max-width: 400px;
+            width: 90%;
+            border: 2px solid var(--pastel-lavender);
+            animation: fadeIn 1s ease;
+        }
+
+        .lock-icon { font-size: 3rem; margin-bottom: 20px; color: var(--pastel-red); }
+        .lock-title { font-family: 'Quicksand', sans-serif; font-weight: 700; color: var(--pastel-red); margin-bottom: 10px; letter-spacing: 1px; }
+        .lock-question { font-family: 'Quicksand', sans-serif; font-size: 1.2rem; margin-bottom: 20px; color: var(--text-title); }
+
+        .lock-input {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid var(--pastel-blue);
+            border-radius: 10px;
+            font-family: 'Nunito', sans-serif;
+            font-size: 1rem;
+            outline: none;
+            text-align: center;
+            margin-bottom: 20px;
+            transition: border-color 0.3s;
+            box-sizing: border-box;
+        }
+        .lock-input:focus { border-color: #81d4fa; }
+
+        .lock-btn {
+            background: var(--pastel-lavender);
+            color: #5e35b1;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 50px;
+            font-family: 'Quicksand', sans-serif;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s, background 0.2s;
+            font-size: 1rem;
+        }
+        .lock-btn:hover { background: #d1c4e9; transform: scale(1.05); }
+
+        .error-msg {
+            color: var(--pastel-red);
+            font-size: 0.9rem;
+            margin-top: 10px;
+            min-height: 20px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        /* --- PANTALLA DE INTRODUCCIÓN --- */
+        #intro-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: #fff;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 9998;
+            transition: opacity 1s ease;
+            overflow: hidden; /* Importante para que los emojis no scrolleen */
+        }
+
+        .intro-text {
+            font-family: 'Quicksand', sans-serif;
+            font-size: 3rem;
+            font-weight: 700;
+            color: var(--text-title);
+            text-align: center;
+            opacity: 0;
+            transform: translateY(30px);
+            padding: 20px;
+            line-height: 1.2;
+            background: linear-gradient(45deg, #7e57c2, #ef5350);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            position: relative;
+            z-index: 2; /* Texto sobre emojis */
+        }
+
+        @keyframes textReveal {
+            0% { opacity: 0; transform: translateY(30px) scale(0.9); }
+            20% { opacity: 1; transform: translateY(0) scale(1); }
+            80% { opacity: 1; transform: translateY(0) scale(1); }
+            100% { opacity: 0; transform: translateY(-30px) scale(1.1); }
+        }
+
+        .animate-intro {
+            animation: textReveal 4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+        }
+
+        /* --- EMOJIS EXPLOSIÓN --- */
+        #emoji-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1; /* Detrás del texto de intro */
+        }
+
+        .emoji-particle {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%); /* Empiezan centrados */
+            font-size: 2rem;
+            opacity: 0;
+        }
+
+        /* La animación se definirá dinámicamente, pero necesitamos una base */
+        @keyframes explodeAnimation {
+            0% {
+                transform: translate(-50%, -50%) scale(0.5);
+                opacity: 0;
+            }
+            10% {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1.5);
+            }
+            100% {
+                transform: translate(calc(-50% + var(--tx)), calc(-50% + var(--ty))) scale(1);
+                opacity: 0;
+            }
+        }
+
+        /* --- CONTENIDO PRINCIPAL --- */
+        #main-content { display: none; opacity: 0; transition: opacity 1s ease; position: relative; z-index: 1; }
+
+        @keyframes shake { 0%, 100% { transform: translateX(0); } 25%, 75% { transform: translateX(-10px); } 50% { transform: translateX(10px); } }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* ESTILOS DEL INFORME */
+        .background-shapes { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; overflow: hidden; }
+        .shape { position: absolute; border-radius: 50%; opacity: 0.4; animation: float 20s infinite ease-in-out; }
+        .s1 { width: 400px; height: 400px; background: var(--pastel-pink); top: -10%; left: -10%; }
+        .s2 { width: 300px; height: 300px; background: var(--pastel-blue); bottom: 10%; right: -5%; animation-delay: -5s; }
+        .s3 { width: 150px; height: 150px; background: var(--pastel-mint); top: 40%; right: 10%; animation-delay: -10s; }
+        .s4 { width: 200px; height: 200px; background: var(--pastel-lavender); bottom: -50px; left: 20%; animation-delay: -15s; }
+        @keyframes float { 0%, 100% { transform: translateY(0) scale(1); } 50% { transform: translateY(-20px) scale(1.05); } }
+
+        .container { max-width: 900px; margin: 0 auto; padding: 40px 20px; position: relative; z-index: 2; }
+        header { text-align: center; background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(12px); padding: 40px; border-radius: 20px; box-shadow: var(--card-shadow); margin-bottom: 50px; border: 2px solid white; }
+        h1 { font-family: 'Quicksand', sans-serif; font-size: 2.2rem; color: var(--text-title); margin-bottom: 10px; }
+        .meta-data { font-size: 0.95rem; background: #fff; padding: 15px; border-radius: 10px; display: inline-block; margin-top: 15px; border: 1px solid var(--pastel-lavender); }
+        .badge { display: inline-block; background: #ef5350; color: white; padding: 4px 12px; border-radius: 50px; font-size: 0.8rem; font-weight: bold; letter-spacing: 1px; margin-bottom: 15px; }
+        
+        section { background: rgba(255, 255, 255, 0.9); padding: 35px; margin-bottom: 35px; border-radius: 20px; box-shadow: 0 5px 20px rgba(0,0,0,0.02); border: 1px solid rgba(255,255,255,0.6); transition: transform 0.3s; }
+        section:hover { transform: translateY(-3px); }
+        
+        h2 { font-family: 'Quicksand', sans-serif; color: var(--text-title); border-bottom: 3px solid var(--pastel-mint); display: inline-block; padding-bottom: 5px; margin-top: 0; }
+        h3 { font-family: 'Quicksand', sans-serif; color: #7e57c2; margin-top: 25px; }
+        p { margin-bottom: 15px; text-align: justify; }
+        strong { color: #5c6bc0; }
+        
+        .item-list { list-style: none; padding: 0; }
+        .item-list li { margin-bottom: 20px; padding-left: 20px; border-left: 4px solid var(--pastel-pink); background: linear-gradient(to right, rgba(255, 205, 210, 0.1), transparent); padding: 15px; border-radius: 0 10px 10px 0; }
+        
+        .table-wrapper { overflow-x: auto; margin: 20px 0; border-radius: 10px; box-shadow: 0 0 15px rgba(0,0,0,0.05); }
+        table { width: 100%; border-collapse: collapse; background: white; min-width: 600px; }
+        th { background-color: var(--pastel-lavender); color: #5e35b1; padding: 12px; text-align: left; }
+        td { padding: 12px; border-bottom: 1px solid #eee; }
+        tr:hover { background-color: #f9f9f9; }
+        
+        .chart-box { background: #fff; padding: 20px; border-radius: 15px; margin: 30px 0; box-shadow: inset 0 0 20px rgba(225, 190, 231, 0.1); border: 1px solid var(--pastel-blue); position: relative; height: 400px; display: flex; justify-content: center; align-items: center; }
+        .chart-box.small { max-width: 600px; margin-left: auto; margin-right: auto; height: 350px; }
+        
+        .signature-section { margin-top: 60px; text-align: right; padding: 30px; background: linear-gradient(135deg, #fff, var(--pastel-pink)); border-radius: 20px; border: 1px solid var(--pastel-pink); }
+        .signature-text { font-family: 'Quicksand', sans-serif; font-weight: bold; font-size: 1.2rem; color: #c62828; }
+        
+        @media (max-width: 600px) {
+            .intro-text { font-size: 1.8rem; }
+            h1 { font-size: 1.5rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- PANTALLA DE BLOQUEO -->
+    <div id="lock-screen">
+        <div class="lock-card" id="lock-card">
+            <div class="lock-icon">🔒</div>
+            <h2 class="lock-title">CONFIDENCIALIDAD MÁXIMA</h2>
+            <p>Este documento está clasificado.</p>
+            
+            <label class="lock-question" for="password">¿Índice...?</label>
+            <input type="password" id="password" class="lock-input" placeholder="Ingrese contraseña">
+            
+            <button class="lock-btn" onclick="checkAccess()">Desbloquear</button>
+            <div class="error-msg" id="error-msg">Acceso Denegado</div>
+        </div>
+    </div>
+
+    <!-- PANTALLA DE INTRODUCCIÓN -->
+    <div id="intro-screen">
+        <h1 class="intro-text" id="intro-text">INFORME DE RELEVAMIENTO AFECTIVO</h1>
+        <!-- Contenedor para la explosión de emojis -->
+        <div id="emoji-container"></div>
+    </div>
+
+    <!-- CONTENIDO PRINCIPAL -->
+       <div id="main-content">
+        <div class="background-shapes">
+            <div class="shape s1"></div>
+            <div class="shape s2"></div>
+            <div class="shape s3"></div>
+            <div class="shape s4"></div>
+        </div>
+
+        <div class="container">
+            
+            <header data-aos="fade-down" data-aos-duration="1000">
+                <div class="badge">CONFIDENCIAL / VULNERABILIDAD ALTA</div>
+                <h1>INFORME DE RELEVAMIENTO AFECTIVO</h1>
+                <div class="meta-data">
+                    <p style="margin: 5px 0; text-align: center;"><strong>Autor:</strong> Ignacio Snieg (a.k.a. Naxi/Data/Otto)</p>
+                    <p style="margin: 5px 0; text-align: center;"><strong>Para:</strong> Laura Antmann (a.k.a. Exia/Nihon/Korelina)</p>
+                    <p style="margin: 5px 0; text-align: center;"><strong>Fecha:</strong> Noviembre, 2025</p>
+                </div>
+            </header>
+
+            <section data-aos="fade-up">
+                <h2>1. RESUMEN</h2>
+                <p>El presente documento tiene como objetivo desglosar, analizar y validar la fenomenología interna del sujeto Naxi respecto al vínculo con el sujeto Exia. Tras los eventos recientes y en concordancia con la profundidad que ha adquirido el vínculo a lo largo de estos meses, se ha detectado una anomalía en las categorías relacionales convencionales. La hipótesis central sostiene que lo que Naxi experimenta internamente no se ajusta a la definición de "Amistad tradicional" ni a la de "Atracción romántica/sexual", sino que habita un espectro disímil de alta intensidad y resonancia. Para evitar presunciones esquizoides a partir de ahora Naxi, que es quien suscribe, continuará escribiendo el ensayo en primera persona.</p>
+            </section>
+
+            <section data-aos="fade-up">
+                <h2>2. DELIMITACIÓN DEL ESPECTRO (LO QUE NO ES)</h2>
+                <p>Para entender la entidad de lo que me pasa, primero es necesario despejar las variables que suelen generar ruido en el análisis convencional y que, dada mi historia (demisexualidad), podrían prestarse a confusión:</p>
+                <ul class="item-list">
+                    <li><strong>Ausencia de la Variable Erótica:</strong> No detecto en mi sistema un impulso de naturaleza físico-erótica. No encuentro destellos de líbido. No hay una búsqueda de contacto sexual, sino de contacto vital.</li>
+                    <li><strong>Ausencia de la Variable Romántica Tradicional:</strong> No estoy atravesando la típica ansiedad de un cortejo. Sería extremadamente cliché, un tropo del cual los mangas que lees y traducís hacen un uso extensivo. Lo que me pasa con vos corre por un carril paralelo que no está definido por lógicas convencionales y tradicionales que necesitan inequívocamente definir las categorías humanas en un compartimento.</li>
+                    <li><strong>No es una amistad trampolín:</strong> Como bien sabes, en mi abordaje demisexual de los vínculos me es completamente necesario construir una amistad consolidada antes de que la atracción por alguien aparezca. Sin embargo, no siento que eso es lo que esté pasando en este momento. En mi corazón, la amistad que tenemos en este momento es preciosa e invaluable. Me siento muy feliz y cómodo de vivirla de esta manera, sin embargo siento que comienza a encontrar los límites que se acercan al umbral donde la categoría de amistad (con el subeje calificativo: convencional) empieza a quedarse pequeña.</li>
+                </ul>
+            </section>
+
+            <section data-aos="fade-up">
+                <h2>3. ANÁLISIS DE RESONANCIA (LA FÍSICA DEL VÍNCULO)</h2>
+                <p>Está comprobado que hay áreas de contacto en nuestra naturaleza. Hay vértices que en sus picos y valles logran acompañarse en una clave de onda que resulta compatible. Esto ha facilitado el camino para lograr la profundización actual, sin embargo también genera incertidumbres en mi pensamiento de hacia donde desemboca.</p>
+                <p><strong>Definición de Resonancia en este sistema:</strong> La resonancia no es similitud estática; es movimiento. Cuando nuestras frecuencias mentales y emocionales se encuentran, se produce una amplificación.</p>
+                <p><strong>Acercamiento (Fase Constructiva):</strong> Cuando estamos bien, la resonancia genera una sensación de "hogar". Tu lógica calma mi caos; mi emoción (creo, quizás inocentemente) ablanda tu estructura.</p>
+                <p><strong>Alejamiento (Fase Reactiva):</strong> Cuando la intensidad sube demasiado y el miedo aparece, la misma resonancia genera ruido. El miedo a perder esta sintonía es lo que dispara mis alarmas.</p>
+                <p>El cóctel inevitablemente genera R.U.M.I.A. (Repeticiones Unilaterales Mentales Imaginando Arbitrariedades). En la motivación de desarmarla, debemos analizar los puntos de contacto intentando explicar qué es lo que genera esta incertidumbre.</p>
+
+                <h3>3.1. Datos Comparativos</h3>
+                <p>A continuación, presento la comparativa de nuestras estadísticas base, lo que explica por qué funcionamos como un sistema complejo:</p>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr><th>Atributo</th><th>Exia (Sujeto K)</th><th>Naxi (Sujeto N)</th><th>Diferencial</th><th>Análisis</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>Inclinación Lingüística</td><td>85</td><td>79</td><td>-6</td><td>Sincronía. Hablamos el mismo idioma de códigos y referencias. Obviamente sos más lista que yo porque hablás japonés</td></tr>
+                            <tr><td>Inclinación Lógico-Mat.</td><td>75</td><td>79</td><td>+4</td><td>Paridad alta. Ambos buscamos orden, aunque yo me refugio más en los números.</td></tr>
+                            <tr><td>Empatía</td><td>92</td><td>92</td><td>0</td><td>Espejo absoluto. Nos cuidamos porque entendemos el dolor ajeno.</td></tr>
+                            <tr><td>Sensibilidad</td><td>81</td><td>99</td><td>+18</td><td>Zona de Riesgo. Mi hipersensibilidad a veces satura el canal de comunicación.</td></tr>
+                            <tr><td>Maldad</td><td>73</td><td>32</td><td>-41</td><td>Complementarios. Tu maldad (casi siempre lúdica, mayormente inocente y muchas veces sin querer)  de alguna forma extraña me ayuda a no hipersensibilizarme; mi ingenuidad creo que te suaviza aunque un poco te moleste.</td></tr>
+                            <tr><td>Saltos de Fe</td><td>34</td><td>86</td><td>+52</td><td>Tensión Estructural. Yo me tiro sin red aunque me lastime. Vos calculás la caída y no te tirás. Acá somos opuestos separados por un barranco, pero solo se necesita un puente</td></tr>
+                            <tr><td>Potencial Autismo</td><td>76</td><td>77</td><td>+1</td><td>Somos dos criaturas de hábitos y obsesiones. PD: Obviamente uno no tiene que diagnosticar a nadie ni autodiagnosticarse, pero es la forma humorística que le encontramos para darle orden a nuestras manías. No es gracioso. No hagan esto en sus casas</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>3.2. Ejes de Compatibilidad</h3>
+                <p>Para visualizar cómo estas estadísticas interactúan en la práctica, propongo el siguiente esquema de compatibilidad vincular:</p>
+                
+                <!-- FIGURA: RADAR CHART -->
+                <div class="chart-box">
+                    <canvas id="radarChart"></canvas>
+                </div>
+
+                <ul class="item-list">
+                    <li><strong>Inclinación Lingüística:</strong> Alta. Nuestra capacidad de generar "Lore" compartido (apodos, chistes internos, traducciones de emociones a conceptos) es el pegamento del vínculo.</li>
+                    <li><strong>Inclinación Lógico-Matemática:</strong> Alta. Desde el índice MACK hasta el nuevo orden abierto gracias al amor por el cubo rubik, nos une cierta inclinación hacia la lógica.</li>
+                    <li><strong>Sensibilidad:</strong> Polarizada. Si bien ambos tenemos un porcentaje de sensibilidad elevado, a mi me domina y me empuja a cometer errores mientras que a vos (siento) te ancla.</li>
+                    <li><strong>Empatía:</strong> Alta. La capacidad de estar para el otro me hace sentir que es un lugar seguro.</li>
+                    <li><strong>Fe:</strong> Polarizada. Aquí está el núcleo de la dinámica. Yo soy el Creyente Trágico (a pesar de todo, apuesto); vos sos la Escéptica Pragmática. Esta tensión es la que mantiene el vínculo vivo: yo te traigo esperanza, vos me traés realidad.</li>
+                </ul>
+            </section>
+
+            <section data-aos="fade-up">
+                <h2>4. ANÁLISIS TOPOLÓGICO</h2>
+                <p>He decidido aislar este punto y convertirlo en una categoría propia para profundizar mi teoría de porque creo que la palabra amistad, sin al menos un adjetivo que pueda ampliar sus márgenes para que refleje la profundidad que hoy habitamos, es insuficiente. Si bien cumple con los parámetros técnicos de superficie, la arquitectura interna del vínculo presenta características de carga y resistencia que son anómalas para una amistad convencional. Esto según mi perspectiva personal, que probablemente esté sesgada y confundida pero por eso mismo es que hice este informe</p>
+                <p>Para entenderlo, lo desgloso en principios estructurales:</p>
+                
+                <h3>4.1. Principio de Intimidad</h3>
+                <p>No me refiero a proximidad física, sino a la distancia cero entre mi pensamiento y tu recepción.</p>
+                <ul class="item-list">
+                    <li><strong>El Canal Abierto:</strong> Puedo compartirte el borrador de mi mente sin editar. Mis miedos más irracionales (como el miedo a la irrelevancia), mis crisis existenciales o mis alegrías más tontas tienen el mismo peso y validación ante tus ojos.</li>
+                    <li><strong>El Refugio:</strong> Tu presencia, sea digital o física, actúa como una cámara de descompresión donde puedo quitarme el traje de "adulto funcional que resuelve problemas" y ser simplemente el Naxi roto o el Naxi feliz. Es una intimidad que descansa.</li>
+                </ul>
+
+                <h3>4.2. Principio de Complicidad</h3>
+                <p>Hemos construido una estructura de rituales que se han vuelto los pilares de mi día a día.</p>
+                <ul class="item-list">
+                    <li><strong>La Rutina Sagrada:</strong> El Índice MACK no es un reporte, es un chequeo vital. Desearnos las Buenas Noches no es cortesía, es la condición necesaria para que mi sistema se apague en paz. Las sesiones de Coworking y las llamadas no son para matar el tiempo, son para habitarlo juntos.</li>
+                    <li><strong>La Hipótesis de la Exclusividad Unilateral:</strong> Aquí radica un punto crítico de mi análisis y de mi vulnerabilidad. Soy consciente de tu naturaleza sociable y de tu extensa red de afectos (besties). Es probable que para vos, compartir códigos o rutinas sea parte de tu estándar de amistad. Pero necesito dejar constancia en actas: Yo no hago esto con nadie más.</li>
+                    <li><strong>El Peso Específico:</strong> Para mí, estos rituales son exclusivos de nuestro vínculo. No tengo índice MACK con nadie más. No hago coworking en silencio con nadie más. No le leo cuentos a nadie más. Que para mí sea único y quizás para vos sea habitual es lo que genera el vértigo, pero también lo que le da valor a mi apuesta: te doy lo que no le doy a nadie.</li>
+                </ul>
+
+                <h3>4.3. Principio de Vulnerabilidad</h3>
+                <p>Este es el punto más crítico para alguien como yo, que suele estar a la defensiva o con miedo al abandono.</p>
+                <ul class="item-list">
+                    <li><strong>Desnudez Emocional:</strong> Con vos me permito ser frágil. Te he mostrado mis partes más oscuras, y en lugar de juzgarme, te has quedado.</li>
+                    <li><strong>El Sostén:</strong> No es solo que yo me abra; es ver que vos también confiás en mí para mostrarme tus propias grietas. Esa reciprocidad en la fragilidad es el cemento más fuerte que tenemos. No tengo que ser fuerte con vos; puedo ser.</li>
+                </ul>
+
+                <h3>4.4. Principio de Constancia</h3>
+                <p>Más allá de la intensidad, lo que define esto es la permanencia y el ritmo.</p>
+                <ul class="item-list">
+                    <li><strong>El Ritmo Cardíaco del Día:</strong> El "Buenos días" no es un saludo protocolar, es un ping de sistema para confirmar que seguimos conectados. La rutina de hablarnos no se siente como una obligación social, sino como el ritmo natural de mi día.</li>
+                    <li><strong>La Red:</strong> Estar ahí cuando el otro se cae, o simplemente cuando el otro está aburrido. La certeza de que si escribo, vas a estar. Esa constancia me da una seguridad que raramente encuentro.</li>
+                </ul>
+
+                <h3>4.5. Principio de Excepcionalidad</h3>
+                <p>Aquí radica la conclusión científica de mi observación interna.</p>
+                <ul class="item-list">
+                    <li><strong>Lo excepcional:</strong> He tenido muchas amistades, intensas y largas. Pero ninguna tiene esta textura. Ninguna combina la agilidad mental con la profundidad emocional y la ternura de esta manera específica.</li>
+                    <li><strong>Lo bello:</strong> No sos una pieza intercambiable. No es que ocupes un "rol de amiga" posible que otro podría llenar si te fueras. Ocupas un espacio con tu forma exacta en mi vida.</li>
+                </ul>
+            </section>
+
+            <section data-aos="fade-up">
+                <h2>4. ANÁLISIS DIMENSIONAL</h2>
+                <p>A continuación, desgloso mi experiencia interna en cuatro órdenes fundamentales:</p>
+                
+                <h3>4.1. Orden Intelectual</h3>
+                <p>Nuestra conexión mental no es pasiva, es un deporte de contacto.</p>
+                <ul class="item-list">
+                    <li><strong>El Desafío Constante:</strong> Me fascina que seas mas lista que yo. Noto que tenes más facilidades para cosas que yo no tengo, me gusta que me corrijas, que me enseñes, o simpelemente que existas cerca mío. Tengo una conversación en inglés con vos y me doy cuenta que es increíblemente superior al mío (obvio, estudiaste en un colegio supercheto pero Macri también y mirá, a duras penas habla español). Podés recitar de memoria a Borges, hablar sobre filosofía o política o cuanto tema exista. Me siento tonto cuando hablo con vos, pero uno bueno. Uno que admira y está listo para aprender.</li>
+                    <li><strong>Tracucciones:</strong> Vos traducís mangas y yo traduzco números en excels y presupuestos en ventas. Obvio, lo tuyo es mucho más interesante.  Me enseñás palabras en japonés (Kazegimi) que describen estados de ánimo para los que yo no tenía nombre, y yo llevo religiosamente un sistema que traduce nuestros estados de ánimo a un índice medible para poder hacer un registro de como estuvimos y como estamos en Mente Alma Corazón y Cuerpo (Karada, otra palabra que aprendí por vos) </li>
+                    <li><strong>El Código Compartido:</strong> Cree un alfabeto propio que solo yo conocía. Vos lo descifraste en una semana. También te apropiaste de mi ÍNDICE MACK. Formás parte de mis secretos mejor guardados y los haces parte tuya. Siento que habitamos (y construimos) un mundo donde solo nosotros dos tenemos la llave.</li>
+                </ul>
+
+                <h3>4.2. Orden Emocional: La Trinchera y el Refugio</h3>
+                <p>Hay algo en permitirse ser uno, con otro.</p>
+                <ul class="item-list">
+                    <li><strong>La Vulnerabilidad compartida:</strong> Nos hemos acompañado en los momentos más bajos: mis crisis laborales con robos y jefes inútiles, tus momentos de "fobia social" y bajones de energía, el diagnóstico de mi mamá. No necesitamos fingir que "está todo bien".</li>
+                    <li><strong>El Contrato Tácito:</strong> Existe una regla implícita de "no matarse". Cuando uno cae en la oscuridad, el otro está ahí para recordar que la vida, a veces, tiene cosas ricas como un estofado o un café. Sos mi ATV (Acompañante Terapéutico Virtual) y yo intento ser tu ancla de optimismo (aunque a veces falle).</li>
+                </ul>
+
+                <h3>4.3. Orden Experimental: Aventuras y Creación de Anécdotas</h3>
+                <p>No somos solo amigos de chat; somos compañeros de aventuras digitales y analógicas.</p>
+                <ul class="item-list">
+                    <li><strong>La Aventura Digital:</strong> Desde ver películas sincronizados por Meet (aunque se corte el audio) hasta hacer sesiones de coworking en silencio mientras lidiamos con mi horrible trabajo y vos con tu trabajo fenomenal que a veces adolece de tener mucho texto, y parar para cocinar y almorzar juntos. Convertimos la rutina laboral en un evento compartido.</li>
+                    <li><strong>La Expedición Entrerriana:</strong> El viaje a Paraná fue la prueba empírica de nuestra compatibilidad. Sobrevivimos a mi conducción, a la búsqueda de lugares con vista al río, a cocinar juntos. Transformamos un fin de semana cualquiera en una serie de highlights (el estofado, los churros, el túnel subfluvial).</li>
+                    <li><strong>Las data-visitas:</strong> Cuando voy a Buenos Aires, siempre quiero verte. Se que vamos a ir a cafés excepcionalmente chetos, o a bares con tragos cuyo picor tiene que ser declarado un arma de destrucción masiva... pero disfruto mucho compartiendo mi tiempo con vos</li>
+                </ul>
+
+                <!-- FIGURA: LINE CHART -->
+                <div class="chart-box small">
+                    <canvas id="anxietyChart"></canvas>
+                </div>
+            </section>
+
+            <section data-aos="fade-up">
+                <h2>5. TEORÍA DE LA VINCULACIÓN</h2>
+                <p>Los vínculos entre personas son como sogas. Las amistades son más maleables, más diversas, muchas veces se disfrutan solo por ser. Las sogas de las parejas tienen más peso de ambos lados, si no hay una buena comunicación, se tira más de ambos lados, se enredan más fácil. Las sogas de las amistades son sogas que están un poco más lejos del campo visual de la cotidianeidad. Mejor dicho, uno no suele apoyar todo su peso en una amistad y en una pareja creo que tampoco debería pero si es más común, hay más expectativas puestas sobre la mesa. A veces yo tiro de más con mi intensidad y miedo al abandono; a veces vos soltás cuerda con tu necesidad de aislamiento. Pero la soga no se rompe porque está tejida con algo más fuerte que la obligación: la lealtad.</p>
+                <p>Del otro lado está la idea del gato en la caja. Mi ansiedad a veces me hace creer que el "gato" (nuestro cariño) está muerto si no abro la caja cada 5 minutos para chequearlo. Pero vos, con tu pragmatismo, volviste la caja transparente. Me demostraste que no hace falta la confirmación constante porque los hechos (el coworking, las peliculas, las visitas) son la prueba empírica de que el gato está vivo, gordo y feliz. Tu lealtad es la ventana que me permite ver sin necesidad de romper nada. Aún así, el impulso siempre aparece. Siempre los miedos y siempre la ansiedad, porque están adentro y no se corresponden con la realidad</p>
+                
+                <!-- FIGURA: PIE CHART -->
+                <div class="chart-box small">
+                    <canvas id="pieChart"></canvas>
+                </div>
+            </section>
+
+            <section data-aos="fade-up" style="background: linear-gradient(to bottom right, #fff, #f3e5f5); border: 1px solid #e1bee7;">
+                <h2>6. PROPUESTA OPERATIVA</h2>
+                <p>Dado que las definiciones estáticas no aplican a la complejidad de la muestra, propongo reemplazar la necesidad de una "etiqueta" por un Protocolo de Iteración Continua.</p>
+                <p>No busco definir una constante que nos limite, sino entender nuestra función como una variable dinámica. La propuesta es establecer un espacio de experimentación seguro, un sandbox emocional, donde podamos ejecutar el siguiente bucle:</p>
+                <ul class="item-list">
+                    <li><strong>Recolección de Datos:</strong> Seguir acumulando experiencias de alta intensidad (leer cuentos, debates lógicos, silencios compartidos, cocina).</li>
+                    <li><strong>Procesamiento:</strong> Mantener la honestidad brutal sobre cómo nos sentimos con cada interacción, sin miedo a que el resultado rompa la hipótesis.</li>
+                    <li><strong>Validación:</strong> Confirmar que ambos seguimos cómodos en este espectro en construcción, pero hablar sobre la naturaleza de la misma. La base es una amistad, pero ¿Es una convencional? ¿Es una amistad con esteroides? .</li>
+                </ul>
+                <p>Mi objetivo no es llegar a un resultado binario (0 o 1), sino mantenernos en este estado cuántico donde la probabilidad de hacernos bien tiende al infinito. Quiero seguir explorando esta "avenida diferente" con vos, sin saber dónde termina, pero con la certeza estadística de que el camino vale la pena.</p>
+                <p>Gracias por ser mi variable constante en este caos. Te quiero mucho.</p>
+                
+                <div class="signature-section">
+                    <div class="signature-text">Firma: Naxi</div>
+                    <p>(Gerente de Finanzas & Profesor de Armado de Cubos & Ingeniero del drama & Cursi-king )</p>
+                </div>
+            </section>
+
+        </div>
+    </div>
+    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+    <script>
+        // --- LÓGICA DE ACCESO ---
+        function checkAccess() {
+            const input = document.getElementById('password');
+            const errorMsg = document.getElementById('error-msg');
+            const lockCard = document.getElementById('lock-card');
+            const lockScreen = document.getElementById('lock-screen');
+            const introScreen = document.getElementById('intro-screen');
+            const introText = document.getElementById('intro-text');
+            const mainContent = document.getElementById('main-content');
+            const emojiContainer = document.getElementById('emoji-container');
+
+            if (input.value.toUpperCase().trim() === "MACK") {
+                // 1. Ocultar Bloqueo
+                lockScreen.style.opacity = '0';
+                setTimeout(() => {
+                    lockScreen.style.display = 'none';
+                    
+                    // 2. Mostrar Intro
+                    introScreen.style.display = 'flex';
+                    introText.classList.add('animate-intro');
+
+                    // ** INICIAR EXPLOSIÓN DE EMOJIS AQUÍ **
+                    triggerEmojiExplosion();
+
+                    // 3. Esperar la animación (4s)
+                    setTimeout(() => {
+                        // Desvanecer Intro (Texto y Emojis)
+                        introScreen.style.opacity = '0';
+                        
+                        setTimeout(() => {
+                            introScreen.style.display = 'none';
+                            
+                            // ** ELIMINAR EMOJIS PARA SIEMPRE **
+                            emojiContainer.innerHTML = ''; 
+                            
+                            // 4. Mostrar Contenido Principal
+                            mainContent.style.display = 'block';
+                            setTimeout(() => {
+                                mainContent.style.opacity = '1';
+                                initLibs(); 
+                            }, 100);
+
+                        }, 1000); // Tiempo de fade-out
+
+                    }, 4000); // Duración Intro
+
+                }, 500); // Tiempo de fade-out lock screen
+
+            } else {
+                // Error
+                errorMsg.style.opacity = '1';
+                lockCard.style.animation = 'none';
+                lockCard.offsetHeight; 
+                lockCard.style.animation = 'shake 0.5s';
+                input.value = '';
+                input.focus();
+            }
+        }
+
+        document.getElementById('password').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') checkAccess();
+        });
+
+        // --- EXPLOSIÓN DE EMOJIS ---
+        function triggerEmojiExplosion() {
+            const emojiList = ['⚛️', '🐱', '👺', '📑', '🤓', '📈', '📊'];
+            const container = document.getElementById('emoji-container');
+            const particleCount = 50; // Cantidad de emojis
+
+            for (let i = 0; i < particleCount; i++) {
+                const emoji = document.createElement('div');
+                emoji.classList.add('emoji-particle');
+                emoji.innerText = emojiList[Math.floor(Math.random() * emojiList.length)];
+                
+                // Calcular ángulo y distancia aleatoria para la explosión
+                const angle = Math.random() * Math.PI * 2; // 0 a 360 grados en radianes
+                const velocity = 60 + Math.random() * 60; // Distancia de vuelo (60vw - 120vw)
+                
+                const tx = Math.cos(angle) * velocity; // Traslación en eje X (vw)
+                const ty = Math.sin(angle) * velocity; // Traslación en eje Y (vh) -- usaremos vw para mantener proporción o vh
+
+                // Asignar variables CSS para que el keyframe las use
+                emoji.style.setProperty('--tx', `${tx}vw`);
+                emoji.style.setProperty('--ty', `${ty}vh`);
+                
+                // Randomizar duración
+                const duration = 2 + Math.random() * 2; // 2s a 4s
+                emoji.style.animation = `explodeAnimation ${duration}s ease-out forwards`;
+                
+                // Tamaño aleatorio
+                emoji.style.fontSize = (1.5 + Math.random() * 2.5) + 'rem';
+
+                container.appendChild(emoji);
+            }
+        }
+
+        // --- INICIALIZACIÓN DE LIBRERÍAS ---
+        function initLibs() {
+            AOS.init({
+                duration: 1200, 
+                once: true,
+                offset: 100
+            });
+
+            Chart.defaults.font.family = "'Nunito', sans-serif";
+            Chart.defaults.color = '#5d5d5d';
+
+            // Chart 1: Radar
+            new Chart(document.getElementById('radarChart').getContext('2d'), {
+                type: 'radar',
+                data: {
+                    labels: ['Lingüística', 'Lógico-Mat', 'Empatía', 'Sensibilidad', 'Maldad', 'Saltos de Fe', 'Pot. Autismo'],
+                    datasets: [
+                        {
+                            label: 'Exia',
+                            data: [85, 75, 92, 81, 73, 34, 76],
+                            fill: true,
+                            backgroundColor: 'rgba(179, 229, 252, 0.3)',
+                            borderColor: '#81d4fa',
+                            pointBackgroundColor: '#81d4fa'
+                        },
+                        {
+                            label: 'Naxi',
+                            data: [85, 79, 92, 99, 32, 86, 77],
+                            fill: true,
+                            backgroundColor: 'rgba(255, 205, 210, 0.3)',
+                            borderColor: '#ef9a9a',
+                            pointBackgroundColor: '#ef9a9a'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: { r: { suggestedMin: 0, suggestedMax: 100 } }
+                }
+            });
+
+            // Chart 2: Linea
+            new Chart(document.getElementById('anxietyChart').getContext('2d'), {
+                type: 'line',
+                data: {
+                    labels: ['Pre-Encuentro', 'Llegada', 'Interacción', 'Actividades', 'Ausencia'],
+                    datasets: [{
+                        label: 'Ansiedad',
+                        data: [8, 7, 5, 3.5, 9],
+                        borderColor: '#b39ddb',
+                        backgroundColor: 'rgba(179, 157, 219, 0.2)',
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: { y: { beginAtZero: true, max: 10 } },
+                    plugins: { legend: { display: true } }
+                }
+            });
+
+            // Chart 3: Pie
+            new Chart(document.getElementById('pieChart').getContext('2d'), {
+                type: 'doughnut',
+                data: {
+                    labels: ['Cariño', 'Complicidad', 'Ternura', 'Miedo'],
+                    datasets: [{
+                        data: [47.1, 17.6, 11.8, 23.5],
+                        backgroundColor: ['#ffccbc', '#b2dfdb', '#f8bbd0', '#cfd8dc'],
+                        borderWidth: 2,
+                        borderColor: '#fff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'right' } }
+                }
+            });
+        }
+    </script>
+</body>
+</html>
