@@ -3,12 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Acceso Restringido | Informe Afectivo</title>
+    <title>Acceso Restringido</title>
     
-    <!-- Fuentes -->
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;600;700&family=Quicksand:wght@500;700&display=swap" rel="stylesheet">
     
-    <!-- Librerías -->
     <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
@@ -35,7 +33,142 @@
             overflow-x: hidden;
         }
 
-        /* --- PANTALLA DE BLOQUEO --- */
+        /* --- PANTALLA DE CUENTA REGRESIVA --- */
+        #countdown-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(255, 255, 255, 0.98);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 20000; /* Por encima del lock screen */
+            transition: opacity 0.8s ease;
+        }
+
+        .countdown-card {
+            text-align: center;
+            padding: 40px;
+            max-width: 600px;
+            width: 90%;
+        }
+
+        .countdown-title {
+            font-family: 'Quicksand', sans-serif;
+            font-size: 1.8rem;
+            color: var(--text-title);
+            margin-bottom: 30px;
+        }
+
+        .timer-container {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+
+        .time-box {
+            background: #fff;
+            padding: 15px;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+            border: 2px solid var(--pastel-lavender);
+            min-width: 80px;
+        }
+
+        .time-number {
+            display: block;
+            font-family: 'Quicksand', sans-serif;
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #7e57c2;
+            line-height: 1;
+        }
+
+        .time-label {
+            font-size: 0.9rem;
+            color: #999;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .countdown-msg {
+            color: var(--pastel-red);
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+
+        /* Loading spinner para la sincronización */
+        .sync-spinner {
+            font-size: 0.8rem;
+            color: #9fa8da;
+            margin-bottom: 10px;
+            font-style: italic;
+            display: block;
+        }
+
+        /* Botonera de Acciones (Pista y Llave) */
+        .action-buttons {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            margin-top: 10px;
+        }
+
+        /* Botón de Pista */
+        .hint-btn {
+            background: var(--pastel-mint);
+            color: #00695c;
+            border: none;
+            padding: 10px 25px;
+            border-radius: 50px;
+            font-family: 'Quicksand', sans-serif;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s, background-color 0.2s;
+            font-size: 0.95rem;
+            box-shadow: 0 4px 10px rgba(178, 223, 219, 0.4);
+        }
+        .hint-btn:hover { background: #80cbc4; transform: scale(1.05); }
+        
+        /* Botón de Llave (Admin) */
+        .key-btn {
+            background: transparent;
+            color: #9fa8da;
+            border: 2px solid var(--pastel-lavender);
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 1.2rem;
+        }
+        .key-btn:hover {
+            background: var(--pastel-lavender);
+            color: #fff;
+            transform: rotate(45deg);
+        }
+
+        .hint-text {
+            margin-top: 20px;
+            font-style: italic;
+            color: #7986cb;
+            min-height: 3em; /* Espacio reservado para que no salte el layout */
+            font-size: 1rem;
+            padding: 0 20px;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+
+        /* --- PANTALLA DE BLOQUEO (PREGUNTAS) --- */
         #lock-screen {
             position: fixed;
             top: 0;
@@ -44,12 +177,13 @@
             height: 100vh;
             background: rgba(255, 255, 255, 0.95);
             backdrop-filter: blur(10px);
-            display: flex;
+            display: none; /* Se mostrará después del countdown */
             flex-direction: column;
             justify-content: center;
             align-items: center;
             z-index: 10000;
             transition: opacity 0.5s ease, visibility 0.5s;
+            opacity: 0; /* Empieza invisible para fade in */
         }
 
         .lock-card {
@@ -66,7 +200,7 @@
 
         .lock-icon { font-size: 3rem; margin-bottom: 20px; color: var(--pastel-red); }
         .lock-title { font-family: 'Quicksand', sans-serif; font-weight: 700; color: var(--pastel-red); margin-bottom: 10px; letter-spacing: 1px; }
-        .lock-question { font-family: 'Quicksand', sans-serif; font-size: 1.2rem; margin-bottom: 20px; color: var(--text-title); }
+        .lock-question { font-family: 'Quicksand', sans-serif; font-size: 1.2rem; margin-bottom: 20px; color: var(--text-title); display: block; }
 
         .lock-input {
             width: 100%;
@@ -119,7 +253,7 @@
             align-items: center;
             z-index: 9998;
             transition: opacity 1s ease;
-            overflow: hidden; /* Importante para que los emojis no scrolleen */
+            overflow: hidden; 
         }
 
         .intro-text {
@@ -136,7 +270,7 @@
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             position: relative;
-            z-index: 2; /* Texto sobre emojis */
+            z-index: 2; 
         }
 
         @keyframes textReveal {
@@ -158,32 +292,22 @@
             width: 100%;
             height: 100%;
             pointer-events: none;
-            z-index: 1; /* Detrás del texto de intro */
+            z-index: 1; 
         }
 
         .emoji-particle {
             position: absolute;
             left: 50%;
             top: 50%;
-            transform: translate(-50%, -50%); /* Empiezan centrados */
+            transform: translate(-50%, -50%); 
             font-size: 2rem;
             opacity: 0;
         }
 
-        /* La animación se definirá dinámicamente, pero necesitamos una base */
         @keyframes explodeAnimation {
-            0% {
-                transform: translate(-50%, -50%) scale(0.5);
-                opacity: 0;
-            }
-            10% {
-                opacity: 1;
-                transform: translate(-50%, -50%) scale(1.5);
-            }
-            100% {
-                transform: translate(calc(-50% + var(--tx)), calc(-50% + var(--ty))) scale(1);
-                opacity: 0;
-            }
+            0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
+            10% { opacity: 1; transform: translate(-50%, -50%) scale(1.5); }
+            100% { transform: translate(calc(-50% + var(--tx)), calc(-50% + var(--ty))) scale(1); opacity: 0; }
         }
 
         /* --- CONTENIDO PRINCIPAL --- */
@@ -233,35 +357,68 @@
         @media (max-width: 600px) {
             .intro-text { font-size: 1.8rem; }
             h1 { font-size: 1.5rem; }
+            .time-box { min-width: 60px; padding: 10px; }
+            .time-number { font-size: 1.8rem; }
         }
     </style>
 </head>
 <body>
 
-    <!-- PANTALLA DE BLOQUEO -->
+    <div id="countdown-screen">
+        <div class="countdown-card">
+            <div class="lock-icon">⏳</div>
+            <h2 class="countdown-title">El acceso a este SECRETO estará disponible el Domingo 23/11/2025</h2>
+            <span class="sync-spinner" id="sync-status">Sincronizando reloj global...</span>
+            
+            <div class="timer-container">
+                <div class="time-box">
+                    <span class="time-number" id="days">00</span>
+                    <span class="time-label">Días</span>
+                </div>
+                <div class="time-box">
+                    <span class="time-number" id="hours">00</span>
+                    <span class="time-label">Horas</span>
+                </div>
+                <div class="time-box">
+                    <span class="time-number" id="minutes">00</span>
+                    <span class="time-label">Min</span>
+                </div>
+                <div class="time-box">
+                    <span class="time-number" id="seconds">00</span>
+                    <span class="time-label">Seg</span>
+                </div>
+            </div>
+            
+            <p class="countdown-msg">Paciencia, Exia...</p>
+
+            <div class="action-buttons">
+                <button class="hint-btn" onclick="showHint()">Pista 💡</button>
+                </div>
+            
+            <div id="hint-display" class="hint-text"></div>
+        </div>
+    </div>
+
     <div id="lock-screen">
         <div class="lock-card" id="lock-card">
             <div class="lock-icon">🔒</div>
             <h2 class="lock-title">CONFIDENCIALIDAD MÁXIMA</h2>
-            <p>Este documento está clasificado.</p>
+            <p id="lock-step-text">Paso 1 de 4</p>
             
-            <label class="lock-question" for="password">¿Índice...?</label>
-            <input type="password" id="password" class="lock-input" placeholder="Ingrese contraseña">
+            <label class="lock-question" id="question-label" for="password">¿Índice...?</label>
+            <input type="password" id="password" class="lock-input" placeholder="Ingrese respuesta">
             
-            <button class="lock-btn" onclick="checkAccess()">Desbloquear</button>
-            <div class="error-msg" id="error-msg">Acceso Denegado</div>
+            <button class="lock-btn" onclick="checkAccess()">Confirmar</button>
+            <div class="error-msg" id="error-msg">Respuesta Incorrecta</div>
         </div>
     </div>
 
-    <!-- PANTALLA DE INTRODUCCIÓN -->
     <div id="intro-screen">
         <h1 class="intro-text" id="intro-text">INFORME DE RELEVAMIENTO AFECTIVO</h1>
-        <!-- Contenedor para la explosión de emojis -->
         <div id="emoji-container"></div>
     </div>
 
-    <!-- CONTENIDO PRINCIPAL -->
-       <div id="main-content">
+    <div id="main-content">
         <div class="background-shapes">
             <div class="shape s1"></div>
             <div class="shape s2"></div>
@@ -326,17 +483,16 @@
                 <h3>3.2. Ejes de Compatibilidad</h3>
                 <p>Para visualizar cómo estas estadísticas interactúan en la práctica, propongo el siguiente esquema de compatibilidad vincular:</p>
                 
-                <!-- FIGURA: RADAR CHART -->
                 <div class="chart-box">
                     <canvas id="radarChart"></canvas>
                 </div>
 
                 <ul class="item-list">
-                    <li><strong>Inclinación Lingüística:</strong> Alta. Ambos somos precisos en la construcción comunicativa por escrito. No solo eso sino que escribís muy bien y (según lo que vos me dijiste) yo también, así que la conexión literaria está presente. </li>
+                    <li><strong>Inclinación Lingüística:</strong> Alta. Nuestra capacidad de generar "Lore" compartido (apodos, chistes internos, traducciones de emociones a conceptos) es el pegamento del vínculo.</li>
                     <li><strong>Inclinación Lógico-Matemática:</strong> Alta. Desde el índice MACK hasta el nuevo orden abierto gracias al amor por el cubo rubik, nos une cierta inclinación hacia la lógica.</li>
                     <li><strong>Sensibilidad:</strong> Polarizada. Si bien ambos tenemos un porcentaje de sensibilidad elevado, a mi me domina y me empuja a cometer errores mientras que a vos (siento) te ancla.</li>
                     <li><strong>Empatía:</strong> Alta. La capacidad de estar para el otro me hace sentir que es un lugar seguro.</li>
-                    <li><strong>Fe:</strong> Polarizada. Aquí está el núcleo de la dinámica. Yo soy el Creyente Trágico (a pesar de todo, apuesto); vos sos la Escéptica Pragmática. Esta tensión es la que mantiene el vínculo vivo: yo aporto esperanza, vos me traés realidad.</li>
+                    <li><strong>Fe:</strong> Polarizada. Aquí está el núcleo de la dinámica. Yo soy el Creyente Trágico (a pesar de todo, apuesto); vos sos la Escéptica Pragmática. Esta tensión es la que mantiene el vínculo vivo: yo te traigo esperanza, vos me traés realidad.</li>
                 </ul>
             </section>
 
@@ -405,7 +561,7 @@
                 <p>No somos solo amigos de chat; somos compañeros de aventuras digitales y analógicas.</p>
                 <ul class="item-list">
                     <li><strong>La Aventura Digital:</strong> Desde ver películas sincronizados por Meet (aunque se corte el audio) hasta hacer sesiones de coworking en silencio mientras lidiamos con mi horrible trabajo y vos con tu trabajo fenomenal que a veces adolece de tener mucho texto, y parar para cocinar y almorzar juntos. Convertimos la rutina laboral en un evento compartido.</li>
-                    <li><strong>La Expedición Entrerriana:</strong> El viaje a Paraná fue la prueba empírica de nuestra compatibilidad. Sobrevivimos a mi conducción, a la búsqueda de lugares con vista al río, a cocinar juntos. Transformamos un fin de semana cualquiera en una serie de highlights (el estofado, los churros, el túnel subfluvial).</li>
+                                            <li><strong>La Vulnerabilidad compartida:</strong> Nos hemos acompañado en los momentos más bajos, o al menos vos me has acompañado en los míos: mis crisis laborales, me has dejado entrar en tus momentos de "fobia social" y bajones de energía, el diagnóstico de mi mamá. No necesitamos fingir que está todo bien, es un lugar seguro.</li>
                     <li><strong>Las data-visitas:</strong> Cuando voy a Buenos Aires, siempre quiero verte. Se que vamos a ir a cafés excepcionalmente chetos, o a bares con tragos cuyo picor tiene que ser declarado un arma de destrucción masiva... pero disfruto mucho compartiendo mi tiempo con vos</li>
                 </ul>
 
@@ -415,17 +571,15 @@
             <section data-aos="fade-up">
                 <h2>5. TEORÍA DE LA VINCULACIÓN</h2>
                 <p>Los vínculos entre personas son como sogas. Las amistades son más maleables, más diversas, muchas veces se disfrutan solo por ser. Las sogas de las parejas tienen más peso de ambos lados, si no hay una buena comunicación, se tira más de ambos lados, se enredan más fácil. Las sogas de las amistades son sogas que están un poco más lejos del campo visual de la cotidianeidad. Mejor dicho, uno no suele apoyar todo su peso en una amistad y en una pareja creo que tampoco debería pero si es más común, hay más expectativas puestas sobre la mesa. A veces yo tiro de más con mi intensidad y miedo al abandono; a veces vos soltás cuerda con tu necesidad de aislamiento. Pero la soga no se rompe porque está tejida con algo más fuerte que la obligación: la lealtad.</p>
-				<!-- FIGURA: PIE CHART -->
                 <div class="chart-box small">
                     <canvas id="pieChart"></canvas>
                 </div>
-                <p>Del otro lado está la idea del gato en la caja. Mi ansiedad a veces me hace creer que el "gato" (nuestro cariño) está muerto si no abro la caja cada 5 minutos para chequearlo. Pero vos, con tu pragmatismo, volviste la caja transparente. Me demostraste que no hace falta la confirmación constante porque los hechos (el coworking, las peliculas, las visitas) son la prueba empírica de que el gato está vivo, gordo y feliz. Tu lealtad es la ventana que me permite ver sin necesidad de romper nada. Aún así, el impulso siempre aparece. Siempre los miedos y siempre la ansiedad, porque están adentro y no se corresponden con la realidad</p>
+                <p>Del otro lado está la idea del gato en la caja. Mi ansiedad a veces me hace creer que el "gato" (nuestro cariño) está muerto si no abro la caja cada 5 minutos para chequearlo. Pero vos, con tu pragmatismo, tu compañía, tu paciencia (realmente excepcional) y tu reafirmación volviste la caja transparente. Me demostraste que no hace falta la confirmación constante porque los hechos (el coworking, las peliculas, las visitas) son la prueba empírica de que el gato está vivo, gordo y feliz. Tu lealtad es la ventana que me permite ver sin necesidad de romper nada. Aún así, el impulso siempre aparece. Siempre los miedos y siempre la ansiedad, porque están adentro y no se corresponden con la realidad. Estás en todo tu derecho de decir que haces todo bien pero soy muy ... tonto para verlo. Pero lo veo, lo siento, es hermoso. A veces las voces gritan más fuerte, pero las probás una y otra vez equivocadas.</p>
                 
-				<!-- FIGURA: LINE CHART -->
                 <div class="chart-box small">
                     <canvas id="anxietyChart"></canvas>
                 </div>
-				
+                
                 
             </section>
 
@@ -434,9 +588,9 @@
                 <p>Dado que las definiciones estáticas no aplican a la complejidad de la muestra, propongo reemplazar la necesidad de una "etiqueta" por un Protocolo de Iteración Continua.</p>
                 <p>No busco definir una constante que nos limite, sino entender nuestra función como una variable dinámica. La propuesta es establecer un espacio de experimentación seguro, un sandbox emocional, donde podamos ejecutar el siguiente bucle:</p>
                 <ul class="item-list">
-                    <li><strong>Recolección de Datos:</strong> Seguir acumulando experiencias de alta intensidad (leer cuentos, debates lógicos, silencios compartidos, cocina).</li>
+                    <li><strong>Recolección de Datos:</strong> Seguir acumulando experiencias de alta intensidad (leer cuentos, cocinar, pasear, silencios compartidos).</li>
                     <li><strong>Procesamiento:</strong> Mantener la honestidad brutal sobre cómo nos sentimos con cada interacción, sin miedo a que el resultado rompa la hipótesis.</li>
-                    <li><strong>Validación:</strong> Confirmar que ambos seguimos cómodos en este espectro en construcción, pero hablar sobre la naturaleza de la misma. La base es una amistad, pero ¿Es una convencional? ¿Es una amistad con esteroides? .</li>
+                    <li><strong>Validación:</strong> Confirmar que ambos seguimos cómodos en este espectro en construcción, pero hablar sobre la naturaleza del mismo. La base es una amistad, pero ¿Es una convencional? ¿Es una amistad con esteroides? .</li   >
                 </ul>
                 <p>Mi objetivo no es llegar a un resultado binario (0 o 1), sino mantenernos en este estado cuántico donde la probabilidad de hacernos bien tiende al infinito. Quiero seguir explorando esta "avenida diferente" con vos, sin saber dónde termina, pero con la certeza estadística de que el camino vale la pena.</p>
                 <p>Gracias por ser mi variable constante en este caos. Te quiero mucho.</p>
@@ -451,56 +605,204 @@
     </div>
     <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
     <script>
-        // --- LÓGICA DE ACCESO ---
+        // --- CONFIGURACIÓN DE LAS PREGUNTAS ---
+        const quizData = [
+            {
+                q: "ÍNDICE...?",
+                a: ["mack"]
+            },
+            {
+                q: "¿Quién es la hagovera que mejor me cae?",
+                a: ["nihon", "nihonbord", "exia", "yo"]
+            },
+            {
+                q: "¿Cuál es el mejor mito griego existente?",
+                a: ["orfeo", "euridice", "eurídice", "orfeo y eurídice", "orfeo y euridice"]
+            },
+            {
+                q: "¿Quién es la gata más hermosa del mundo?",
+                a: ["magui", "maggie", "magi"]
+            }
+        ];
+
+        // --- LISTA DE PISTAS ALEATORIAS ---
+        const hints = [
+            "Orden en el caos",
+            "Nadie rebaje a lágrima o reproche, esta declaración de maestría...",
+            "Entonces Orfeo compuso para ella la más bella canción de amor que se había oído nunca en aquellos bosques.",
+            "Ante la teoría de las cuerdas, la teoría de las sogas.",
+            "Benjamin, pero amarillo",
+            "A veces no hace falta tener conclusiones.",
+            "A veces la vida merece ser vivida",
+            "El sentido es algo que buscamos y encontramos para que nos dé seguridad porque vivir sin sentido es abrumador",
+            "Todo tiene peso. En lo que decis al otro, en lo que decis al aire, y en lo que te decis a vos mismo. Lo que no decís, es peso muerto",
+            "Tu naturaleza de hoy no está condenada a quedar inmóvil para siempre. Eso es existir.",
+            "La libertad es poder elegir con quién construir algo y cuidarlo. Es mirar al otro como un mundo, no como un servicio.",
+            "Tu naturaleza de hoy no está condenada a quedar inmóvil para siempre. Eso es existir.",
+            "Creer es lo mas importante que tenemos como humanos... Volver a lo humano loco. A creer, a confiar. Es salvar el mundo.",
+            "Las mejores historias empiezan chiquito. Sin proezas.",
+            "El dolor no necesita lámpara, se te escapa del cuerpo.",
+            "Hay que darle lugar a la tristeza, saber habitarla, pero no perderse en ella.",
+            
+        ];
+
+        let currentStep = 0;
+        // FECHA OBJETIVO: 23/11/2025 00:00:00 GMT-3 (Argentina)
+        const targetDate = new Date('2025-11-23T00:00:00-03:00').getTime();
+        let timerInterval; 
+
+        // --- INICIALIZAR TODO ---
+        window.onload = function() {
+            initCountdown();
+        };
+
+        // --- FUNCIÓN PARA MOSTRAR PISTA ---
+        function showHint() {
+            const hintDisplay = document.getElementById('hint-display');
+            
+            // Elegir una frase al azar
+            const randomIndex = Math.floor(Math.random() * hints.length);
+            const selectedHint = hints[randomIndex];
+            
+            // Efecto de transición simple
+            hintDisplay.style.opacity = '0';
+            
+            setTimeout(() => {
+                hintDisplay.innerText = `"${selectedHint}"`;
+                hintDisplay.style.opacity = '1';
+            }, 300);
+        }
+
+        // --- FUNCIÓN DE ACCESO ADMINISTRADOR (LLAVE) ---
+        function adminAccess() {
+            const secret = prompt("Acceso Maestro Requerido:");
+            if (secret === "432843284328") {
+                // Detener el contador
+                clearInterval(timerInterval);
+                // Ir a la siguiente pantalla directamente
+                goToLockScreen();
+            } else if (secret !== null) {
+                alert("Acceso Denegado.");
+            }
+        }
+
+        // --- LÓGICA DE TRANSICIÓN A PANTALLA DE BLOQUEO ---
+        function goToLockScreen() {
+            const countdownScreen = document.getElementById('countdown-screen');
+            const lockScreen = document.getElementById('lock-screen');
+
+            countdownScreen.style.opacity = '0';
+            setTimeout(() => {
+                countdownScreen.style.display = 'none';
+                // Mostrar Lock Screen
+                lockScreen.style.display = 'flex';
+                setTimeout(() => {
+                    lockScreen.style.opacity = '1';
+                }, 50);
+            }, 800);
+        }
+
+        // --- LÓGICA DEL COUNTDOWN SEGURA (WorldTimeAPI) ---
+        async function initCountdown() {
+            const countdownScreen = document.getElementById('countdown-screen');
+            const lockScreen = document.getElementById('lock-screen');
+            const syncStatus = document.getElementById('sync-status');
+
+            let serverTimeReference;
+            let localTimeReference;
+
+            // 1. Intentar obtener hora del servidor
+            try {
+                // API de WorldTime para Argentina
+                const response = await fetch('https://worldtimeapi.org/api/timezone/America/Argentina/Buenos_Aires');
+                const data = await response.json();
+                
+                // Convertimos la fecha del servidor a timestamp
+                serverTimeReference = new Date(data.datetime).getTime();
+                
+                // Guardamos el momento exacto en que recibimos esa hora
+                // performance.now() es monótono (no cambia si cambias la fecha de windows)
+                localTimeReference = performance.now();
+                
+                syncStatus.innerText = "Solo queda esperar un poquito ";
+                syncStatus.style.color = "#81c784";
+
+            } catch (e) {
+                console.warn("Fallo API de tiempo, usando local como fallback", e);
+                syncStatus.innerText = "No hagas trampa";
+                // Fallback: Si no hay internet, usamos la fecha local (no queda otra)
+                serverTimeReference = new Date().getTime();
+                localTimeReference = performance.now();
+            }
+
+            // 2. Iniciar el intervalo usando la referencia segura
+            timerInterval = setInterval(function() {
+                // Calculamos cuánto tiempo pasó desde que sincronizamos
+                const elapsed = performance.now() - localTimeReference;
+                
+                // La hora actual "real" es la hora del servidor + el tiempo que pasó
+                const currentRealTime = serverTimeReference + elapsed;
+                
+                const distance = targetDate - currentRealTime;
+
+                // Cálculos de tiempo
+                const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+                const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+                // Mostrar en HTML
+                document.getElementById("days").innerText = String(Math.max(0, days)).padStart(2, '0');
+                document.getElementById("hours").innerText = String(Math.max(0, hours)).padStart(2, '0');
+                document.getElementById("minutes").innerText = String(Math.max(0, minutes)).padStart(2, '0');
+                document.getElementById("seconds").innerText = String(Math.max(0, seconds)).padStart(2, '0');
+
+                // SI YA LLEGÓ LA FECHA
+                if (distance < 0) {
+                    clearInterval(timerInterval);
+                    goToLockScreen(); 
+                } else {
+                    lockScreen.style.display = 'none';
+                }
+            }, 1000);
+        }
+
+
+        // --- LÓGICA DE ACCESO (Multi-step) ---
         function checkAccess() {
             const input = document.getElementById('password');
             const errorMsg = document.getElementById('error-msg');
             const lockCard = document.getElementById('lock-card');
-            const lockScreen = document.getElementById('lock-screen');
-            const introScreen = document.getElementById('intro-screen');
-            const introText = document.getElementById('intro-text');
-            const mainContent = document.getElementById('main-content');
-            const emojiContainer = document.getElementById('emoji-container');
+            const labelQuestion = document.getElementById('question-label');
+            const stepText = document.getElementById('lock-step-text');
+            
+            const userAnswer = input.value.toLowerCase().trim();
+            const validAnswers = quizData[currentStep].a;
 
-            if (input.value.toUpperCase().trim() === "MACK") {
-                // 1. Ocultar Bloqueo
-                lockScreen.style.opacity = '0';
-                setTimeout(() => {
-                    lockScreen.style.display = 'none';
+            if (validAnswers.includes(userAnswer)) {
+                // -- CORRECTO --
+                errorMsg.style.opacity = '0';
+                currentStep++;
+
+                if (currentStep < quizData.length) {
+                    // SIGUIENTE PREGUNTA
+                    labelQuestion.style.opacity = 0; 
+                    stepText.innerText = `Paso ${currentStep + 1} de ${quizData.length}`;
                     
-                    // 2. Mostrar Intro
-                    introScreen.style.display = 'flex';
-                    introText.classList.add('animate-intro');
-
-                    // ** INICIAR EXPLOSIÓN DE EMOJIS AQUÍ **
-                    triggerEmojiExplosion();
-
-                    // 3. Esperar la animación (4s)
                     setTimeout(() => {
-                        // Desvanecer Intro (Texto y Emojis)
-                        introScreen.style.opacity = '0';
-                        
-                        setTimeout(() => {
-                            introScreen.style.display = 'none';
-                            
-                            // ** ELIMINAR EMOJIS PARA SIEMPRE **
-                            emojiContainer.innerHTML = ''; 
-                            
-                            // 4. Mostrar Contenido Principal
-                            mainContent.style.display = 'block';
-                            setTimeout(() => {
-                                mainContent.style.opacity = '1';
-                                initLibs(); 
-                            }, 100);
+                        labelQuestion.innerText = quizData[currentStep].q;
+                        labelQuestion.style.opacity = 1;
+                        input.value = ''; 
+                        input.focus();
+                    }, 300);
 
-                        }, 1000); // Tiempo de fade-out
-
-                    }, 4000); // Duración Intro
-
-                }, 500); // Tiempo de fade-out lock screen
+                } else {
+                    // FIN -> DESBLOQUEAR
+                    unlockScreen();
+                }
 
             } else {
-                // Error
+                // -- INCORRECTO --
                 errorMsg.style.opacity = '1';
                 lockCard.style.animation = 'none';
                 lockCard.offsetHeight; 
@@ -508,6 +810,36 @@
                 input.value = '';
                 input.focus();
             }
+        }
+
+        function unlockScreen() {
+            const lockScreen = document.getElementById('lock-screen');
+            const introScreen = document.getElementById('intro-screen');
+            const introText = document.getElementById('intro-text');
+            const mainContent = document.getElementById('main-content');
+            const emojiContainer = document.getElementById('emoji-container');
+
+            lockScreen.style.opacity = '0';
+            setTimeout(() => {
+                lockScreen.style.display = 'none';
+                
+                introScreen.style.display = 'flex';
+                introText.classList.add('animate-intro');
+                triggerEmojiExplosion();
+
+                setTimeout(() => {
+                    introScreen.style.opacity = '0';
+                    setTimeout(() => {
+                        introScreen.style.display = 'none';
+                        emojiContainer.innerHTML = ''; 
+                        mainContent.style.display = 'block';
+                        setTimeout(() => {
+                            mainContent.style.opacity = '1';
+                            initLibs(); 
+                        }, 100);
+                    }, 1000);
+                }, 4000);
+            }, 500); 
         }
 
         document.getElementById('password').addEventListener('keypress', function (e) {
@@ -518,31 +850,26 @@
         function triggerEmojiExplosion() {
             const emojiList = ['⚛️', '🐱', '👺', '📑', '🤓', '📈', '📊'];
             const container = document.getElementById('emoji-container');
-            const particleCount = 50; // Cantidad de emojis
+            const particleCount = 50; 
 
             for (let i = 0; i < particleCount; i++) {
                 const emoji = document.createElement('div');
                 emoji.classList.add('emoji-particle');
                 emoji.innerText = emojiList[Math.floor(Math.random() * emojiList.length)];
                 
-                // Calcular ángulo y distancia aleatoria para la explosión
-                const angle = Math.random() * Math.PI * 2; // 0 a 360 grados en radianes
-                const velocity = 60 + Math.random() * 60; // Distancia de vuelo (60vw - 120vw)
+                const angle = Math.random() * Math.PI * 2; 
+                const velocity = 60 + Math.random() * 60; 
                 
-                const tx = Math.cos(angle) * velocity; // Traslación en eje X (vw)
-                const ty = Math.sin(angle) * velocity; // Traslación en eje Y (vh) -- usaremos vw para mantener proporción o vh
+                const tx = Math.cos(angle) * velocity; 
+                const ty = Math.sin(angle) * velocity; 
 
-                // Asignar variables CSS para que el keyframe las use
                 emoji.style.setProperty('--tx', `${tx}vw`);
                 emoji.style.setProperty('--ty', `${ty}vh`);
                 
-                // Randomizar duración
-                const duration = 2 + Math.random() * 2; // 2s a 4s
+                const duration = 2 + Math.random() * 2; 
                 emoji.style.animation = `explodeAnimation ${duration}s ease-out forwards`;
                 
-                // Tamaño aleatorio
                 emoji.style.fontSize = (1.5 + Math.random() * 2.5) + 'rem';
-
                 container.appendChild(emoji);
             }
         }
@@ -558,7 +885,7 @@
             Chart.defaults.font.family = "'Nunito', sans-serif";
             Chart.defaults.color = '#5d5d5d';
 
-            // Chart 1: Radar
+            // Chart 1
             new Chart(document.getElementById('radarChart').getContext('2d'), {
                 type: 'radar',
                 data: {
@@ -589,7 +916,7 @@
                 }
             });
 
-            // Chart 2: Linea
+            // Chart 2
             new Chart(document.getElementById('anxietyChart').getContext('2d'), {
                 type: 'line',
                 data: {
@@ -611,7 +938,7 @@
                 }
             });
 
-            // Chart 3: Pie
+            // Chart 3
             new Chart(document.getElementById('pieChart').getContext('2d'), {
                 type: 'doughnut',
                 data: {
