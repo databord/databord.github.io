@@ -111,7 +111,7 @@
             display: block;
         }
 
-        /* Botonera de Acciones (Pista y Llave) */
+        /* Botonera de Acciones (Pista) */
         .action-buttons {
             display: flex;
             justify-content: center;
@@ -136,27 +136,6 @@
         }
         .hint-btn:hover { background: #80cbc4; transform: scale(1.05); }
         
-        /* Botón de Llave (Admin) */
-        .key-btn {
-            background: transparent;
-            color: #9fa8da;
-            border: 2px solid var(--pastel-lavender);
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            font-size: 1.2rem;
-        }
-        .key-btn:hover {
-            background: var(--pastel-lavender);
-            color: #fff;
-            transform: rotate(45deg);
-        }
-
         .hint-text {
             margin-top: 20px;
             font-style: italic;
@@ -392,8 +371,8 @@
             <p class="countdown-msg">Paciencia, Exia...</p>
 
             <div class="action-buttons">
-                <button class="hint-btn" onclick="showHint()">Pista 💡</button>
-                </div>
+                <button class="hint-btn" onclick="showHint()">Decime algo mientras tanto</button>
+            </div>
             
             <div id="hint-display" class="hint-text"></div>
         </div>
@@ -673,15 +652,18 @@
             }, 300);
         }
 
-        // --- FUNCIÓN DE ACCESO ADMINISTRADOR (LLAVE) ---
-        function adminAccess() {
+        // --- ACCESO MAESTRO VIA CONSOLA ---
+        // Para activar: Abrir consola (F12) y escribir accesoMaestro()
+        window.accesoMaestro = function() {
             const secret = prompt("Acceso Maestro Requerido:");
             if (secret === "432843284328") {
+                console.log("Acceso concedido. Bienvenido, Admin.");
                 // Detener el contador
                 clearInterval(timerInterval);
                 // Ir a la siguiente pantalla directamente
                 goToLockScreen();
             } else if (secret !== null) {
+                console.warn("Contraseña incorrecta.");
                 alert("Acceso Denegado.");
             }
         }
@@ -724,12 +706,12 @@
                 // performance.now() es monótono (no cambia si cambias la fecha de windows)
                 localTimeReference = performance.now();
                 
-                syncStatus.innerText = "Solo queda esperar un poquito ";
+                syncStatus.innerText = "Solo hace falta un poquito de paciencia";
                 syncStatus.style.color = "#81c784";
 
             } catch (e) {
                 console.warn("Fallo API de tiempo, usando local como fallback", e);
-                syncStatus.innerText = "No hagas trampa";
+                syncStatus.innerText = "No hagas trampa eh";
                 // Fallback: Si no hay internet, usamos la fecha local (no queda otra)
                 serverTimeReference = new Date().getTime();
                 localTimeReference = performance.now();
