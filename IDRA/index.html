@@ -171,6 +171,47 @@
             opacity: 1;
             transform: translateY(0);
         }
+        
+        /* Estilos para el resumen final de frases */
+        #final-summary-container {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 30px;
+            border-radius: 20px;
+            border: 2px dashed var(--pastel-lavender);
+            box-shadow: var(--card-shadow);
+            max-width: 600px;
+            width: 90%;
+            animation: fadeIn 0.8s ease;
+        }
+        
+        #final-summary-container h2 {
+            font-family: 'Quicksand', sans-serif;
+            color: #7e57c2;
+            font-size: 1.8rem;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .summary-list {
+            list-style: none;
+            padding: 0;
+            width: 100%;
+        }
+        
+        .summary-list li {
+            background: linear-gradient(to right, #f3e5f5, #fff);
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 10px;
+            border-left: 4px solid var(--pastel-red);
+            color: var(--text-title);
+            font-family: 'Nunito', sans-serif;
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
 
         /* Boton de siguiente nivel */
         .next-level-btn {
@@ -466,7 +507,7 @@
         </div>
 
         <!-- Bloque del Puzzle -->
-        <div class="puzzle-wrapper">
+        <div class="puzzle-wrapper" id="puzzle-game-wrapper">
             <h3 class="puzzle-msg">🧩 Desbloqueo Manual Requerido 🧩</h3>
             
             <!-- Contenedor del Canvas (Ya no tiene el overlay adentro) -->
@@ -479,6 +520,15 @@
 
             <!-- Botón para siguiente puzzle (ahora afuera, debajo del texto) -->
             <button id="next-puzzle-btn" class="next-level-btn" onclick="loadNextPuzzle()">✨ ¡Dame otro desafío! ✨</button>
+        </div>
+
+        <!-- Bloque de Resumen Final (Oculto por defecto) -->
+        <div id="final-summary-container">
+            <h2>✨ Recordá estas frases ✨</h2>
+            <ul class="summary-list" id="summary-list">
+                <!-- Se llenará con JS -->
+            </ul>
+            <p style="text-align: center; color: #999; margin-top: 10px; font-style: italic;">(La puerta se abrirá cuando el reloj marque cero)</p>
         </div>
 
         <!-- Botones de Pista -->
@@ -702,8 +752,6 @@
            VARIABLES DE ESTADO
            ========================================= */
 
-        // --- NUEVA LÓGICA: IMÁGENES DE ROMPECABEZAS ---
-        // Lista de URLs para los puzzles 1, 2, 3 y 4
         const img_rompecabezas = [
             "https://i.imgur.com/xMQG6nt.jpeg", // Puzzle 1
             "https://i.imgur.com/gyJ0qwP.jpeg", // Puzzle 2
@@ -711,8 +759,6 @@
             "https://i.imgur.com/1OYP3Fr.jpeg"  // Puzzle 4
         ];
 
-        // --- NUEVA LÓGICA: FRASES DE RESOLUCIÓN ---
-        // El item 0 corresponde al puzzle 1, item 1 al puzzle 2, etc.
         const resolucion_rompecabezas = [
             "(1) - Un instante cualquiera es más profundo y diverso que el mar. La vida es corta",
             "(2) - El viaje que nos parecía inmediato, preexistía en el diálogo y en el imprevisto",
@@ -720,15 +766,13 @@
             "(4) - ¿Quién le dirá que el otro que lo observa // es apenas un sueño del espejo?"
         ];
 
-        // --- CONFIGURACIÓN DE NIVELES Y PIEZAS ---
         const CANTIDAD_ROMPECABEZAS = 4; 
-        const CANTIDAD_PIEZAS_BASE = 12; // <--- NUMERO BASE (Nivel 1)
+        const CANTIDAD_PIEZAS_BASE = 12; 
         
-        let availablePuzzles = []; // Ya no se usará para randomizar, solo para contar
-        let currentPuzzleIndex = 0; // ID real del puzzle actual (1 a N)
-        let solvedPuzzles = []; // Array para trackear IDs resueltos
-        let isAnyPuzzleSolved = false; // Para el unlock
+        let currentPuzzleIndex = 0; // 1 a 4
+        let solvedPuzzles = []; 
         let isTimeReached = false;
+        let allPuzzlesFinished = false; // Nueva bandera para el estado final
         
         /* =========================================
            LÓGICA DEL ROMPECABEZAS
@@ -742,79 +786,51 @@
         let pieceWidth, pieceHeight;
         const SNAP_DISTANCE = 30; 
 
-        // --- TRUCO DE CONSOLA ---
         window.resolverRompecabeza = function() {
-            console.log("%c✨ ACTIVANDO MODO DIOS: RESOLVIENDO PUZZLE... ✨", "color: purple; font-weight: bold; font-size: 14px;");
-            pieces.forEach(p => {
-                p.x = p.correctX;
-                p.y = p.correctY;
-                p.isLocked = true;
-            });
+            console.log("%c✨ ACTIVANDO MODO DIOS... ✨", "color: purple; font-weight: bold;");
+            pieces.forEach(p => { p.x = p.correctX; p.y = p.correctY; p.isLocked = true; });
             drawPuzzle();
             checkWin(); 
         }
 
-        // --- INICIALIZACIÓN DE LISTA DE PUZZLES ---
         function initPuzzleSystem() {
-            // Inicializamos en orden (1, 2, 3...)
             loadNextPuzzle();
         }
 
         function loadNextPuzzle() {
-            // Resetear UI del rompecabezas anterior
             const txtContainer = document.getElementById('resolution-text');
             const btn = document.getElementById('next-puzzle-btn');
             const container = document.getElementById('puzzle-container');
             
             txtContainer.classList.remove('visible');
-            txtContainer.innerHTML = ''; // Limpiar texto
+            txtContainer.innerHTML = ''; 
             btn.classList.remove('visible');
             container.classList.remove('solved');
             
             setTimeout(() => {
-                // Lógica secuencial: El siguiente es simplemente el numero de resueltos + 1
-                // Si solvedPuzzles tiene 0 elementos, nextId es 1.
-                // Si solvedPuzzles tiene 1 elemento (el ID 1), nextId es 2.
                 let nextId = solvedPuzzles.length + 1;
                 
+                // Si ya completamos todos, no cargamos más
                 if (nextId > CANTIDAD_ROMPECABEZAS) {
-                    // Si ya resolvió todos, reiniciamos
-                    solvedPuzzles = []; 
-                    nextId = 1;
+                    return;
                 }
 
                 currentPuzzleIndex = nextId;
-
-                // Iniciar la carga
                 initPuzzle(currentPuzzleIndex);
             }, 500);
         }
 
         function initPuzzle(puzzleId) {
             puzzleImg = new Image();
-            
-            // Carga desde el array de URLs
-            // Restamos 1 porque el array es índice 0 y puzzleId empieza en 1
             const imgUrl = img_rompecabezas[puzzleId - 1];
-            
-            if (!imgUrl) {
-                console.error("No se encontró URL para el puzzle " + puzzleId);
-                return;
-            }
+            if (!imgUrl) return;
 
-            // IMPORTANTE: Permitir CORS para manipular imágenes de Imgur en Canvas
             puzzleImg.crossOrigin = "Anonymous";
             puzzleImg.src = imgUrl; 
             
-            puzzleImg.onload = function() {
-                setupPuzzle();
-            };
-            puzzleImg.onerror = function() {
-                console.error(`Error al cargar la imagen: ${imgUrl}`);
-            };
+            puzzleImg.onload = function() { setupPuzzle(); };
         }
 
-        // Listeners globales (solo se agregan una vez al inicio)
         puzzleCanvas.addEventListener('mousedown', onPuzzleDown);
         puzzleCanvas.addEventListener('mousemove', onPuzzleMove);
         puzzleCanvas.addEventListener('mouseup', onPuzzleUp);
@@ -831,14 +847,8 @@
             puzzleCanvas.height = puzzleImg.height * scale;
 
             const aspectRatio = puzzleImg.width / puzzleImg.height;
-            
-            // --- LÓGICA DE DIFICULTAD PROGRESIVA ---
-            // Nivel 1: Base * (1.5^0) = Base
-            // Nivel 2: Base * (1.5^1) = Base * 1.5
-            // Nivel 3: Base * (1.5^2) = Base * 2.25
             let piezasObjetivo = Math.round(CANTIDAD_PIEZAS_BASE * Math.pow(1.5, currentPuzzleIndex - 1));
             
-            // Calcula filas y columnas
             puzzleRows = Math.round(Math.sqrt(piezasObjetivo / aspectRatio));
             puzzleCols = Math.round(piezasObjetivo / puzzleRows);
             
@@ -855,18 +865,12 @@
             for (let r = 0; r < puzzleRows; r++) {
                 for (let c = 0; c < puzzleCols; c++) {
                     let piece = {
-                        r: r,
-                        c: c,
+                        r: r, c: c,
                         sx: c * (puzzleImg.width / puzzleCols), 
                         sy: r * (puzzleImg.height / puzzleRows), 
-                        sw: puzzleImg.width / puzzleCols,
-                        sh: puzzleImg.height / puzzleRows,
-                        x: 0, 
-                        y: 0, 
-                        w: pieceWidth,
-                        h: pieceHeight,
-                        correctX: c * pieceWidth,
-                        correctY: r * pieceHeight,
+                        sw: puzzleImg.width / puzzleCols, sh: puzzleImg.height / puzzleRows,
+                        x: 0, y: 0, w: pieceWidth, h: pieceHeight,
+                        correctX: c * pieceWidth, correctY: r * pieceHeight,
                         isLocked: false,
                         top: (r === 0) ? 0 : -pieces[(r-1)*puzzleCols + c].bottom,
                         right: (c === puzzleCols - 1) ? 0 : (Math.random() > 0.5 ? 1 : -1),
@@ -887,8 +891,6 @@
 
         function drawPuzzle() {
             puzzleCtx.clearRect(0, 0, puzzleCanvas.width, puzzleCanvas.height);
-            
-            // Dibujar imagen de fondo semi-transparente como guía
             puzzleCtx.globalAlpha = 0.1;
             puzzleCtx.drawImage(puzzleImg, 0, 0, puzzleCanvas.width, puzzleCanvas.height);
             puzzleCtx.globalAlpha = 1;
@@ -899,56 +901,30 @@
                 return (a.isLocked ? 0 : 1) - (b.isLocked ? 0 : 1);
             });
 
-            drawOrder.forEach(p => {
-                drawPiece(p);
-            });
+            drawOrder.forEach(p => drawPiece(p));
         }
 
         function drawPiece(p) {
             puzzleCtx.save();
             puzzleCtx.beginPath();
-            
-            const x = p.x;
-            const y = p.y;
-            const w = p.w;
-            const h = p.h;
+            const x = p.x, y = p.y, w = p.w, h = p.h;
 
             puzzleCtx.moveTo(x, y);
-            if (p.top !== 0) {
-                puzzleCtx.lineTo(x + w * 0.4, y);
-                puzzleCtx.bezierCurveTo(x + w * 0.4, y - h * 0.2 * p.top, x + w * 0.6, y - h * 0.2 * p.top, x + w * 0.6, y);
-            }
+            if (p.top !== 0) { puzzleCtx.lineTo(x + w * 0.4, y); puzzleCtx.bezierCurveTo(x + w * 0.4, y - h * 0.2 * p.top, x + w * 0.6, y - h * 0.2 * p.top, x + w * 0.6, y); }
             puzzleCtx.lineTo(x + w, y);
-            if (p.right !== 0) {
-                puzzleCtx.lineTo(x + w, y + h * 0.4);
-                puzzleCtx.bezierCurveTo(x + w + w * 0.2 * p.right, y + h * 0.4, x + w + w * 0.2 * p.right, y + h * 0.6, x + w, y + h * 0.6);
-            }
+            if (p.right !== 0) { puzzleCtx.lineTo(x + w, y + h * 0.4); puzzleCtx.bezierCurveTo(x + w + w * 0.2 * p.right, y + h * 0.4, x + w + w * 0.2 * p.right, y + h * 0.6, x + w, y + h * 0.6); }
             puzzleCtx.lineTo(x + w, y + h);
-            if (p.bottom !== 0) {
-                puzzleCtx.lineTo(x + w * 0.6, y + h);
-                puzzleCtx.bezierCurveTo(x + w * 0.6, y + h + h * 0.2 * p.bottom, x + w * 0.4, y + h + h * 0.2 * p.bottom, x + w * 0.4, y + h);
-            }
+            if (p.bottom !== 0) { puzzleCtx.lineTo(x + w * 0.6, y + h); puzzleCtx.bezierCurveTo(x + w * 0.6, y + h + h * 0.2 * p.bottom, x + w * 0.4, y + h + h * 0.2 * p.bottom, x + w * 0.4, y + h); }
             puzzleCtx.lineTo(x, y + h);
-            if (p.left !== 0) {
-                puzzleCtx.lineTo(x, y + h * 0.6);
-                puzzleCtx.bezierCurveTo(x - w * 0.2 * p.left, y + h * 0.6, x - w * 0.2 * p.left, y + h * 0.4, x, y + h * 0.4);
-            }
+            if (p.left !== 0) { puzzleCtx.lineTo(x, y + h * 0.6); puzzleCtx.bezierCurveTo(x - w * 0.2 * p.left, y + h * 0.6, x - w * 0.2 * p.left, y + h * 0.4, x, y + h * 0.4); }
             puzzleCtx.lineTo(x, y);
             puzzleCtx.closePath();
-
             puzzleCtx.clip();
             
             const scaleX = puzzleCanvas.width / puzzleImg.width;
             const scaleY = puzzleCanvas.height / puzzleImg.height;
             
-            puzzleCtx.drawImage(
-                puzzleImg, 
-                p.sx - (p.w/scaleX * 0.25), p.sy - (p.h/scaleY * 0.25), 
-                p.sw + (p.sw * 0.5), p.sh + (p.sh * 0.5), 
-                p.x - (p.w * 0.25), p.y - (p.h * 0.25), 
-                p.w * 1.5, p.h * 1.5 
-            );
-            
+            puzzleCtx.drawImage(puzzleImg, p.sx - (p.w/scaleX * 0.25), p.sy - (p.h/scaleY * 0.25), p.sw + (p.sw * 0.5), p.sh + (p.sh * 0.5), p.x - (p.w * 0.25), p.y - (p.h * 0.25), p.w * 1.5, p.h * 1.5);
             puzzleCtx.stroke();
             puzzleCtx.restore();
             
@@ -970,12 +946,9 @@
                 let p = pieces[i];
                 if (!p.isLocked && mx > p.x && mx < p.x + p.w && my > p.y && my < p.y + p.h) {
                     selectedPiece = p;
-                    p.offsetX = mx - p.x;
-                    p.offsetY = my - p.y;
-                    pieces.splice(i, 1);
-                    pieces.push(p);
-                    drawPuzzle();
-                    break;
+                    p.offsetX = mx - p.x; p.offsetY = my - p.y;
+                    pieces.splice(i, 1); pieces.push(p);
+                    drawPuzzle(); break;
                 }
             }
         }
@@ -986,7 +959,6 @@
                 const rect = puzzleCanvas.getBoundingClientRect();
                 const mx = (e.clientX || e.touches[0].clientX) - rect.left;
                 const my = (e.clientY || e.touches[0].clientY) - rect.top;
-                
                 selectedPiece.x = mx - selectedPiece.offsetX;
                 selectedPiece.y = my - selectedPiece.offsetY;
                 drawPuzzle();
@@ -995,21 +967,15 @@
 
         function onPuzzleUp() {
             if (selectedPiece) {
-                if (Math.abs(selectedPiece.x - selectedPiece.correctX) < SNAP_DISTANCE &&
-                    Math.abs(selectedPiece.y - selectedPiece.correctY) < SNAP_DISTANCE) {
-                    selectedPiece.x = selectedPiece.correctX;
-                    selectedPiece.y = selectedPiece.correctY;
-                    selectedPiece.isLocked = true;
+                if (Math.abs(selectedPiece.x - selectedPiece.correctX) < SNAP_DISTANCE && Math.abs(selectedPiece.y - selectedPiece.correctY) < SNAP_DISTANCE) {
+                    selectedPiece.x = selectedPiece.correctX; selectedPiece.y = selectedPiece.correctY; selectedPiece.isLocked = true;
                 }
-                selectedPiece = null;
-                drawPuzzle();
-                checkWin();
+                selectedPiece = null; drawPuzzle(); checkWin();
             }
         }
 
         function checkWin() {
             const allLocked = pieces.every(p => p.isLocked);
-            // Verificar si este puzzle específico ya se marcó como resuelto
             const alreadySolvedThisOne = solvedPuzzles.includes(currentPuzzleIndex);
             
             if (allLocked && !alreadySolvedThisOne) {
@@ -1017,39 +983,61 @@
             }
         }
 
+        // --- FUNCIÓN CLAVE ACTUALIZADA ---
         function puzzleCompleted() {
-            // Marcar como resuelto
             solvedPuzzles.push(currentPuzzleIndex);
-            isAnyPuzzleSolved = true; // Al menos uno resuelto para el unlock
             
             const txtContainer = document.getElementById('resolution-text');
             const nextBtn = document.getElementById('next-puzzle-btn');
             const puzzleContainer = document.getElementById('puzzle-container');
             
-            // Efecto visual en el borde del puzzle
             puzzleContainer.classList.add('solved');
-
-            // Obtener el texto del array (restamos 1 porque puzzleIndex empieza en 1 y el array en 0)
-            // Usamos el operador OR (||) por si currentPuzzleIndex es mayor al largo del array
-            const message = resolucion_rompecabezas[currentPuzzleIndex - 1] || "¡Rompecabezas completado!";
-            
-            // Inyectar texto
+            const message = resolucion_rompecabezas[currentPuzzleIndex - 1] || "¡Completado!";
             txtContainer.innerText = message;
-            
-            // Mostrar texto
             txtContainer.classList.add('visible');
-            
-            // Mostrar botón de siguiente si no ha terminado el tiempo
-            if (!isTimeReached) {
+
+            // Verificamos si completó LOS 4
+            if (solvedPuzzles.length === CANTIDAD_ROMPECABEZAS) {
+                allPuzzlesFinished = true; // Bandera activada
+                
+                // CASO 1: 4 Puzzles + Tiempo Cumplido = ENTRAR
+                if (isTimeReached) {
+                    setTimeout(() => {
+                        goToLockScreen();
+                    }, 2000);
+                } 
+                // CASO 2: 4 Puzzles + Tiempo NO Cumplido = MOSTRAR FRASES
+                else {
+                    setTimeout(() => {
+                        showFinalSummary();
+                    }, 2000);
+                }
+            } else {
+                // Si no completó los 4, mostramos el botón para seguir
+                // (Independientemente del tiempo, para que pueda ver los 4 puzzles)
                 nextBtn.classList.add('visible');
             }
+        }
+
+        function showFinalSummary() {
+            // Ocultamos el juego y mostramos el resumen
+            document.getElementById('puzzle-game-wrapper').style.display = 'none';
+            const summaryContainer = document.getElementById('final-summary-container');
+            const summaryList = document.getElementById('summary-list');
             
-            // Intentar desbloquear (Solo si el tiempo ya pasó)
-            tryUnlock();
+            // Llenamos la lista
+            summaryList.innerHTML = '';
+            resolucion_rompecabezas.forEach(frase => {
+                const li = document.createElement('li');
+                li.textContent = frase;
+                summaryList.appendChild(li);
+            });
+
+            summaryContainer.style.display = 'flex';
         }
 
         /* =========================================
-           RESTO DEL CÓDIGO (Countdown, Lock, etc)
+           RESTO DEL CÓDIGO
            ========================================= */
 
         const quizData = [
@@ -1082,7 +1070,7 @@
         let timerInterval; 
 
         window.onload = function() {
-            initPuzzleSystem(); // Ahora iniciamos el sistema multi-puzzle
+            initPuzzleSystem(); 
             initCountdown();
         };
 
@@ -1099,11 +1087,10 @@
 
         // Función que verifica SIEMPRE si podemos pasar de pantalla
         function tryUnlock() {
-            // Condición doble: AL MENOS UN Puzzle resuelto Y Tiempo cumplido
-            if (isAnyPuzzleSolved && isTimeReached) {
-                setTimeout(() => {
-                    goToLockScreen();
-                }, 2000); // Pequeño delay para disfrutar la victoria
+            // Ahora la condición es estricta:
+            // Debe haber terminado los 4 puzzles Y el tiempo debe haber pasado.
+            if (allPuzzlesFinished && isTimeReached) {
+                goToLockScreen();
             }
         }
 
@@ -1158,7 +1145,10 @@
                     isTimeReached = true;
                     document.querySelector('.countdown-title').innerText = "¡TIEMPO CUMPLIDO!";
                     document.querySelector('.countdown-title').style.color = "#66bb6a";
-                    tryUnlock(); // Checkear si ya podemos pasar
+                    
+                    // Intentamos desbloquear. Si el usuario ya terminó los 4 puzzles
+                    // y estaba viendo el resumen, esto lo forzará a entrar.
+                    tryUnlock();
                 }
             }, 1000);
         }
