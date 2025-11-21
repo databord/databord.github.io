@@ -702,6 +702,15 @@
            VARIABLES DE ESTADO
            ========================================= */
 
+        // --- NUEVA LÓGICA: IMÁGENES DE ROMPECABEZAS ---
+        // Lista de URLs para los puzzles 1, 2, 3 y 4
+        const img_rompecabezas = [
+            "https://i.imgur.com/xMQG6nt.jpeg", // Puzzle 1
+            "https://i.imgur.com/gyJ0qwP.jpeg", // Puzzle 2
+            "https://i.imgur.com/6zI1WII.jpeg", // Puzzle 3
+            "https://i.imgur.com/1OYP3Fr.jpeg"  // Puzzle 4
+        ];
+
         // --- NUEVA LÓGICA: FRASES DE RESOLUCIÓN ---
         // El item 0 corresponde al puzzle 1, item 1 al puzzle 2, etc.
         const resolucion_rompecabezas = [
@@ -783,17 +792,26 @@
 
         function initPuzzle(puzzleId) {
             puzzleImg = new Image();
-            // Carga dinámica: rompecabezas1.jpg, rompecabezas2.jpg...
-            puzzleImg.src = `rompecabezas${puzzleId}.jpg`; 
+            
+            // Carga desde el array de URLs
+            // Restamos 1 porque el array es índice 0 y puzzleId empieza en 1
+            const imgUrl = img_rompecabezas[puzzleId - 1];
+            
+            if (!imgUrl) {
+                console.error("No se encontró URL para el puzzle " + puzzleId);
+                return;
+            }
+
+            // IMPORTANTE: Permitir CORS para manipular imágenes de Imgur en Canvas
+            puzzleImg.crossOrigin = "Anonymous";
+            puzzleImg.src = imgUrl; 
             
             puzzleImg.onload = function() {
                 setupPuzzle();
             };
             puzzleImg.onerror = function() {
-                console.error(`No se encontró la imagen rompecabezas${puzzleId}.jpg. Asegúrate de que los archivos existan.`);
+                console.error(`Error al cargar la imagen: ${imgUrl}`);
             };
-
-            // Listeners se mantienen globales
         }
 
         // Listeners globales (solo se agregan una vez al inicio)
@@ -869,6 +887,8 @@
 
         function drawPuzzle() {
             puzzleCtx.clearRect(0, 0, puzzleCanvas.width, puzzleCanvas.height);
+            
+            // Dibujar imagen de fondo semi-transparente como guía
             puzzleCtx.globalAlpha = 0.1;
             puzzleCtx.drawImage(puzzleImg, 0, 0, puzzleCanvas.width, puzzleCanvas.height);
             puzzleCtx.globalAlpha = 1;
