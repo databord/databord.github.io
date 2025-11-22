@@ -21,8 +21,6 @@
             --pastel-mint: #b2dfdb;
             --pastel-red: #ef5350;
             --card-shadow: 0 10px 30px rgba(225, 190, 231, 0.3);
-            --correct-green: #a5d6a7;
-            --highlight-cell: #fff59d; /* Amarillo suave para la celda clave */
         }
 
         body {
@@ -47,18 +45,15 @@
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            z-index: 20000;
+            z-index: 20000; /* Por encima del lock screen */
             transition: opacity 0.8s ease;
-            overflow-y: auto; 
-            padding: 20px 0;
         }
 
         .countdown-card {
             text-align: center;
             padding: 40px;
-            max-width: 800px; /* Más ancho para palabras largas */
-            width: 95%;
-            margin: auto;
+            max-width: 600px;
+            width: 90%;
         }
 
         .countdown-title {
@@ -107,6 +102,7 @@
             margin-bottom: 20px;
         }
 
+        /* Loading spinner para la sincronización */
         .sync-spinner {
             font-size: 0.8rem;
             color: #9fa8da;
@@ -115,16 +111,17 @@
             display: block;
         }
 
+        /* Botonera de Acciones (Pista) */
         .action-buttons {
             display: flex;
             justify-content: center;
             align-items: center;
             gap: 15px;
             margin-top: 10px;
-            flex-wrap: wrap;
         }
 
-        .hint-btn, .game-btn {
+        /* Botón de Pista */
+        .hint-btn {
             background: var(--pastel-mint);
             color: #00695c;
             border: none;
@@ -136,143 +133,21 @@
             transition: transform 0.2s, background-color 0.2s;
             font-size: 0.95rem;
             box-shadow: 0 4px 10px rgba(178, 223, 219, 0.4);
-            margin: 5px;
         }
-        .game-btn {
-            background: var(--pastel-lavender);
-            color: #5e35b1;
-            box-shadow: 0 4px 10px rgba(209, 196, 233, 0.4);
-        }
-        .hint-btn:hover, .game-btn:hover { transform: scale(1.05); filter: brightness(1.05); }
+        .hint-btn:hover { background: #80cbc4; transform: scale(1.05); }
         
         .hint-text {
             margin-top: 20px;
             font-style: italic;
             color: #7986cb;
-            min-height: 3em; 
+            min-height: 3em; /* Espacio reservado para que no salte el layout */
             font-size: 1rem;
             padding: 0 20px;
             opacity: 0;
             transition: opacity 0.5s ease;
         }
 
-        /* --- ESTILOS DEL CRUCIGRAMA / ACRÓSTICO --- */
-        #crossword-section {
-            max-height: 0;
-            overflow: hidden;
-            transition: max-height 0.8s ease-in-out, opacity 0.5s;
-            opacity: 0;
-            margin-top: 20px;
-            width: 100%;
-            text-align: left;
-        }
-        #crossword-section.open {
-            max-height: 65vh; 
-            opacity: 1;
-            overflow-y: auto; 
-            border-top: 2px dashed var(--pastel-pink);
-            border-bottom: 2px dashed var(--pastel-pink);
-            padding: 20px 0;
-        }
-
-        .cw-row {
-            display: flex;
-            align-items: center;
-            margin-bottom: 8px; /* Reducido un poco para que entren más */
-            flex-wrap: nowrap;
-        }
-        
-        /* Espaciador visual para separar palabras */
-        .cw-spacer {
-            height: 20px;
-            border-bottom: 1px dotted #e0e0e0;
-            margin-bottom: 20px;
-            width: 100%;
-            position: relative;
-        }
-
-        .cw-def {
-            flex: 1;
-            font-size: 0.8rem;
-            color: #666;
-            padding-right: 15px;
-            text-align: right;
-            min-width: 140px;
-            font-weight: 600;
-        }
-
-        .cw-word-container {
-            display: flex;
-            gap: 2px;
-            justify-content: flex-start;
-            flex: 2;
-            overflow-x: auto; /* Scroll horizontal si la palabra es muy larga en móvil */
-            padding-bottom: 5px; /* Espacio para scrollbar si aparece */
-        }
-        
-        /* Ocultar scrollbar fea en palabra */
-        .cw-word-container::-webkit-scrollbar { height: 2px; }
-        .cw-word-container::-webkit-scrollbar-thumb { background: #ddd; }
-
-        .cw-cell {
-            width: 26px; /* Un poco más chico para palabras largas */
-            height: 26px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            text-align: center;
-            font-family: 'Quicksand', sans-serif;
-            font-weight: bold;
-            text-transform: uppercase;
-            font-size: 0.9rem;
-            background: white;
-            color: #444;
-            padding: 0;
-            flex-shrink: 0; /* No encoger celdas */
-        }
-
-        .cw-cell:focus {
-            outline: none;
-            border-color: var(--pastel-lavender);
-            background-color: #f3e5f5;
-            z-index: 2;
-        }
-
-        .cw-cell.highlight {
-            background-color: var(--highlight-cell);
-            border-color: #fbc02d;
-            border-width: 2px;
-        }
-        
-        .cw-cell.correct-letter {
-            color: #2e7d32;
-            background-color: #e8f5e9; /* Un verde muy suave de fondo al resolver */
-        }
-
-        .secret-reveal {
-            margin-top: 20px;
-            padding: 20px;
-            background: #fff;
-            border-radius: 15px;
-            font-family: 'Quicksand', sans-serif;
-            color: #5e35b1;
-            font-weight: 800;
-            font-size: 1.2rem;
-            display: none;
-            text-align: center;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-            animation: fadeIn 1s;
-            border: 2px solid var(--pastel-lavender);
-        }
-
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-
-        /* Scrollbar custom para el crucigrama */
-        #crossword-section::-webkit-scrollbar { width: 8px; }
-        #crossword-section::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
-        #crossword-section::-webkit-scrollbar-thumb { background: var(--pastel-lavender); border-radius: 4px; }
-        #crossword-section::-webkit-scrollbar-thumb:hover { background: #ce93d8; }
-
-        /* --- PANTALLA DE BLOQUEO Y DEMÁS (Igual que antes) --- */
+        /* --- PANTALLA DE BLOQUEO (PREGUNTAS) --- */
         #lock-screen {
             position: fixed;
             top: 0;
@@ -281,15 +156,15 @@
             height: 100vh;
             background: rgba(255, 255, 255, 0.95);
             backdrop-filter: blur(10px);
-            display: none; 
+            display: none; /* Se mostrará después del countdown */
             flex-direction: column;
             justify-content: center;
             align-items: center;
             z-index: 10000;
             transition: opacity 0.5s ease, visibility 0.5s;
-            opacity: 0;
+            opacity: 0; /* Empieza invisible para fade in */
         }
-        
+
         .lock-card {
             background: white;
             padding: 40px;
@@ -301,34 +176,147 @@
             border: 2px solid var(--pastel-lavender);
             animation: fadeIn 1s ease;
         }
-        .lock-icon { font-size: 3rem; margin-bottom: 20px; color: var(--pastel-red); }
+
+        .lock-icon { 
+            font-size: 3rem; 
+            margin-bottom: 20px; 
+            color: var(--pastel-red); 
+            display: inline-block;
+            transition: all 0.5s ease;
+        }
+
+        /* Animación de apertura del candado */
+        @keyframes unlockShake {
+            0% { transform: scale(1) rotate(0deg); }
+            20% { transform: scale(1.1) rotate(-10deg); color: #81c784; }
+            40% { transform: scale(1.1) rotate(10deg); color: #81c784; }
+            60% { transform: scale(1.2) rotate(-5deg); color: #4caf50; }
+            80% { transform: scale(1.2) rotate(5deg); color: #4caf50; }
+            100% { transform: scale(1.3) translateY(-10px); opacity: 0; }
+        }
+
+        .unlocking-animation {
+            animation: unlockShake 1.5s forwards ease-in-out;
+        }
+
         .lock-title { font-family: 'Quicksand', sans-serif; font-weight: 700; color: var(--pastel-red); margin-bottom: 10px; letter-spacing: 1px; }
         .lock-question { font-family: 'Quicksand', sans-serif; font-size: 1.2rem; margin-bottom: 20px; color: var(--text-title); display: block; }
+
         .lock-input {
-            width: 100%; padding: 15px; border: 2px solid var(--pastel-blue); border-radius: 10px;
-            font-family: 'Nunito', sans-serif; font-size: 1rem; outline: none; text-align: center;
-            margin-bottom: 20px; transition: border-color 0.3s; box-sizing: border-box;
+            width: 100%;
+            padding: 15px;
+            border: 2px solid var(--pastel-blue);
+            border-radius: 10px;
+            font-family: 'Nunito', sans-serif;
+            font-size: 1rem;
+            outline: none;
+            text-align: center;
+            margin-bottom: 20px;
+            transition: border-color 0.3s;
+            box-sizing: border-box;
         }
         .lock-input:focus { border-color: #81d4fa; }
+
         .lock-btn {
-            background: var(--pastel-lavender); color: #5e35b1; border: none; padding: 12px 30px;
-            border-radius: 50px; font-family: 'Quicksand', sans-serif; font-weight: bold; cursor: pointer;
-            transition: transform 0.2s, background 0.2s; font-size: 1rem;
+            background: var(--pastel-lavender);
+            color: #5e35b1;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 50px;
+            font-family: 'Quicksand', sans-serif;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s, background 0.2s;
+            font-size: 1rem;
         }
         .lock-btn:hover { background: #d1c4e9; transform: scale(1.05); }
-        .error-msg { color: var(--pastel-red); font-size: 0.9rem; margin-top: 10px; min-height: 20px; opacity: 0; transition: opacity 0.3s; }
 
-        /* Intro y Main Content igual */
-        #intro-screen { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #fff; display: none; justify-content: center; align-items: center; z-index: 9998; transition: opacity 1s ease; overflow: hidden; }
-        .intro-text { font-family: 'Quicksand', sans-serif; font-size: 3rem; font-weight: 700; color: var(--text-title); text-align: center; opacity: 0; transform: translateY(30px); padding: 20px; line-height: 1.2; background: linear-gradient(45deg, #7e57c2, #ef5350); -webkit-background-clip: text; -webkit-text-fill-color: transparent; position: relative; z-index: 2; }
-        @keyframes textReveal { 0% { opacity: 0; transform: translateY(30px) scale(0.9); } 20% { opacity: 1; transform: translateY(0) scale(1); } 80% { opacity: 1; transform: translateY(0) scale(1); } 100% { opacity: 0; transform: translateY(-30px) scale(1.1); } }
-        .animate-intro { animation: textReveal 4s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
-        #emoji-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; }
-        .emoji-particle { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); font-size: 2rem; opacity: 0; }
-        @keyframes explodeAnimation { 0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; } 10% { opacity: 1; transform: translate(-50%, -50%) scale(1.5); } 100% { transform: translate(calc(-50% + var(--tx)), calc(-50% + var(--ty))) scale(1); opacity: 0; } }
+        .error-msg {
+            color: var(--pastel-red);
+            font-size: 0.9rem;
+            margin-top: 10px;
+            min-height: 20px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        /* --- PANTALLA DE INTRODUCCIÓN --- */
+        #intro-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: #fff;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 9998;
+            transition: opacity 1s ease;
+            overflow: hidden; 
+        }
+
+        .intro-text {
+            font-family: 'Quicksand', sans-serif;
+            font-size: 3rem;
+            font-weight: 700;
+            color: var(--text-title);
+            text-align: center;
+            opacity: 0;
+            transform: translateY(30px);
+            padding: 20px;
+            line-height: 1.2;
+            background: linear-gradient(45deg, #7e57c2, #ef5350);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            position: relative;
+            z-index: 2; 
+        }
+
+        @keyframes textReveal {
+            0% { opacity: 0; transform: translateY(30px) scale(0.9); }
+            20% { opacity: 1; transform: translateY(0) scale(1); }
+            80% { opacity: 1; transform: translateY(0) scale(1); }
+            100% { opacity: 0; transform: translateY(-30px) scale(1.1); }
+        }
+
+        .animate-intro {
+            animation: textReveal 4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+        }
+
+        /* --- EMOJIS EXPLOSIÓN --- */
+        #emoji-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1; 
+        }
+
+        .emoji-particle {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%); 
+            font-size: 2rem;
+            opacity: 0;
+        }
+
+        @keyframes explodeAnimation {
+            0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
+            10% { opacity: 1; transform: translate(-50%, -50%) scale(1.5); }
+            100% { transform: translate(calc(-50% + var(--tx)), calc(-50% + var(--ty))) scale(1); opacity: 0; }
+        }
+
+        /* --- CONTENIDO PRINCIPAL --- */
         #main-content { display: none; opacity: 0; transition: opacity 1s ease; position: relative; z-index: 1; }
+
         @keyframes shake { 0%, 100% { transform: translateX(0); } 25%, 75% { transform: translateX(-10px); } 50% { transform: translateX(10px); } }
-        
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* ESTILOS DEL INFORME */
         .background-shapes { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; overflow: hidden; }
         .shape { position: absolute; border-radius: 50%; opacity: 0.4; animation: float 20s infinite ease-in-out; }
         .s1 { width: 400px; height: 400px; background: var(--pastel-pink); top: -10%; left: -10%; }
@@ -342,21 +330,27 @@
         h1 { font-family: 'Quicksand', sans-serif; font-size: 2.2rem; color: var(--text-title); margin-bottom: 10px; }
         .meta-data { font-size: 0.95rem; background: #fff; padding: 15px; border-radius: 10px; display: inline-block; margin-top: 15px; border: 1px solid var(--pastel-lavender); }
         .badge { display: inline-block; background: #ef5350; color: white; padding: 4px 12px; border-radius: 50px; font-size: 0.8rem; font-weight: bold; letter-spacing: 1px; margin-bottom: 15px; }
+        
         section { background: rgba(255, 255, 255, 0.9); padding: 35px; margin-bottom: 35px; border-radius: 20px; box-shadow: 0 5px 20px rgba(0,0,0,0.02); border: 1px solid rgba(255,255,255,0.6); transition: transform 0.3s; }
         section:hover { transform: translateY(-3px); }
+        
         h2 { font-family: 'Quicksand', sans-serif; color: var(--text-title); border-bottom: 3px solid var(--pastel-mint); display: inline-block; padding-bottom: 5px; margin-top: 0; }
         h3 { font-family: 'Quicksand', sans-serif; color: #7e57c2; margin-top: 25px; }
         p { margin-bottom: 15px; text-align: justify; }
         strong { color: #5c6bc0; }
+        
         .item-list { list-style: none; padding: 0; }
         .item-list li { margin-bottom: 20px; padding-left: 20px; border-left: 4px solid var(--pastel-pink); background: linear-gradient(to right, rgba(255, 205, 210, 0.1), transparent); padding: 15px; border-radius: 0 10px 10px 0; }
+        
         .table-wrapper { overflow-x: auto; margin: 20px 0; border-radius: 10px; box-shadow: 0 0 15px rgba(0,0,0,0.05); }
         table { width: 100%; border-collapse: collapse; background: white; min-width: 600px; }
         th { background-color: var(--pastel-lavender); color: #5e35b1; padding: 12px; text-align: left; }
         td { padding: 12px; border-bottom: 1px solid #eee; }
         tr:hover { background-color: #f9f9f9; }
+        
         .chart-box { background: #fff; padding: 20px; border-radius: 15px; margin: 30px 0; box-shadow: inset 0 0 20px rgba(225, 190, 231, 0.1); border: 1px solid var(--pastel-blue); position: relative; height: 400px; display: flex; justify-content: center; align-items: center; }
         .chart-box.small { max-width: 600px; margin-left: auto; margin-right: auto; height: 350px; }
+        
         .signature-section { margin-top: 60px; text-align: right; padding: 30px; background: linear-gradient(135deg, #fff, var(--pastel-pink)); border-radius: 20px; border: 1px solid var(--pastel-pink); }
         .signature-text { font-family: 'Quicksand', sans-serif; font-weight: bold; font-size: 1.2rem; color: #c62828; }
         
@@ -365,8 +359,6 @@
             h1 { font-size: 1.5rem; }
             .time-box { min-width: 60px; padding: 10px; }
             .time-number { font-size: 1.8rem; }
-            .cw-cell { width: 22px; height: 22px; font-size: 0.8rem; }
-            .cw-def { font-size: 0.7rem; min-width: 90px; }
         }
     </style>
 </head>
@@ -401,34 +393,22 @@
 
             <div class="action-buttons">
                 <button class="hint-btn" onclick="showHint()">Decime algo mientras tanto</button>
-                <button class="game-btn" onclick="toggleCrossword()">Intentar conseguir la llave</button>
             </div>
             
             <div id="hint-display" class="hint-text"></div>
-
-            <!-- ACRÓSTICO SECCIÓN -->
-            <div id="crossword-section">
-                <p style="text-align: center; color: #7986cb; margin-bottom: 20px; font-size: 0.9rem;">
-                    La vertical iluminada contiene el mensaje. <br>
-                    <small>Se aceptan respuestas sin tildes.</small>
-                </p>
-                <div id="crossword-container">
-                    <!-- JS generará las filas aquí -->
-                </div>
-
-                <div id="secret-message" class="secret-reveal"></div>
-            </div>
-
         </div>
     </div>
 
     <div id="lock-screen">
         <div class="lock-card" id="lock-card">
-            <div class="lock-icon">🔒</div>
+            <!-- ID Agregado para animación -->
+            <div class="lock-icon" id="main-lock-icon">🔒</div>
             <h2 class="lock-title">CONFIDENCIALIDAD MÁXIMA</h2>
             <p id="lock-step-text">Paso 1 de 4</p>
+            
             <label class="lock-question" id="question-label" for="password">¿Índice...?</label>
             <input type="password" id="password" class="lock-input" placeholder="Ingrese respuesta">
+            
             <button class="lock-btn" onclick="checkAccess()">Confirmar</button>
             <div class="error-msg" id="error-msg">Respuesta Incorrecta</div>
         </div>
@@ -448,6 +428,7 @@
         </div>
 
         <div class="container">
+            
             <header data-aos="fade-down" data-aos-duration="1000">
                 <div class="badge">CONFIDENCIAL / VULNERABILIDAD ALTA</div>
                 <h1>INFORME DE RELEVAMIENTO AFECTIVO</h1>
@@ -462,8 +443,8 @@
                 <h2>1. RESUMEN</h2>
                 <p>El presente documento tiene como objetivo desglosar, analizar y validar la fenomenología interna del sujeto Naxi respecto al vínculo con el sujeto Exia. Tras los eventos recientes y en concordancia con la profundidad que ha adquirido el vínculo a lo largo de estos meses, se ha detectado una anomalía en las categorías relacionales convencionales. La hipótesis central sostiene que lo que Naxi experimenta internamente no se ajusta a la definición de "Amistad tradicional" ni a la de "Atracción romántica/sexual", sino que habita un espectro disímil de alta intensidad y resonancia. Para evitar presunciones esquizoides a partir de ahora Naxi, que es quien suscribe, continuará escribiendo el ensayo en primera persona.</p>
             </section>
-            
-             <section data-aos="fade-up">
+
+            <section data-aos="fade-up">
                 <h2>2. DELIMITACIÓN DEL ESPECTRO (LO QUE NO ES)</h2>
                 <p>No quiero que te asustes. Intentaré ser lo más claro y honesto posible a la vez que realista. Esto no es (o no quiere ser) una declaración en el sentido de una búsqueda donde la amistad debe romperse debido a que pasan otras cosas que la hacen obsoleta. Más bien es poner en palabras y orden aquello que siento que me está pasando para intentar construir juntos a donde creemos que esto debería ir. Me encanta la amistad que tenemos, me encanta compartir tiempo con vos. Siento esto muy especial y por eso, creo que es necesario delimitar ciertas nociones. Para entender la entidad de lo que me pasa, primero es necesario despejar las variables que suelen generar ruido en el análisis convencional y que, dada mi historia (demisexualidad), podrían prestarse a confusión:</p>
                 <ul class="item-list">
@@ -472,404 +453,542 @@
                     <li><strong>No es una amistad trampolín:</strong> Como bien sabes, en mi abordaje demisexual de los vínculos me es completamente necesario construir una amistad consolidada antes de que la atracción por alguien aparezca. Sin embargo, no siento que eso es lo que esté pasando en este momento. En mi corazón, la amistad que tenemos en este momento es preciosa e invaluable. Me siento muy feliz y cómodo de vivirla de esta manera, sin embargo siento que comienza a encontrar los límites que se acercan al umbral donde la categoría de amistad (con el subeje calificativo: convencional) empieza a quedarse pequeña.</li>
                 </ul>
             </section>
-            
+
             <section data-aos="fade-up">
-                <h2>3. ANÁLISIS DE RESONANCIA</h2>
+                <h2>3. ANÁLISIS DE RESONANCIA (LA FÍSICA DEL VÍNCULO)</h2>
                 <p>Está comprobado que hay áreas de contacto en nuestra naturaleza. Hay vértices que en sus picos y valles logran acompañarse en una clave de onda que resulta compatible. Esto ha facilitado el camino para lograr la profundización actual, sin embargo también genera incertidumbres en mi pensamiento de hacia donde desemboca.</p>
-                 <div class="chart-box">
+                <p><strong>Definición de Resonancia en este sistema:</strong> La resonancia no es similitud estática; es movimiento. Cuando nuestras frecuencias mentales y emocionales se encuentran, se produce una amplificación.</p>
+                <p><strong>Acercamiento (Fase Constructiva):</strong> Cuando estamos bien, la resonancia genera una sensación de "hogar". Tu lógica calma mi caos; mi emoción (creo, quizás inocentemente) ablanda tu estructura.</p>
+                <p><strong>Alejamiento (Fase Reactiva):</strong> Cuando la intensidad sube demasiado y el miedo aparece, la misma resonancia genera ruido. El miedo a perder esta sintonía es lo que dispara mis alarmas.</p>
+                <p>El cóctel inevitablemente genera R.U.M.I.A. (Repeticiones Unilaterales Mentales Imaginando Arbitrariedades). En la motivación de desarmarla, debemos analizar los puntos de contacto intentando explicar qué es lo que genera esta incertidumbre.</p>
+
+                <h3>3.1. Datos Comparativos</h3>
+                <p>A continuación, presento la comparativa de nuestras estadísticas base, lo que explica por qué funcionamos como un sistema complejo:</p>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr><th>Atributo</th><th>Exia (Sujeto K)</th><th>Naxi (Sujeto N)</th><th>Diferencial</th><th>Análisis</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>Inclinación Lingüística</td><td>85</td><td>79</td><td>-6</td><td>Sincronía. Hablamos el mismo idioma de códigos y referencias. Obviamente sos más lista que yo porque hablás japonés</td></tr>
+                            <tr><td>Inclinación Lógico-Mat.</td><td>75</td><td>79</td><td>+4</td><td>Paridad alta. Ambos buscamos orden, aunque yo me refugio más en los números.</td></tr>
+                            <tr><td>Empatía</td><td>92</td><td>92</td><td>0</td><td>Espejo absoluto. Nos cuidamos porque entendemos el dolor ajeno.</td></tr>
+                            <tr><td>Sensibilidad</td><td>81</td><td>99</td><td>+18</td><td>Zona de Riesgo. Mi hipersensibilidad a veces satura el canal de comunicación.</td></tr>
+                            <tr><td>Maldad</td><td>73</td><td>32</td><td>-41</td><td>Complementarios. Tu maldad (casi siempre lúdica, mayormente inocente y muchas veces sin querer)  de alguna forma extraña me ayuda a no hipersensibilizarme; mi ingenuidad creo que te suaviza aunque un poco te moleste.</td></tr>
+                            <tr><td>Saltos de Fe</td><td>34</td><td>86</td><td>+52</td><td>Tensión Estructural. Yo me tiro sin red aunque me lastime. Vos calculás la caída y no te tirás. Acá somos opuestos separados por un barranco, pero solo se necesita un puente</td></tr>
+                            <tr><td>Potencial Autismo</td><td>76</td><td>77</td><td>+1</td><td>Somos dos criaturas de hábitos y obsesiones. PD: Obviamente uno no tiene que diagnosticar a nadie ni autodiagnosticarse, pero es la forma humorística que le encontramos para darle orden a nuestras manías. No es gracioso. No hagan esto en sus casas</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>3.2. Ejes de Compatibilidad</h3>
+                <p>Para visualizar cómo estas estadísticas interactúan en la práctica, propongo el siguiente esquema de compatibilidad vincular:</p>
+                
+                <div class="chart-box">
                     <canvas id="radarChart"></canvas>
                 </div>
+
+                <ul class="item-list">
+                    <li><strong>Inclinación Lingüística:</strong> Alta. Creo que nuestra creatividad nos empuja a crear historias, inventarnos apodos, jugar con los pensamientos y las ideas y llevarlos a figuras que son divertidas.</li>
+                    <li><strong>Inclinación Lógico-Matemática:</strong> Alta. Desde el índice MACK hasta el nuevo orden abierto gracias al amor por el cubo rubik, nos une cierta inclinación hacia la lógica.</li>
+                    <li><strong>Sensibilidad:</strong> Polarizada. Si bien ambos tenemos un porcentaje de sensibilidad elevado, a mi me domina y me empuja a cometer errores mientras que a vos (siento) te ancla.</li>
+                    <li><strong>Empatía:</strong> Alta. La capacidad de estar para el otro me hace sentir que es un lugar seguro.</li>
+                    <li><strong>Fe:</strong> Polarizada. Aquí está el núcleo de la dinámica. Yo soy el Creyente Trágico (a pesar de todo, apuesto); vos sos la Escéptica Pragmática. Esta tensión es la que mantiene el vínculo vivo: yo te traigo esperanza, vos me traés realidad.</li>
+                </ul>
             </section>
-            
+
             <section data-aos="fade-up">
-                 <h2>6. PROPUESTA OPERATIVA</h2>
-                 <p>Mi objetivo no es llegar a un resultado binario (0 o 1), sino mantenernos en este estado cuántico donde la probabilidad de hacernos bien tiende al infinito.</p>
-                 <div class="signature-section">
+                <h2>4. ANÁLISIS TOPOLÓGICO</h2>
+                <p>He decidido aislar este punto y convertirlo en una categoría propia para profundizar mi teoría de porque creo que la palabra amistad, sin al menos un adjetivo que pueda ampliar sus márgenes para que refleje la profundidad que hoy habitamos, es insuficiente. Si bien cumple con los parámetros técnicos de superficie, la arquitectura interna del vínculo presenta características de carga y resistencia que son anómalas para una amistad convencional. Esto según mi perspectiva personal, que probablemente esté sesgada y confundida pero por eso mismo es que hice este informe</p>
+                <p>Para entenderlo, lo desgloso en principios estructurales:</p>
+                
+                <h3>4.1. Principio de Intimidad</h3>
+                <p>No me refiero a proximidad física, sino a la distancia cero entre mi pensamiento y tu recepción.</p>
+                <ul class="item-list">
+                    <li><strong>El Canal Abierto:</strong> Puedo compartirte el borrador de mi mente sin editar. Mis miedos más irracionales (como el miedo a la irrelevancia), mis crisis existenciales o mis alegrías más tontas tienen el mismo peso y validación ante tus ojos.</li>
+                    <li><strong>El Refugio:</strong> Tu presencia, sea digital o física, actúa como una cámara de descompresión donde puedo quitarme el traje de "adulto funcional que resuelve problemas" y ser simplemente el Naxi roto o el Naxi feliz. Es una intimidad que descansa.</li>
+                </ul>
+
+                <h3>4.2. Principio de Complicidad</h3>
+                <p>Hemos construido una estructura de rituales que se han vuelto los pilares de mi día a día.</p>
+                <ul class="item-list">
+                    <li><strong>La Rutina Sagrada:</strong> El Índice MACK no es un reporte, es un chequeo vital. Desearnos las Buenas Noches no es cortesía, es la condición necesaria para que mi sistema se apague en paz. Las sesiones de Coworking y las llamadas no son para matar el tiempo, son para habitarlo juntos.</li>
+                    <li><strong>La Hipótesis de la Exclusividad Unilateral:</strong> Aquí radica un punto crítico de mi análisis y de mi vulnerabilidad. Soy consciente de tu naturaleza sociable y de tu extensa red de afectos (besties). Es probable que para vos, compartir códigos o rutinas sea parte de tu estándar de amistad. Pero necesito dejar constancia en actas: Yo no hago esto con nadie más.</li>
+                    <li><strong>El Peso Específico:</strong> Para mí, estos rituales son exclusivos de nuestro vínculo. No tengo índice MACK con nadie más. No hago coworking en silencio con nadie más. No le leo cuentos a nadie más. Que para mí sea único y quizás para vos sea habitual es lo que genera el vértigo, pero también lo que le da valor a mi apuesta: te doy lo que no le doy a nadie.</li>
+                </ul>
+
+                <h3>4.3. Principio de Vulnerabilidad</h3>
+                <p>Este es el punto más crítico para alguien como yo, que suele estar a la defensiva o con miedo al abandono.</p>
+                <ul class="item-list">
+                    <li><strong>Desnudez Emocional:</strong> Con vos me permito ser frágil. Te he mostrado mis partes más oscuras, y en lugar de juzgarme, te has quedado.</li>
+                    <li><strong>El Sostén:</strong> No es solo que yo me abra; es ver que vos también confiás en mí para mostrarme tus propias grietas. Esa reciprocidad en la fragilidad es el cemento más fuerte que tenemos. No tengo que ser fuerte con vos; puedo ser.</li>
+                </ul>
+
+                <h3>4.4. Principio de Constancia</h3>
+                <p>Más allá de la intensidad, lo que define esto es la permanencia y el ritmo.</p>
+                <ul class="item-list">
+                    <li><strong>El Ritmo Cardíaco del Día:</strong> El "Buenos días" no es un saludo protocolar, es un ping de sistema para confirmar que seguimos conectados. La rutina de hablarnos no se siente como una obligación social, sino como el ritmo natural de mi día.</li>
+                    <li><strong>La Red:</strong> Estar ahí cuando el otro se cae, o simplemente cuando el otro está aburrido. La certeza de que si escribo, vas a estar. Esa constancia me da una seguridad que raramente encuentro.</li>
+                </ul>
+
+                <h3>4.5. Principio de Excepcionalidad</h3>
+                <p>Aquí radica la conclusión científica de mi observación interna.</p>
+                <ul class="item-list">
+                    <li><strong>Lo excepcional:</strong> He tenido muchas amistades, intensas y largas. Pero ninguna tiene esta textura. Ninguna combina la agilidad mental con la profundidad emocional y la ternura de esta manera específica.</li>
+                    <li><strong>Lo bello:</strong> No sos una pieza intercambiable. No es que ocupes un "rol de amiga" posible que otro podría llenar si te fueras. Ocupas un espacio con tu forma exacta en mi vida.</li>
+                </ul>
+            </section>
+
+            <section data-aos="fade-up">
+                <h2>4. ANÁLISIS DIMENSIONAL</h2>
+                <p>A continuación, desgloso mi experiencia interna en cuatro órdenes fundamentales:</p>
+                
+                <h3>4.1. Orden Intelectual</h3>
+                <p>Nuestra conexión mental no es pasiva, es un deporte de contacto.</p>
+                <ul class="item-list">
+                    <li><strong>El Desafío Constante:</strong> Me fascina que seas mas lista que yo. Noto que tenes más facilidades para cosas que yo no tengo, me gusta que me corrijas, que me enseñes, o simpelemente que existas cerca mío. Tengo una conversación en inglés con vos y me doy cuenta que es increíblemente superior al mío (obvio, estudiaste en un colegio supercheto pero Macri también y mirá, a duras penas habla español). Podés recitar de memoria a Borges, hablar sobre filosofía o política o cuanto tema exista. Me siento tonto cuando hablo con vos, pero uno bueno. Uno que admira y está listo para aprender.</li>
+                    <li><strong>Tracucciones:</strong> Vos traducís mangas y yo traduzco números en excels y presupuestos en ventas. Obvio, lo tuyo es mucho más interesante.  Me enseñás palabras en japonés (Kazegimi) que describen estados de ánimo para los que yo no tenía nombre, y yo llevo religiosamente un sistema que traduce nuestros estados de ánimo a un índice medible para poder hacer un registro de como estuvimos y como estamos en Mente Alma Corazón y Cuerpo (Karada, otra palabra que aprendí por vos) </li>
+                    <li><strong>El Código Compartido:</strong> Cree un alfabeto propio que solo yo conocía. Vos lo descifraste en una semana. También te apropiaste de mi ÍNDICE MACK. Formás parte de mis secretos mejor guardados y los haces parte tuya. Siento que habitamos (y construimos) un mundo donde solo nosotros dos tenemos la llave.</li>
+                </ul>
+
+                <h3>4.2. Orden Emocional: La Trinchera y el Refugio</h3>
+                <p>Hay algo en permitirse ser uno, con otro.</p>
+                <ul class="item-list">
+                    <li><strong>La Vulnerabilidad compartida:</strong> Nos hemos acompañado en los momentos más bajos: mis crisis laborales con robos y jefes inútiles, tus momentos de "fobia social" y bajones de energía, el diagnóstico de mi mamá. No necesitamos fingir que "está todo bien".</li>
+                    <li><strong>El Contrato Tácito:</strong> Existe una regla implícita de "no matarse". Cuando uno cae en la oscuridad, el otro está ahí para recordar que la vida, a veces, tiene cosas ricas como un estofado o un café. Sos mi ATV (Acompañante Terapéutico Virtual) y yo intento ser tu ancla de optimismo (aunque a veces falle).</li>
+                </ul>
+
+                <h3>4.3. Orden Experimental: Aventuras y Creación de Anécdotas</h3>
+                <p>No somos solo amigos de chat; somos compañeros de aventuras digitales y analógicas.</p>
+                <ul class="item-list">
+                    <li><strong>La Aventura Digital:</strong> Desde ver películas sincronizados por Meet (aunque se corte el audio) hasta hacer sesiones de coworking en silencio mientras lidiamos con mi horrible trabajo y vos con tu trabajo fenomenal que a veces adolece de tener mucho texto, y parar para cocinar y almorzar juntos. Convertimos la rutina laboral en un evento compartido.</li>
+                                      <li><strong>La Vulnerabilidad compartida:</strong> Nos hemos acompañado en los momentos más bajos, o al menos vos me has acompañado en los míos: mis crisis laborales, me has dejado entrar en tus momentos de "fobia social" y bajones de energía, el diagnóstico de mi mamá. No necesitamos fingir que está todo bien, es un lugar seguro.</li>
+                    <li><strong>Las data-visitas:</strong> Cuando voy a Buenos Aires, siempre quiero verte. Se que vamos a ir a cafés excepcionalmente chetos, o a bares con tragos cuyo picor tiene que ser declarado un arma de destrucción masiva... pero disfruto mucho compartiendo mi tiempo con vos</li>
+                </ul>
+
+                
+            </section>
+
+            <section data-aos="fade-up">
+                <h2>5. TEORÍA DE LA VINCULACIÓN</h2>
+                <p>Los vínculos entre personas son como sogas. Las amistades son más maleables, más diversas, muchas veces se disfrutan solo por ser. Las sogas de las parejas tienen más peso de ambos lados, si no hay una buena comunicación, se tira más de ambos lados, se enredan más fácil. Las sogas de las amistades son sogas que están un poco más lejos del campo visual de la cotidianeidad. Mejor dicho, uno no suele apoyar todo su peso en una amistad y en una pareja creo que tampoco debería pero si es más común, hay más expectativas puestas sobre la mesa. A veces yo tiro de más con mi intensidad y miedo al abandono; a veces vos soltás cuerda con tu necesidad de aislamiento. Pero la soga no se rompe porque está tejida con algo más fuerte que la obligación: la lealtad.</p>
+                <div class="chart-box small">
+                    <canvas id="pieChart"></canvas>
+                </div>
+                <p>Del otro lado está la idea del gato en la caja. Mi ansiedad a veces me hace creer que el "gato" (nuestro cariño) está muerto si no abro la caja cada 5 minutos para chequearlo. Pero vos, con tu pragmatismo, tu compañía, tu paciencia (realmente excepcional) y tu reafirmación volviste la caja transparente. Me demostraste que no hace falta la confirmación constante porque los hechos (el coworking, las peliculas, las visitas) son la prueba empírica de que el gato está vivo, gordo y feliz. Tu lealtad es la ventana que me permite ver sin necesidad de romper nada. Aún así, el impulso siempre aparece. Siempre los miedos y siempre la ansiedad, porque están adentro y no se corresponden con la realidad. Estás en todo tu derecho de decir que haces todo bien pero soy muy ... tonto para verlo. Pero lo veo, lo siento, es hermoso. A veces las voces gritan más fuerte, pero las probás una y otra vez equivocadas.</p>
+                
+                <div class="chart-box small">
+                    <canvas id="anxietyChart"></canvas>
+                </div>
+                
+                
+            </section>
+
+            <section data-aos="fade-up" style="background: linear-gradient(to bottom right, #fff, #f3e5f5); border: 1px solid #e1bee7;">
+                <h2>6. PROPUESTA OPERATIVA</h2>
+                <p>Dado que las definiciones estáticas no aplican a la complejidad de la muestra, propongo reemplazar la necesidad de una "etiqueta" por un Protocolo de Iteración Continua.</p>
+                <p>No busco definir una constante que nos limite, sino entender nuestra función como una variable dinámica. La propuesta es establecer un espacio de experimentación seguro, un sandbox emocional, donde podamos ejecutar el siguiente bucle:</p>
+                <ul class="item-list">
+                    <li><strong>Recolección de Datos:</strong> Seguir acumulando experiencias de alta intensidad (leer cuentos, cocinar, pasear, silencios compartidos).</li>
+                    <li><strong>Procesamiento:</strong> Mantener la honestidad brutal sobre cómo nos sentimos con cada interacción, sin miedo a que el resultado rompa la hipótesis.</li>
+                    <li><strong>Validación:</strong> Confirmar que ambos seguimos cómodos en este espectro en construcción, pero hablar sobre la naturaleza del mismo. La base es una amistad, pero ¿Es una convencional? ¿Es una amistad con esteroides? .</li   >
+                </ul>
+                <p>Mi objetivo no es llegar a un resultado binario (0 o 1), sino mantenernos en este estado cuántico donde la probabilidad de hacernos bien tiende al infinito. Quiero seguir explorando esta "avenida diferente" con vos, sin saber dónde termina, pero con la certeza estadística de que el camino vale la pena.</p>
+                <p>Este documento es de código abierto. Se aceptan cambios y sugerencias, o destrucción completa incluso. Si la sujeto Exia desea corregir alguna variable o agregar una cláusula de rescisión por exceso de drama, también está abierta la posibilidad. Gracias por ser mi variable constante en este caos. Te quiero mucho.</p>
+                
+                <div class="signature-section">
                     <div class="signature-text">Firma: Naxi</div>
+                    <p>(Gerente de Finanzas & Profesor de Armado de Cubos & Ingeniero del drama & Cursi-king )</p>
                 </div>
             </section>
+
         </div>
     </div>
-    
     <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
     <script>
-        // --- DATOS DEL ACRÓSTICO (Nivel Avanzado) ---
-        // Frase vertical: FORMAS PARTE DE MIS SECRETOS MEJOR GUARDADOS
-        
-        const acrosticData = [
-            // F-O-R-M-A-S
-            { word: "FILANTROPIA", def: "Amor al género humano", index: 0 },
-            { word: "MONOBLOQUE", def: "Configuración de una sola persona (a veces dos o tres) cuyo único objetivo es la trinchera de la paz hagovera", index: 1 },
-            { word: "ONEROSO", def: "Que implica gastos o molestias", index: 3 },
-            { word: "RUMIA", def: "Acción de darle vueltas obsesivas a los pensamientos, enemiga de la paz mental.", index: 0 },
-            { word: "INEFABLE", def: "Que no se puede explicar con palabras", index: 4 },
-            { word: "SIDE", def: "Vos. Acusasiones de tu naturaleza (fundadas) ", index: 0 },
-            
-            { spacer: true }, // ESPACIO
-            
-            // P-A-R-T-E
-            { word: "PARANA", def: "Casi ciudad. Campo. Hay vacas y caballos", index: 0 },
-            { word: "APOLO", def: "Felino naranja, conocido por morder y acosar", index: 0 },
-            { word: "SINERGIA", def: "Acción conjunta superior a la suma", index: 4 },
-            { word: "TECNOCRISTIANISMO", def: "Evangelismo casi rebordeano del siglo XXI", index: 0 },
-            { word: "PERENNE", def: "Continuo, incesante", index: 6 },
-            
-            { spacer: true }, // ESPACIO
-
-            // D-E
-            { word: "DESPEJADA", def: "Estado promedio de M en el índice de Exia (femenino)", index: 0 },
-            { word: "QUIMERA", def: "Ilusión producto de la imaginación", index: 4 },
-            
-            { spacer: true }, // ESPACIO
-
-            // M-I-S
-            { word: "MACK", def: "Sistema de medición humano de cuatro órdenes exclusivo de naxi y exia", index: 0 },
-            { word: "CRISTINA", def: "Ex-presidenta. Psicóloga", index: 2 },
-            { word: "INTROSPECCION", def: "Mirada interior a los propios actos", index: 5 },
-            
-            { spacer: true }, // ESPACIO
-
-            // S-E-C-R-E-T-O-S
-            { word: "ESTOFADO", def: "Plato estrella de Naxi", index: 1 },
-            { word: "INELUCTABLE", def: "Cosa que es inevitable y contra la cual no se puede luchar.", index: 2 },
-            { word: "COWORKING", def: "Actividad de trabajar juntos a distancia.", index: 0 },
-            { word: "RESONANCIA", def: "Fenómeno físico que ocurre cuando las frecuencias se encuentran (no es similitud, es movimiento)", index: 0 },
-            { word: "EPITETO", def: "Adjetivo que subraya una cualidad", index: 4 },
-            { word: "PALITO", def: "Michi naranja, experto en desordenar camas y tirar cubos Rubik.", index: 4 },
-            { word: "AXIOMA", def: "Verdad evidente que no necesita demostración", index: 3 },
-            { word: "SOLIPSISMO", def: "Creencia de que solo existe la propia mente", index: 0 },
-            
-            { spacer: true }, // ESPACIO
-
-            // M-E-J-O-R
-            { word: "METAFISICA", def: "Filosofía que trata del ser", index: 0 },
-            { word: "HERMENEUTICA", def: "Arte de interpretación de los textos, originalmente los sagrados.", index: 1 },
-            { word: "OBJETIVAMENTE", def: "Muletilla que usás para dar opiniones que son, claramente, subjetivas.", index: 2},
-            { word: "DATAMOVIL", def: "Vehículo fiel según yo. Segun vos se rompe todo el tiempo. Siempre está mal estacionado", index: 5},
-            { word: "CURSI", def: "Quizas la palabra que mejor me define.", index: 2 },
-            
-            { spacer: true }, // ESPACIO
-
-            // G-U-A-R-D-A-D-O-S
-            { word: "GUNDAM", def: "Vos", index: 0 },
-            { word: "ELOCUENCIA", def: "Facultad de hablar con eficacia", index: 4 },
-            { word: "ATARAXIA", def: "Imperturbabilidad, serenidad", index: 4 },
-            { word: "RAMEN", def: "Comida japonesa degustada en Fukuro; debut gastronómico para Naxi.", index: 0 },
-            { word: "IDIOSINCRASIA", def: "Conjunto de ideas, comportamientos, actitudes particulares o propios de un individuo, grupo o colectivo humano", index: 1 },
-            { word: "FALACIA", def: "Engaño o mentira escondida", index: 3 },
-            { word: "PARADIGMA", def: "Teoría aceptada como modelo", index: 4 },
-            { word: "AFFOGATO", def: "Postre italiano que me has recomendado varias veces.", index: 3 },
-            { word: "SOFISMA", def: "Razón aparente para defender lo falso", index: 4 }
-        ];
-
-        // --- RENDERIZADO DEL CRUCIGRAMA ---
-        function renderCrossword() {
-            const container = document.getElementById('crossword-container');
-            container.innerHTML = '';
-            
-            let realRowIndex = 0; // Para llevar cuenta de las filas con inputs
-
-            acrosticData.forEach((item) => {
-                if (item.spacer) {
-                    const spacer = document.createElement('div');
-                    spacer.className = 'cw-spacer';
-                    container.appendChild(spacer);
-                    return;
-                }
-
-                const rowDiv = document.createElement('div');
-                rowDiv.className = 'cw-row';
-
-                // Definición
-                const defDiv = document.createElement('div');
-                defDiv.className = 'cw-def';
-                defDiv.innerText = `${realRowIndex + 1}. ${item.def}`;
-                rowDiv.appendChild(defDiv);
-
-                // Celdas
-                const wordDiv = document.createElement('div');
-                wordDiv.className = 'cw-word-container';
-                
-                for (let i = 0; i < item.word.length; i++) {
-                    const input = document.createElement('input');
-                    input.type = 'text';
-                    input.className = 'cw-cell';
-                    input.maxLength = 1;
-                    input.dataset.row = realRowIndex;
-                    input.dataset.col = i;
-                    input.dataset.letter = item.word[i]; 
-
-                    if (i === item.index) {
-                        input.classList.add('highlight');
-                    }
-
-                    // Evento Input
-                    input.addEventListener('input', function(e) {
-                        // Normalizar a mayúsculas y quitar tildes para validación visual
-                        let val = this.value.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-                        this.value = val; 
-
-                        if (val === this.dataset.letter) {
-                            this.classList.add('correct-letter');
-                        } else {
-                            this.classList.remove('correct-letter');
-                        }
-
-                        // Auto-focus siguiente
-                        if (this.value.length === 1) {
-                            let next = this.nextElementSibling;
-                            if (next) {
-                                next.focus();
-                            } else {
-                                // Buscar siguiente fila real (saltando spacers)
-                                let nextRowIdx = parseInt(this.dataset.row) + 1;
-                                let nextRowInput = document.querySelector(`input[data-row="${nextRowIdx}"][data-col="0"]`);
-                                if (nextRowInput) nextRowInput.focus();
-                            }
-                        }
-                        
-                        checkWinCondition();
-                    });
-
-                    // Backspace navegación
-                    input.addEventListener('keydown', function(e) {
-                        if (e.key === 'Backspace' && this.value === '') {
-                            let prev = this.previousElementSibling;
-                            if (prev) prev.focus();
-                        }
-                    });
-
-                    wordDiv.appendChild(input);
-                }
-                rowDiv.appendChild(wordDiv);
-                container.appendChild(rowDiv);
-                realRowIndex++;
-            });
-        }
-
-        function checkWinCondition() {
-            const highlighted = document.querySelectorAll('.cw-cell.highlight');
-            let allCorrect = true;
-            
-            highlighted.forEach(cell => {
-                if (cell.value !== cell.dataset.letter) allCorrect = false;
-            });
-
-            if (allCorrect) {
-                const msg = document.getElementById('secret-message');
-                msg.innerText = '🗝️ "Lo de arriba es la llave, no la pierdas" 🗝️';
-                msg.style.display = 'block';
-                // Scroll al mensaje
-                msg.scrollIntoView({ behavior: 'smooth' });
-            }
-        }
-
-        function toggleCrossword() {
-            const section = document.getElementById('crossword-section');
-            const btn = document.querySelector('.game-btn');
-            section.classList.toggle('open');
-            
-            if (section.classList.contains('open')) {
-                btn.textContent = "Ocultar Desafío";
-                if (document.getElementById('crossword-container').children.length === 0) {
-                    renderCrossword();
-                }
-            } else {
-                btn.textContent = "Intentar conseguir la llave";
-            }
-        }
-
-        // --- CÓDIGO EXISTENTE (Restaurado para funcionalidad completa) ---
+        // --- CONFIGURACIÓN DE LAS PREGUNTAS ---
         const quizData = [
-            { q: "ÍNDICE...?", a: ["mack"] },
-            { q: "¿Quién es la hagovera que mejor me cae?", a: ["nihon", "nihonbord", "exia", "yo"] },
-            { q: "¿Cuál es el mejor mito griego existente?", a: ["orfeo", "euridice", "eurídice", "orfeo y euridice"] },
-            { q: "¿Qué tienen en comun las 4 resoluciones de rompecabezas?", a: ["borges", "borgianos", "jorge luis borges", "jlb" ] }
+            {
+                q: "ÍNDICE...?",
+                a: ["mack"]
+            },
+            {
+                q: "¿Quién es la hagovera que mejor me cae?",
+                a: ["nihon", "nihonbord", "exia", "yo"]
+            },
+            {
+                q: "¿Qué tienen en comun las 4 resoluciones de rompecabezas?",
+                a: ["borges", "borgianos", "jorge luis borges", "jlb" ]
+            },
+            {
+                q: "¿Cuál es la llave?",
+                a: ["formas parte de mis secretos mejor guardados", "formaspartedemissecretosmejorguardados" ]
+            }
         ];
 
+        // --- LISTA DE PISTAS ALEATORIAS ---
         const hints = [
             "Orden en el caos",
-            "Nadie rebaje a lágrima o reproche...",
-            "Entonces Orfeo compuso para ella la más bella canción...",
+            "Nadie rebaje a lágrima o reproche, esta declaración de maestría...",
+            "Entonces Orfeo compuso para ella la más bella canción de amor que se había oído nunca en aquellos bosques.",
             "Ante la teoría de las cuerdas, la teoría de las sogas.",
             "Benjamin, pero amarillo",
             "A veces no hace falta tener conclusiones.",
-            "El dolor no necesita lámpara, se te escapa del cuerpo."
+            "A veces la vida merece ser vivida",
+            "El sentido es algo que buscamos y encontramos para que nos dé seguridad porque vivir sin sentido es abrumador",
+            "Todo tiene peso. En lo que decis al otro, en lo que decis al aire, y en lo que te decis a vos mismo. Lo que no decís, es peso muerto",
+            "Tu naturaleza de hoy no está condenada a quedar inmóvil para siempre. Eso es existir.",
+            "La libertad es poder elegir con quién construir algo y cuidarlo. Es mirar al otro como un mundo, no como un servicio.",
+            "Tu naturaleza de hoy no está condenada a quedar inmóvil para siempre. Eso es existir.",
+            "Creer es lo mas importante que tenemos como humanos... Volver a lo humano loco. A creer, a confiar. Es salvar el mundo.",
+            "Las mejores historias empiezan chiquito. Sin proezas.",
+            "El dolor no necesita lámpara, se te escapa del cuerpo.",
+            "Hay que darle lugar a la tristeza, saber habitarla, pero no perderse en ella.",
+            
         ];
 
         let currentStep = 0;
+        // FECHA OBJETIVO: 23/11/2025 00:00:00 GMT-3 (Argentina)
         const targetDate = new Date('2025-11-23T00:00:00-03:00').getTime();
         let timerInterval; 
 
+        // --- INICIALIZAR TODO ---
         window.onload = function() {
             initCountdown();
-            initLibs(); // Init charts si están visibles (lo estarán despues)
         };
 
+        // --- FUNCIÓN PARA MOSTRAR PISTA ---
         function showHint() {
             const hintDisplay = document.getElementById('hint-display');
+            
+            // Elegir una frase al azar
             const randomIndex = Math.floor(Math.random() * hints.length);
+            const selectedHint = hints[randomIndex];
+            
+            // Efecto de transición simple
             hintDisplay.style.opacity = '0';
+            
             setTimeout(() => {
-                hintDisplay.innerText = `"${hints[randomIndex]}"`;
+                hintDisplay.innerText = `"${selectedHint}"`;
                 hintDisplay.style.opacity = '1';
             }, 300);
         }
 
-        // --- FUNCIONES DE ACCESO / CHEATS ---
-
+        // --- ACCESO MAESTRO VIA CONSOLA ---
+        // Para activar: Abrir consola (F12) y escribir accesoMaestro()
         window.accesoMaestro = function() {
-            const secret = prompt("Acceso Maestro:");
+            const secret = prompt("Acceso Maestro Requerido:");
             if (secret === "432843284328") {
+                console.log("Acceso concedido. Bienvenido, Admin.");
+                // Detener el contador
                 clearInterval(timerInterval);
+                // Ir a la siguiente pantalla directamente
                 goToLockScreen();
+            } else if (secret !== null) {
+                console.warn("Contraseña incorrecta.");
+                alert("Acceso Denegado.");
             }
         }
 
-        // FUNCIÓN NUEVA SOLICITADA
-        window.resolverCruci = function() {
-            // 1. Abrir el crucigrama si no está visible
-            const section = document.getElementById('crossword-section');
-            if (!section.classList.contains('open')) {
-                toggleCrossword();
-            }
-
-            // Pequeño timeout para asegurar que el DOM se renderizó si estaba cerrado
-            setTimeout(() => {
-                const inputs = document.querySelectorAll('.cw-cell');
-                if (inputs.length === 0) {
-                    console.error("El crucigrama no se ha renderizado aún.");
-                    return;
-                }
-
-                // 2. Recorrer inputs y llenarlos con la data correcta
-                inputs.forEach(input => {
-                    // La letra correcta está guardada en el dataset.letter
-                    if (input.dataset.letter) {
-                        input.value = input.dataset.letter;
-                        input.classList.add('correct-letter'); // Feedback visual verde
-                    }
-                });
-
-                // 3. Validar la condición de victoria
-                checkWinCondition();
-                console.log("✨ Crucigrama resuelto con magia ✨");
-
-            }, 100);
-        }
-
+        // --- LÓGICA DE TRANSICIÓN A PANTALLA DE BLOQUEO ---
         function goToLockScreen() {
-            document.getElementById('countdown-screen').style.display = 'none';
-            const lock = document.getElementById('lock-screen');
-            lock.style.display = 'flex';
-            setTimeout(() => lock.style.opacity = '1', 50);
+            const countdownScreen = document.getElementById('countdown-screen');
+            const lockScreen = document.getElementById('lock-screen');
+
+            countdownScreen.style.opacity = '0';
+            setTimeout(() => {
+                countdownScreen.style.display = 'none';
+                // Mostrar Lock Screen
+                lockScreen.style.display = 'flex';
+                setTimeout(() => {
+                    lockScreen.style.opacity = '1';
+                }, 50);
+            }, 800);
         }
 
+        // --- LÓGICA DEL COUNTDOWN SEGURA (WorldTimeAPI) ---
         async function initCountdown() {
+            const countdownScreen = document.getElementById('countdown-screen');
+            const lockScreen = document.getElementById('lock-screen');
             const syncStatus = document.getElementById('sync-status');
-            let serverTimeReference, localTimeReference;
 
+            let serverTimeReference;
+            let localTimeReference;
+
+            // 1. Intentar obtener hora del servidor
             try {
+                // API de WorldTime para Argentina
                 const response = await fetch('https://worldtimeapi.org/api/timezone/America/Argentina/Buenos_Aires');
                 const data = await response.json();
+                
+                // Convertimos la fecha del servidor a timestamp
                 serverTimeReference = new Date(data.datetime).getTime();
+                
+                // Guardamos el momento exacto en que recibimos esa hora
+                // performance.now() es monótono (no cambia si cambias la fecha de windows)
                 localTimeReference = performance.now();
+                
                 syncStatus.innerText = "Solo hace falta un poquito de paciencia";
                 syncStatus.style.color = "#81c784";
+
             } catch (e) {
+                console.warn("Fallo API de tiempo, usando local como fallback", e);
+                syncStatus.innerText = "No hagas trampa eh";
+                // Fallback: Si no hay internet, usamos la fecha local (no queda otra)
                 serverTimeReference = new Date().getTime();
                 localTimeReference = performance.now();
-                syncStatus.innerText = "Usando hora local...";
             }
 
+            // 2. Iniciar el intervalo usando la referencia segura
             timerInterval = setInterval(function() {
+                // Calculamos cuánto tiempo pasó desde que sincronizamos
                 const elapsed = performance.now() - localTimeReference;
+                
+                // La hora actual "real" es la hora del servidor + el tiempo que pasó
                 const currentRealTime = serverTimeReference + elapsed;
+                
                 const distance = targetDate - currentRealTime;
 
+                // Cálculos de tiempo
                 const days = Math.floor(distance / (1000 * 60 * 60 * 24));
                 const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
                 const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
                 const seconds = Math.floor((distance % (1000 * 60)) / 1000);
 
+                // Mostrar en HTML
                 document.getElementById("days").innerText = String(Math.max(0, days)).padStart(2, '0');
                 document.getElementById("hours").innerText = String(Math.max(0, hours)).padStart(2, '0');
                 document.getElementById("minutes").innerText = String(Math.max(0, minutes)).padStart(2, '0');
                 document.getElementById("seconds").innerText = String(Math.max(0, seconds)).padStart(2, '0');
 
+                // SI YA LLEGÓ LA FECHA
                 if (distance < 0) {
                     clearInterval(timerInterval);
                     goToLockScreen(); 
+                } else {
+                    lockScreen.style.display = 'none';
                 }
             }, 1000);
         }
 
+
+        // --- LÓGICA DE ACCESO (Multi-step) ---
         function checkAccess() {
             const input = document.getElementById('password');
             const errorMsg = document.getElementById('error-msg');
+            const lockCard = document.getElementById('lock-card');
+            const labelQuestion = document.getElementById('question-label');
+            const stepText = document.getElementById('lock-step-text');
+            const lockIcon = document.getElementById('main-lock-icon');
+            
             const userAnswer = input.value.toLowerCase().trim();
+            // Para la última pregunta, permitimos "insensitive" total normalizando espacios también si es necesario,
+            // pero el código ya hace .trim(). El array tiene las opciones.
             const validAnswers = quizData[currentStep].a;
 
-            if (validAnswers.includes(userAnswer)) {
+            // Validación flexible para la frase larga
+            // Si la respuesta es larga, comparamos ignorando mayusculas
+            const isCorrect = validAnswers.some(answer => answer.toLowerCase() === userAnswer);
+
+            if (isCorrect) {
+                // -- CORRECTO --
                 errorMsg.style.opacity = '0';
                 currentStep++;
+
                 if (currentStep < quizData.length) {
-                    document.getElementById('question-label').innerText = quizData[currentStep].q;
-                    document.getElementById('lock-step-text').innerText = `Paso ${currentStep + 1} de ${quizData.length}`;
-                    input.value = ''; input.focus();
+                    // SIGUIENTE PREGUNTA
+                    labelQuestion.style.opacity = 0; 
+                    stepText.innerText = `Paso ${currentStep + 1} de ${quizData.length}`;
+                    
+                    setTimeout(() => {
+                        labelQuestion.innerText = quizData[currentStep].q;
+                        labelQuestion.style.opacity = 1;
+                        input.value = ''; 
+                        
+                        // --- LÓGICA PARA CAMBIAR TIPO DE INPUT ---
+                        // Si llegamos al paso 3 (la cuarta pregunta, index 3), cambiamos a texto
+                        if (currentStep === 3) {
+                            input.type = 'text';
+                            input.placeholder = "Escribe la llave...";
+                        } else {
+                            input.type = 'password';
+                            input.placeholder = "Ingrese respuesta";
+                        }
+
+                        input.focus();
+                    }, 300);
+
                 } else {
-                    unlockScreen();
+                    // --- FIN -> ANIMACIÓN ESPECIAL ANTES DE DESBLOQUEAR ---
+                    // Congelar input
+                    input.disabled = true;
+                    document.querySelector('.lock-btn').disabled = true;
+
+                    // Cambiar icono a candado abierto y activar animación CSS
+                    lockIcon.innerText = '🔓'; 
+                    lockIcon.classList.add('unlocking-animation');
+                    
+                    // Esperar a que termine la animación (1.5s) antes de pasar
+                    setTimeout(() => {
+                        unlockScreen();
+                    }, 1500);
                 }
+
             } else {
+                // -- INCORRECTO --
                 errorMsg.style.opacity = '1';
-                input.value = ''; input.focus();
+                lockCard.style.animation = 'none';
+                lockCard.offsetHeight; 
+                lockCard.style.animation = 'shake 0.5s';
+                input.value = '';
+                input.focus();
             }
         }
 
         function unlockScreen() {
             const lockScreen = document.getElementById('lock-screen');
             const introScreen = document.getElementById('intro-screen');
+            const introText = document.getElementById('intro-text');
             const mainContent = document.getElementById('main-content');
-            
+            const emojiContainer = document.getElementById('emoji-container');
+
             lockScreen.style.opacity = '0';
             setTimeout(() => {
                 lockScreen.style.display = 'none';
-                introScreen.style.display = 'flex';
-                document.getElementById('intro-text').classList.add('animate-intro');
                 
+                introScreen.style.display = 'flex';
+                introText.classList.add('animate-intro');
+                triggerEmojiExplosion();
+
                 setTimeout(() => {
                     introScreen.style.opacity = '0';
                     setTimeout(() => {
                         introScreen.style.display = 'none';
+                        emojiContainer.innerHTML = ''; 
                         mainContent.style.display = 'block';
                         setTimeout(() => {
                             mainContent.style.opacity = '1';
-                            // Re-inicializar graficos si AOS destruyó layout
-                            initLibs();
+                            initLibs(); 
                         }, 100);
                     }, 1000);
                 }, 4000);
-            }, 500);
+            }, 500); 
         }
 
-        function initLibs() {
-            AOS.init({ duration: 1200, once: true });
-            Chart.defaults.font.family = "'Nunito', sans-serif";
-            
-            const ctx1 = document.getElementById('radarChart');
-            if(ctx1) {
-                new Chart(ctx1.getContext('2d'), {
-                    type: 'radar',
-                    data: {
-                        labels: ['Lingüística', 'Lógico-Mat', 'Empatía', 'Sensibilidad', 'Maldad', 'Saltos de Fe', 'Pot. Autismo'],
-                        datasets: [
-                            { label: 'Exia', data: [85, 75, 92, 81, 73, 34, 76], fill: true, backgroundColor: 'rgba(179, 229, 252, 0.3)', borderColor: '#81d4fa' },
-                            { label: 'Naxi', data: [85, 79, 92, 99, 32, 86, 77], fill: true, backgroundColor: 'rgba(255, 205, 210, 0.3)', borderColor: '#ef9a9a' }
-                        ]
-                    },
-                    options: { responsive: true, maintainAspectRatio: false, scales: { r: { suggestedMin: 0, suggestedMax: 100 } } }
-                });
+        document.getElementById('password').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') checkAccess();
+        });
+
+        // --- EXPLOSIÓN DE EMOJIS ---
+        function triggerEmojiExplosion() {
+            const emojiList = ['⚛️', '🐱', '👺', '📑', '🤓', '📈', '📊'];
+            const container = document.getElementById('emoji-container');
+            const particleCount = 50; 
+
+            for (let i = 0; i < particleCount; i++) {
+                const emoji = document.createElement('div');
+                emoji.classList.add('emoji-particle');
+                emoji.innerText = emojiList[Math.floor(Math.random() * emojiList.length)];
+                
+                const angle = Math.random() * Math.PI * 2; 
+                const velocity = 60 + Math.random() * 60; 
+                
+                const tx = Math.cos(angle) * velocity; 
+                const ty = Math.sin(angle) * velocity; 
+
+                emoji.style.setProperty('--tx', `${tx}vw`);
+                emoji.style.setProperty('--ty', `${ty}vh`);
+                
+                const duration = 2 + Math.random() * 2; 
+                emoji.style.animation = `explodeAnimation ${duration}s ease-out forwards`;
+                
+                emoji.style.fontSize = (1.5 + Math.random() * 2.5) + 'rem';
+                container.appendChild(emoji);
             }
+        }
+
+        // --- INICIALIZACIÓN DE LIBRERÍAS ---
+        function initLibs() {
+            AOS.init({
+                duration: 1200, 
+                once: true,
+                offset: 100
+            });
+
+            Chart.defaults.font.family = "'Nunito', sans-serif";
+            Chart.defaults.color = '#5d5d5d';
+
+            // Chart 1
+            new Chart(document.getElementById('radarChart').getContext('2d'), {
+                type: 'radar',
+                data: {
+                    labels: ['Lingüística', 'Lógico-Mat', 'Empatía', 'Sensibilidad', 'Maldad', 'Saltos de Fe', 'Pot. Autismo'],
+                    datasets: [
+                        {
+                            label: 'Exia',
+                            data: [85, 75, 92, 81, 73, 34, 76],
+                            fill: true,
+                            backgroundColor: 'rgba(179, 229, 252, 0.3)',
+                            borderColor: '#81d4fa',
+                            pointBackgroundColor: '#81d4fa'
+                        },
+                        {
+                            label: 'Naxi',
+                            data: [85, 79, 92, 99, 32, 86, 77],
+                            fill: true,
+                            backgroundColor: 'rgba(255, 205, 210, 0.3)',
+                            borderColor: '#ef9a9a',
+                            pointBackgroundColor: '#ef9a9a'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: { r: { suggestedMin: 0, suggestedMax: 100 } }
+                }
+            });
+
+            // Chart 2
+            new Chart(document.getElementById('anxietyChart').getContext('2d'), {
+                type: 'line',
+                data: {
+                    labels: ['Pre-Encuentro', 'Llegada', 'Interacción', 'Actividades', 'Ausencia'],
+                    datasets: [{
+                        label: 'Ansiedad',
+                        data: [8, 7, 5, 3.5, 9],
+                        borderColor: '#b39ddb',
+                        backgroundColor: 'rgba(179, 157, 219, 0.2)',
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: { y: { beginAtZero: true, max: 10 } },
+                    plugins: { legend: { display: true } }
+                }
+            });
+
+            // Chart 3
+            new Chart(document.getElementById('pieChart').getContext('2d'), {
+                type: 'doughnut',
+                data: {
+                    labels: ['Cariño', 'Complicidad', 'Ternura', 'Miedo'],
+                    datasets: [{
+                        data: [47.1, 17.6, 11.8, 23.5],
+                        backgroundColor: ['#ffccbc', '#b2dfdb', '#f8bbd0', '#cfd8dc'],
+                        borderWidth: 2,
+                        borderColor: '#fff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'right' } }
+                }
+            });
         }
     </script>
 </body>
