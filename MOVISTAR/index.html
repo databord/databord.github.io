@@ -9,7 +9,7 @@
             --bg-color: #f4f4f4;
             --card-bg: #ffffff;
             --text-color: #333;
-            --accent-color: #000; /* Negro elegante */
+            --accent-color: #000;
             --border-radius: 8px;
         }
 
@@ -42,6 +42,7 @@
             text-transform: uppercase;
         }
 
+        /* Estilos de Productos */
         .product-list {
             display: flex;
             flex-direction: column;
@@ -62,12 +63,6 @@
             flex: 1;
         }
 
-        .quantity-control {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
         input[type="number"] {
             width: 50px;
             padding: 5px;
@@ -77,26 +72,56 @@
             font-size: 16px;
         }
 
-        .payment-section {
-            margin-bottom: 30px;
+        /* Estilos de Formulario */
+        .form-section {
+            margin-bottom: 20px;
         }
 
-        .payment-section label {
+        .form-section label {
             display: block;
-            margin-bottom: 10px;
+            margin-bottom: 8px;
             font-weight: 600;
         }
 
-        select {
+        select, input[type="text"], input[type="number"].full-width {
             width: 100%;
             padding: 10px;
             border: 1px solid #ddd;
             border-radius: var(--border-radius);
             font-size: 16px;
             background-color: #fff;
+            box-sizing: border-box;
+        }
+
+        /* Toggle Checkbox */
+        .pickup-toggle {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 20px 0;
+            padding: 15px;
+            background: #f9f9f9;
+            border-radius: var(--border-radius);
             cursor: pointer;
         }
 
+        .pickup-toggle input {
+            transform: scale(1.5);
+            cursor: pointer;
+        }
+
+        /* Datos Personales (Animación) */
+        #personalDataFields {
+            display: none;
+            animation: fadeIn 0.3s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Botón Principal */
         button.submit-btn {
             width: 100%;
             padding: 15px;
@@ -110,61 +135,123 @@
             transition: background-color 0.3s;
             text-transform: uppercase;
             letter-spacing: 1px;
+            margin-top: 20px;
         }
 
         button.submit-btn:hover {
             background-color: #333;
         }
 
-        /* Estilo simple para el footer */
-        .footer {
-            margin-top: 20px;
-            text-align: center;
-            font-size: 12px;
-            color: #888;
+        /* MODAL / CUPÓN */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            padding: 20px;
         }
+
+        .coupon-card {
+            background: white;
+            padding: 30px;
+            width: 100%;
+            max-width: 400px;
+            border-radius: 10px;
+            text-align: center;
+            position: relative;
+            border: 2px dashed #333;
+        }
+
+        .coupon-header {
+            border-bottom: 2px solid #000;
+            padding-bottom: 15px;
+            margin-bottom: 15px;
+        }
+
+        .coupon-big-text {
+            font-size: 24px;
+            font-weight: 800;
+            color: #000;
+            display: block;
+            margin: 5px 0;
+            text-transform: uppercase;
+        }
+
+        .coupon-dni {
+            font-size: 18px;
+            color: #555;
+            font-weight: bold;
+        }
+
+        .coupon-list {
+            text-align: left;
+            margin: 20px 0;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .coupon-list strong {
+            display: block;
+            margin-top: 10px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .btn-coupon-action {
+            background: #28a745;
+            color: white;
+            padding: 12px;
+            border: none;
+            border-radius: 5px;
+            width: 100%;
+            font-size: 16px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        
+        .btn-close {
+            background: transparent;
+            border: none;
+            text-decoration: underline;
+            margin-top: 10px;
+            cursor: pointer;
+            color: #666;
+        }
+
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>Selección de Productos</h1>
+    <h1>Tienda | Pedido</h1>
 
     <form id="salesForm">
         <div class="product-list">
             <div class="product-item">
-                <label for="prod1">Se abrirán los cielos</label>
-                <div class="quantity-control">
-                    <input type="number" id="prod1" name="prod1" min="0" value="0">
-                </div>
+                <label>Se abrirán los cielos</label>
+                <input type="number" id="prod1" min="0" value="0">
             </div>
-
             <div class="product-item">
-                <label for="prod2">Doctrina Espiritual Hagovera</label>
-                <div class="quantity-control">
-                    <input type="number" id="prod2" name="prod2" min="0" value="0">
-                </div>
+                <label>Doctrina Espiritual Hagovera</label>
+                <input type="number" id="prod2" min="0" value="0">
             </div>
-
             <div class="product-item">
-                <label for="prod3">Sticker (Combo)</label>
-                <div class="quantity-control">
-                    <input type="number" id="prod3" name="prod3" min="0" value="0">
-                </div>
+                <label>Sticker (Combo)</label>
+                <input type="number" id="prod3" min="0" value="0">
             </div>
-
             <div class="product-item">
-                <label for="prod4">Sticker Individual</label>
-                <div class="quantity-control">
-                    <input type="number" id="prod4" name="prod4" min="0" value="0">
-                </div>
+                <label>Sticker Individual</label>
+                <input type="number" id="prod4" min="0" value="0">
             </div>
         </div>
 
-        <div class="payment-section">
+        <div class="form-section">
             <label for="paymentMethod">Modo de Pago</label>
             <select id="paymentMethod" required>
-                <option value="" disabled selected>Seleccione una opción...</option>
+                <option value="" disabled selected>Seleccione...</option>
                 <option value="Efectivo">Efectivo</option>
                 <option value="Transferencia">Transferencia</option>
                 <option value="Postnet (3 cuotas)">Postnet (3 cuotas)</option>
@@ -173,47 +260,147 @@
             </select>
         </div>
 
-        <button type="submit" class="submit-btn">Finalizar Venta</button>
+        <label class="pickup-toggle">
+            <input type="checkbox" id="pickupCheckbox" onchange="togglePersonalData()">
+            <span>¿Retira después / En persona?</span>
+        </label>
+
+        <div id="personalDataFields">
+            <div class="form-section">
+                <label for="clientName">Nombre Completo</label>
+                <input type="text" id="clientName" placeholder="Ej: Ignacio Snieg">
+            </div>
+            <div class="form-section">
+                <label for="clientDNI">DNI</label>
+                <input type="number" id="clientDNI" class="full-width" placeholder="Sin puntos">
+            </div>
+        </div>
+
+        <button type="submit" class="submit-btn" id="mainBtn">Finalizar Venta</button>
     </form>
-    
-    <div class="footer">
-        Sistema de Ventas Simplificado
+</div>
+
+<div class="modal-overlay" id="couponModal">
+    <div class="coupon-card">
+        <div class="coupon-header">
+            <span>CUPÓN DE RETIRO</span>
+            <div class="coupon-big-text" id="display-name">NOMBRE</div>
+            <div class="coupon-dni" id="display-dni">DNI</div>
+        </div>
+        
+        <div class="coupon-list" id="display-items"></div>
+
+        <p style="font-size: 12px; color: #777;">Toma captura de pantalla a este cupón.</p>
+
+        <button class="btn-coupon-action" onclick="goToGoogleForm()">Ir al Formulario (Siguiente)</button>
+        <button class="btn-close" onclick="closeModal()">Volver / Corregir</button>
     </div>
 </div>
 
 <script>
+    // 1. Alternar visibilidad
+    function togglePersonalData() {
+        const checkbox = document.getElementById('pickupCheckbox');
+        const fields = document.getElementById('personalDataFields');
+        const btn = document.getElementById('mainBtn');
+
+        if (checkbox.checked) {
+            fields.style.display = 'block';
+            btn.textContent = "Generar Cupón";
+        } else {
+            fields.style.display = 'none';
+            btn.textContent = "Finalizar Venta";
+        }
+    }
+
+    // 2. Manejo del Submit
     document.getElementById('salesForm').addEventListener('submit', function(e) {
         e.preventDefault();
+        
+        const isPickup = document.getElementById('pickupCheckbox').checked;
+        const name = document.getElementById('clientName').value;
+        const dni = document.getElementById('clientDNI').value;
 
-        // 1. Obtener valores
-        // Si el campo está vacío, asumimos 0
+        // Si es Retiro (Checked), validamos y mostramos cupón
+        if (isPickup) {
+            if (!name || !dni) {
+                alert("Completa Nombre y DNI para el cupón.");
+                return;
+            }
+            showCoupon(name, dni);
+        } else {
+            // Si NO es Retiro (Unchecked), vamos directo al form enviando "No"
+            goToGoogleForm();
+        }
+    });
+
+    // 3. Mostrar Cupón
+    function showCoupon(name, dni) {
+        document.getElementById('display-name').textContent = name;
+        document.getElementById('display-dni').textContent = "DNI: " + dni;
+
         const p1 = document.getElementById('prod1').value || 0;
         const p2 = document.getElementById('prod2').value || 0;
         const p3 = document.getElementById('prod3').value || 0;
         const p4 = document.getElementById('prod4').value || 0;
         const payment = document.getElementById('paymentMethod').value;
 
-        // 2. IDs de Google Forms (Basado en tu URL)
-        // entry.1789542518 -> Se abrirán los cielos
-        // entry.710090725  -> Doctrina espiritual hagovera
-        // entry.1660027663 -> Sticker (combo)
-        // entry.617499404  -> Sticker individual (El 4to campo numérico en la URL)
-        // entry.479464730  -> Modo de pago
+        let itemList = "";
+        if(p1 > 0) itemList += `<div>• Se abrirán los cielos: <strong>${p1}</strong></div>`;
+        if(p2 > 0) itemList += `<div>• Doctrina Espiritual: <strong>${p2}</strong></div>`;
+        if(p3 > 0) itemList += `<div>• Sticker (Combo): <strong>${p3}</strong></div>`;
+        if(p4 > 0) itemList += `<div>• Sticker Individual: <strong>${p4}</strong></div>`;
+        
+        itemList += `<br><div style="border-top:1px solid #ccc; padding-top:5px">Pago: ${payment}</div>`;
+
+        document.getElementById('display-items').innerHTML = itemList;
+        document.getElementById('couponModal').style.display = 'flex';
+    }
+
+    function closeModal() {
+        document.getElementById('couponModal').style.display = 'none';
+    }
+
+    // 4. Redirección Final
+    function goToGoogleForm() {
+        // Datos básicos
+        const p1 = document.getElementById('prod1').value || 0;
+        const p2 = document.getElementById('prod2').value || 0;
+        const p3 = document.getElementById('prod3').value || 0;
+        const p4 = document.getElementById('prod4').value || 0;
+        const payment = document.getElementById('paymentMethod').value;
+        
+        // Estado del checkbox
+        const isPickup = document.getElementById('pickupCheckbox').checked;
+        
+        // AQUI ESTÁ LA LÓGICA CLAVE:
+        // Si checkbox está activado -> "Sí"
+        // Si checkbox está desactivado -> "No"
+        const pickupValue = isPickup ? "Sí" : "No";
+
+        const name = document.getElementById('clientName').value;
+        const dni = document.getElementById('clientDNI').value;
 
         const baseUrl = "https://docs.google.com/forms/d/e/1FAIpQLSfxQjFSHzOiOrnct8PqJAUDafErKdYLCEqJX_7cE2q2SSM6Ig/viewform";
-        
-        // 3. Construir URL con parámetros
         const params = new URLSearchParams();
+        
         params.append('entry.1789542518', p1);
         params.append('entry.710090725', p2);
         params.append('entry.1660027663', p3);
         params.append('entry.617499404', p4);
         params.append('entry.479464730', payment);
+        
+        // Enviamos Sí o No
+        params.append('entry.336907017', pickupValue);
 
-        // 4. Redireccionar
-        const finalUrl = `${baseUrl}?${params.toString()}`;
-        window.location.href = finalUrl;
-    });
+        // Solo enviamos nombre y DNI si eligió retiro, sino irán vacíos en el form
+        if (isPickup) {
+            params.append('entry.612290766', name);
+            params.append('entry.321770464', dni);
+        }
+
+        window.location.href = `${baseUrl}?${params.toString()}`;
+    }
 </script>
 
 </body>
