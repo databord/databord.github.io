@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tienda Oficial | Checkout</title>
+    <style>
+        :root {
+            --bg-color: #f4f4f4;
+            --card-bg: #ffffff;
+            --text-color: #333;
+            --accent-color: #000; /* Negro elegante */
+            --border-radius: 8px;
+        }
+
+        body {
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            background-color: var(--card-bg);
+            padding: 40px;
+            border-radius: var(--border-radius);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            max-width: 500px;
+            width: 100%;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            font-weight: 300;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .product-list {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .product-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .product-item label {
+            font-weight: 500;
+            flex: 1;
+        }
+
+        .quantity-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        input[type="number"] {
+            width: 50px;
+            padding: 5px;
+            text-align: center;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+
+        .payment-section {
+            margin-bottom: 30px;
+        }
+
+        .payment-section label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+
+        select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: var(--border-radius);
+            font-size: 16px;
+            background-color: #fff;
+            cursor: pointer;
+        }
+
+        button.submit-btn {
+            width: 100%;
+            padding: 15px;
+            background-color: var(--accent-color);
+            color: #fff;
+            border: none;
+            border-radius: var(--border-radius);
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        button.submit-btn:hover {
+            background-color: #333;
+        }
+
+        /* Estilo simple para el footer */
+        .footer {
+            margin-top: 20px;
+            text-align: center;
+            font-size: 12px;
+            color: #888;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Selección de Productos</h1>
+
+    <form id="salesForm">
+        <div class="product-list">
+            <div class="product-item">
+                <label for="prod1">Se abrirán los cielos</label>
+                <div class="quantity-control">
+                    <input type="number" id="prod1" name="prod1" min="0" value="0">
+                </div>
+            </div>
+
+            <div class="product-item">
+                <label for="prod2">Doctrina Espiritual Hagovera</label>
+                <div class="quantity-control">
+                    <input type="number" id="prod2" name="prod2" min="0" value="0">
+                </div>
+            </div>
+
+            <div class="product-item">
+                <label for="prod3">Sticker (Combo)</label>
+                <div class="quantity-control">
+                    <input type="number" id="prod3" name="prod3" min="0" value="0">
+                </div>
+            </div>
+
+            <div class="product-item">
+                <label for="prod4">Sticker Individual</label>
+                <div class="quantity-control">
+                    <input type="number" id="prod4" name="prod4" min="0" value="0">
+                </div>
+            </div>
+        </div>
+
+        <div class="payment-section">
+            <label for="paymentMethod">Modo de Pago</label>
+            <select id="paymentMethod" required>
+                <option value="" disabled selected>Seleccione una opción...</option>
+                <option value="Efectivo">Efectivo</option>
+                <option value="Transferencia">Transferencia</option>
+                <option value="Postnet (3 cuotas)">Postnet (3 cuotas)</option>
+                <option value="Postnet (6 cuotas)">Postnet (6 cuotas)</option>
+                <option value="Multipago">Multipago</option>
+            </select>
+        </div>
+
+        <button type="submit" class="submit-btn">Finalizar Venta</button>
+    </form>
+    
+    <div class="footer">
+        Sistema de Ventas Simplificado
+    </div>
+</div>
+
+<script>
+    document.getElementById('salesForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        // 1. Obtener valores
+        // Si el campo está vacío, asumimos 0
+        const p1 = document.getElementById('prod1').value || 0;
+        const p2 = document.getElementById('prod2').value || 0;
+        const p3 = document.getElementById('prod3').value || 0;
+        const p4 = document.getElementById('prod4').value || 0;
+        const payment = document.getElementById('paymentMethod').value;
+
+        // 2. IDs de Google Forms (Basado en tu URL)
+        // entry.1789542518 -> Se abrirán los cielos
+        // entry.710090725  -> Doctrina espiritual hagovera
+        // entry.1660027663 -> Sticker (combo)
+        // entry.617499404  -> Sticker individual (El 4to campo numérico en la URL)
+        // entry.479464730  -> Modo de pago
+
+        const baseUrl = "https://docs.google.com/forms/d/e/1FAIpQLSfxQjFSHzOiOrnct8PqJAUDafErKdYLCEqJX_7cE2q2SSM6Ig/viewform";
+        
+        // 3. Construir URL con parámetros
+        const params = new URLSearchParams();
+        params.append('entry.1789542518', p1);
+        params.append('entry.710090725', p2);
+        params.append('entry.1660027663', p3);
+        params.append('entry.617499404', p4);
+        params.append('entry.479464730', payment);
+
+        // 4. Redireccionar
+        const finalUrl = `${baseUrl}?${params.toString()}`;
+        window.location.href = finalUrl;
+    });
+</script>
+
+</body>
+</html>
