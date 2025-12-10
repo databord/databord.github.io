@@ -10,29 +10,76 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="icon" href="data:,">
 
-    <!-- IMPORTANTE: Firebase Logic debe ser tipo 'module' -->
+    <!-- FIREBASE LOGIC (Módulo) -->
     <script type="module" src="firebase-logic.js"></script>
 </head>
 
 <body>
+    <!-- PANTALLA DE LOGIN (Se muestra si no hay usuario) -->
+    <div id="auth-screen" class="modal-overlay active" style="background-color: var(--bg-color); z-index: 2000;">
+        <div class="modal-content" style="max-width: 350px; text-align: center;">
+            <div style="margin-bottom: 20px;">
+                <i class="fa-solid fa-layer-group" style="font-size: 3rem; color: var(--accent-color);"></i>
+                <h2 style="margin-top: 10px;">Planner Pro</h2>
+                <p style="color: var(--text-secondary); font-size: 0.9rem;">Organiza tu vida, tarea a tarea.</p>
+            </div>
+
+            <form id="login-form">
+                <div class="form-group">
+                    <input type="email" id="login-email" placeholder="Correo electrónico" required>
+                </div>
+                <div class="form-group">
+                    <input type="password" id="login-password" placeholder="Contraseña" required minlength="6">
+                </div>
+                <div id="login-error"
+                    style="color: var(--danger-color); font-size: 0.85rem; margin-bottom: 10px; display: none;"></div>
+
+                <button type="submit" class="btn-primary"
+                    style="width: 100%; justify-content: center; margin-bottom: 10px;">
+                    Iniciar Sesión
+                </button>
+                <button type="button" id="btn-register" class="btn-secondary" style="width: 100%;">
+                    Crear cuenta nueva
+                </button>
+            </form>
+        </div>
+    </div>
+
     <div class="app-container">
         <!-- Sidebar: Task List -->
         <aside class="sidebar">
             <div class="sidebar-header">
                 <h1>Mis Tareas</h1>
-                <button id="add-task-btn" class="btn-primary"><i class="fa-solid fa-plus"></i> Nueva</button>
+                <!-- Botón de Logout -->
+                <button id="logout-btn" class="icon-btn" title="Cerrar Sesión" style="font-size: 1rem;">
+                    <i class="fa-solid fa-right-from-bracket"></i>
+                </button>
+            </div>
+
+            <div style="margin-bottom: 15px;">
+                <button id="add-task-btn" class="btn-primary" style="width: 100%; justify-content: center;">
+                    <i class="fa-solid fa-plus"></i> Nueva Tarea
+                </button>
             </div>
 
             <div class="task-filters">
                 <button class="filter-btn active" data-filter="all">Todas</button>
                 <button class="filter-btn" data-filter="today">Hoy</button>
-                <button class="filter-btn" data-filter="high">Alta Prioridad</button>
+                <button class="filter-btn" data-filter="high">Alta</button>
             </div>
 
             <div class="task-list-container" id="task-list">
-                <!-- Tasks will be injected here -->
-                <div class="empty-state">Cargando tareas...</div>
+                <div class="empty-state" style="padding: 20px; text-align: center; color: var(--text-secondary);">
+                    Cargando...
+                </div>
+            </div>
+
+            <!-- Usuario actual -->
+            <div id="user-display"
+                style="font-size: 0.75rem; color: var(--text-secondary); text-align: center; padding-top: 10px; border-top: 1px solid var(--glass-border);">
+                Usuario: ...
             </div>
         </aside>
 
@@ -46,7 +93,7 @@
                     </div>
                     <div class="month-nav-controls">
                         <button id="prev-month" class="icon-btn"><i class="fa-solid fa-chevron-left"></i></button>
-                        <h2 id="current-month-year">Diciembre 2025</h2>
+                        <h2 id="current-month-year">...</h2>
                         <button id="next-month" class="icon-btn"><i class="fa-solid fa-chevron-right"></i></button>
                     </div>
                 </div>
@@ -58,12 +105,8 @@
                 </div>
             </header>
 
-            <div class="calendar-grid" id="calendar-grid">
-                <!-- Calendar days will be injected here -->
-            </div>
-            <div class="list-view" id="list-view" style="display: none;">
-                <!-- List view will be injected here -->
-            </div>
+            <div class="calendar-grid" id="calendar-grid"></div>
+            <div class="list-view" id="list-view" style="display: none;"></div>
         </main>
 
         <audio id="timer-sound" src="data/rec/ring.ogg"></audio>
@@ -133,7 +176,6 @@
                         <label for="task-parent">Subtarea de (Opcional)</label>
                         <select id="task-parent">
                             <option value="">Ninguna (Tarea Principal)</option>
-                            <!-- Parent tasks will be populated here -->
                         </select>
                     </div>
                     <div class="form-row">
@@ -142,46 +184,47 @@
                             <input type="text" id="task-category" placeholder="Ej. Trabajo, Casa">
                         </div>
                         <div class="form-group">
-                            <label for="task-icon">Ícono (FontAwesome)</label>
+                            <label for="task-icon">Ícono</label>
                             <select id="task-icon-select">
-                                <option value="">Seleccionar ícono...</option>
-                                <option value="fa-solid fa-house">Casa (House)</option>
-                                <option value="fa-solid fa-truck">Camión (Truck)</option>
-                                <option value="fa-solid fa-eye">Ojo (Eye)</option>
-                                <option value="fa-solid fa-phone">Teléfono (Phone)</option>
-                                <option value="fa-solid fa-bolt">Rayo (Bolt)</option>
-                                <option value="fa-solid fa-car">Auto (Car)</option>
-                                <option value="fa-solid fa-gift">Regalo (Gift)</option>
-                                <option value="fa-solid fa-pen">Lápiz (Pen)</option>
-                                <option value="fa-solid fa-book">Libro (Book)</option>
-                                <option value="fa-solid fa-gears">Engranajes (Gears)</option>
-                                <option value="fa-solid fa-ghost">Fantasma (Ghost)</option>
-                                <option value="fa-solid fa-cloud">Nube (Cloud)</option>
-                                <option value="fa-solid fa-business-time">Tiempo Negocios</option>
-                                <option value="fa-solid fa-clock">Reloj (Clock)</option>
-                                <option value="fa-solid fa-message">Mensaje (Message)</option>
-                                <option value="fa-solid fa-hand-holding-dollar">Pago (Hand Dollar)</option>
-                                <option value="fa-solid fa-map-location">Mapa (Map Location)</option>
-                                <option value="fa-solid fa-hand-middle-finger">Dedo Medio</option>
-                                <option value="custom">Agregar ícono...</option>
+                                <option value="">Seleccionar...</option>
+                                <option value="fa-solid fa-house">Casa</option>
+                                <option value="fa-solid fa-truck">Camión</option>
+                                <option value="fa-solid fa-eye">Ojo</option>
+                                <option value="fa-solid fa-phone">Teléfono</option>
+                                <option value="fa-solid fa-bolt">Rayo</option>
+                                <option value="fa-solid fa-car">Auto</option>
+                                <option value="fa-solid fa-gift">Regalo</option>
+                                <option value="fa-solid fa-pen">Lápiz</option>
+                                <option value="fa-solid fa-book">Libro</option>
+                                <option value="fa-solid fa-gears">Engranajes</option>
+                                <option value="fa-solid fa-ghost">Fantasma</option>
+                                <option value="fa-solid fa-cloud">Nube</option>
+                                <option value="fa-solid fa-business-time">Negocios</option>
+                                <option value="fa-solid fa-clock">Reloj</option>
+                                <option value="fa-solid fa-message">Mensaje</option>
+                                <option value="fa-solid fa-hand-holding-dollar">Pago</option>
+                                <option value="fa-solid fa-map-location">Mapa</option>
+                                <option value="fa-solid fa-heart">Corazón</option>
+                                <option value="fa-solid fa-star">Estrella</option>
+                                <option value="custom">Otro...</option>
                             </select>
-                            <input type="text" id="task-icon-custom" placeholder="fa-solid fa-briefcase"
+                            <input type="text" id="task-icon-custom" placeholder="fa-solid fa-..."
                                 style="display: none; margin-top: 5px;">
                         </div>
                     </div>
                     <div class="form-group">
-                        <label>Configuración Pomodoro</label>
+                        <label>Pomodoro</label>
                         <div class="pomodoro-settings">
                             <div class="setting-item">
                                 <label>Ciclos</label>
                                 <input type="number" id="pomo-cycles" value="1" min="1" max="10">
                             </div>
                             <div class="setting-item">
-                                <label>Trabajo (min)</label>
+                                <label>Trabajo</label>
                                 <input type="number" id="pomo-work" value="25" min="1">
                             </div>
                             <div class="setting-item">
-                                <label>Descanso (min)</label>
+                                <label>Descanso</label>
                                 <input type="number" id="pomo-break" value="5" min="1">
                             </div>
                         </div>
@@ -195,7 +238,6 @@
         </div>
     </div>
 
-    <!-- Script principal (no es module, para que sea global) -->
     <script src="script.js"></script>
 </body>
 
