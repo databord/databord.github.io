@@ -126,7 +126,10 @@ window.addTaskToFirebase = async (taskObj) => {
             title: taskObj.title,
             desc: taskObj.desc || "",
             date: taskObj.date || "",
+            endDate: taskObj.endDate || "",
             priority: taskObj.priority || "medium",
+            recurrence: taskObj.recurrence || "none",
+            recurrenceDays: taskObj.recurrenceDays || [],
             parentId: taskObj.parentId || "",
             category: taskObj.category || "General",
             icon: taskObj.icon || "",
@@ -134,6 +137,7 @@ window.addTaskToFirebase = async (taskObj) => {
             status: taskObj.status || "pending",
             pomodoros: taskObj.pomodoros || 0,
             completed: taskObj.status === 'completed',
+            order: taskObj.order || Date.now(), // Default order to end
             createdAt: new Date().toISOString()
         };
         await addDoc(collection(db, TASK_COLLECTION), dataToSave);

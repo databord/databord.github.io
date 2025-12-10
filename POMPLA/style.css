@@ -44,6 +44,10 @@ body {
     display: flex;
     flex-direction: column;
     gap: 20px;
+    height: 100%;
+    /* Ensure full height usage */
+    overflow: hidden;
+    /* Prevent sidebar itself from scrolling */
 }
 
 .sidebar-header {
@@ -94,7 +98,43 @@ body {
 }
 
 .filter-btn.active,
-.filter-btn:hover {
+.filter-btn:hover,
+#btn-tags-filter.active {
+    background-color: var(--accent-color);
+    color: white;
+    border-color: var(--accent-color);
+}
+
+.tags-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 10px;
+    background-color: rgba(0, 0, 0, 0.2);
+    border-bottom: 1px solid var(--glass-border);
+}
+
+.tags-container.hidden {
+    display: none;
+}
+
+.hidden {
+    display: none !important;
+}
+
+.tag-chip {
+    font-size: 0.75rem;
+    padding: 4px 10px;
+    border-radius: 12px;
+    background-color: rgba(255, 255, 255, 0.05);
+    color: var(--text-secondary);
+    border: 1px solid var(--glass-border);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.tag-chip:hover,
+.tag-chip.active {
     background-color: var(--accent-color);
     color: white;
     border-color: var(--accent-color);
@@ -103,9 +143,16 @@ body {
 .task-list-container {
     flex: 1;
     overflow-y: auto;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
+    /* Enable scroll */
+    min-height: 0;
+    /* Crucial for flex scrolling of parents */
+    padding-right: 5px;
+    /* Space for scrollbar */
+    padding-bottom: 200px;
+    /* Safe buffer */
+
+    /* Switch to block to avoid flex-scroll issues */
+    display: block;
 }
 
 /* Task Item */
@@ -119,6 +166,9 @@ body {
     cursor: grab;
     transition: transform 0.2s, box-shadow 0.2s;
     border-left: 4px solid transparent;
+
+    /* Add margin since we removed flex gap */
+    margin-bottom: 10px;
 }
 
 .task-item:active {
@@ -329,6 +379,27 @@ body {
 }
 
 /* Pomodoro Widget */
+.btn-icon-sm {
+    background-color: var(--card-bg);
+    color: var(--text-secondary);
+    border: 1px solid var(--glass-border);
+    width: 25px;
+    height: 25px;
+    border-radius: 50%;
+    font-size: 0.8rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.btn-icon-sm:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: var(--text-primary);
+    border-color: var(--text-secondary);
+}
+
 .pomodoro-widget-mini {
     background-color: var(--card-bg);
     padding: 8px 16px;
@@ -352,7 +423,9 @@ body {
     display: flex;
     flex-direction: column;
     gap: 15px;
-    z-index: 100;
+    z-index: 1000;
+    overflow: hidden;
+    /* Ensure only inner list scrolls */
 }
 
 .pomodoro-header {
@@ -595,20 +668,49 @@ body {
 
 /* Scrollbar */
 ::-webkit-scrollbar {
-    width: 8px;
+    width: 10px;
 }
 
 ::-webkit-scrollbar-track {
-    background: transparent;
+    background: rgba(255, 255, 255, 0.02);
 }
 
 ::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.2);
     border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.3);
+}
+
+.subtask-container.hidden {
+    display: none;
+}
+
+.btn-toggle-subtasks {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 0.8rem;
+    margin-right: 5px;
+    transition: transform 0.2s;
+    width: 20px;
+    height: 20px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+}
+
+.btn-toggle-subtasks:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: var(--text-primary);
+}
+
+.btn-toggle-subtasks.rotate {
+    transform: rotate(-90deg);
 }
 
 .btn-adjust {
@@ -625,6 +727,28 @@ body {
 .btn-adjust:hover {
     background-color: var(--accent-color);
     border-color: var(--accent-color);
+}
+
+.btn-adjust-mini {
+    background-color: var(--card-bg);
+    color: var(--text-secondary);
+    border: 1px solid var(--glass-border);
+    width: 25px;
+    height: 25px;
+    border-radius: 50%;
+    font-size: 0.75rem;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    padding: 0;
+}
+
+.btn-adjust-mini:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: var(--text-primary);
+    border-color: var(--text-secondary);
 }
 
 /* Custom Select for Icons */
@@ -743,4 +867,360 @@ body {
 
 .custom-select.open .custom-select-arrow::after {
     transform: rotate(-45deg);
+}
+
+/* Task Category Badge */
+.task-category-badge {
+    display: inline-block;
+    background-color: rgba(255, 255, 255, 0.1);
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    padding: 2px 8px;
+    font-size: 0.7rem;
+    margin-left: 6px;
+    color: var(--text-secondary);
+    vertical-align: middle;
+}
+
+/* Smaller Subtasks */
+.subtask-container .task-item {
+    padding: 8px 12px;
+    margin-bottom: 6px;
+}
+
+.subtask-container .task-item .task-title {
+    font-size: 0.9rem;
+}
+
+.subtask-container .task-item .task-meta {
+    font-size: 0.75rem;
+}
+
+/* Parent Indicator for Orphaned Subtasks in Filter */
+.parent-indicator {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    margin-bottom: 2px;
+    margin-left: 4px;
+    font-style: italic;
+}
+
+/* Custom Recurrence Days Styles */
+.days-checkbox-group {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    background-color: rgba(0, 0, 0, 0.2);
+    padding: 8px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--glass-border);
+}
+
+.day-check {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    cursor: pointer;
+    background: rgba(255, 255, 255, 0.05);
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: all 0.2s;
+}
+
+.day-check:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.day-check input {
+    accent-color: var(--accent-color);
+}
+
+/* Recurrence Text in Task Card */
+.task-recurrence-text {
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    margin-top: 4px;
+    font-style: italic;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+/* Fixes for Visibility and Scrolling */
+.hidden {
+    display: none !important;
+}
+
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+    width: 12px;
+    /* Wider scrollbar */
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--glass-border);
+    border-radius: 6px;
+    border: 3px solid var(--bg-color);
+    /* Creates padding effect */
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--accent-color);
+}
+
+.modal-body {
+    max-height: 70vh;
+    overflow-y: auto;
+}
+
+/* Helper to ensure bottom Tasks are visible */
+.task-list-container {
+    padding-bottom: 50vh !important;
+    /* Force massive bottom space (50% of screen) to prevent cutoff */
+}
+
+#user-display {
+    background-color: var(--sidebar-bg);
+    /* Ensure opaque */
+    z-index: 20;
+    flex-shrink: 0;
+    /* Prevent shrinking */
+}
+
+/* Mobile Responsiveness */
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+    .app-container {
+        display: block;
+        /* No grid on mobile, visibility handled by JS */
+        height: 100vh;
+        overflow: hidden;
+        padding-bottom: 60px;
+        /* Space for Bottom Nav */
+        padding-top: 50px;
+        /* Space for Mini Timer (Always visible) */
+    }
+
+    /* 1. VIEW VISIBILITY LOGIC (Strict Separation) */
+    .sidebar {
+        display: none;
+        /* Hidden by default */
+        width: 100%;
+        height: 100%;
+        border: none;
+        padding: 10px;
+        padding-bottom: 80px;
+        background-color: var(--bg-color);
+        z-index: 10;
+        position: relative;
+    }
+
+    .main-content {
+        display: none;
+        /* Hidden by default */
+        height: 100%;
+        padding: 15px;
+        overflow-y: auto;
+        padding-bottom: 150px;
+        /* Ample space for bottom nav + scroll clearance */
+    }
+
+    /* Tab Switch Logic */
+    body.tab-list .main-content {
+        display: flex;
+        /* Show Main Content */
+        flex-direction: column;
+    }
+
+    body.tab-list .sidebar {
+        display: none !important;
+    }
+
+    body.tab-calendar .main-content {
+        display: flex;
+        /* Show Main Content */
+        flex-direction: column;
+    }
+
+    body.tab-calendar .sidebar {
+        display: none !important;
+    }
+
+    body.tab-timer .sidebar {
+        display: flex;
+        /* Show Sidebar (Timer) */
+        flex-direction: column;
+    }
+
+    body.tab-timer .main-content {
+        display: none !important;
+    }
+
+    /* In Timer Tab: Hide unnecessary sidebar elements */
+    body.tab-timer .sidebar .sidebar-header,
+    body.tab-timer .sidebar .task-filters,
+    body.tab-timer .sidebar .tags-container {
+        display: none;
+    }
+
+    /* 2. BOTTOM NAVIGATION */
+    .mobile-bottom-nav {
+        display: flex;
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        height: 60px;
+        background-color: var(--sidebar-bg);
+        border-top: 1px solid var(--glass-border);
+        justify-content: space-around;
+        align-items: center;
+        z-index: 1000;
+    }
+
+    .nav-item {
+        background: none;
+        border: none;
+        color: var(--text-secondary);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+        font-size: 0.8rem;
+        cursor: pointer;
+    }
+
+    .nav-item i {
+        font-size: 1.2rem;
+    }
+
+    .nav-item.active {
+        color: var(--accent-color);
+    }
+
+    /* 3. MINI TIMER BAR (Always Visible) */
+    .mobile-mini-timer {
+        display: flex;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 50px;
+        background-color: var(--card-bg);
+        border-bottom: 1px solid var(--accent-color);
+        z-index: 2000;
+        justify-content: center;
+        align-items: center;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+    }
+
+    /* Update adjust buttons style */
+    .btn-adjust-mini {
+        background: rgba(255, 255, 255, 0.1);
+        border: 1px solid var(--glass-border);
+        color: var(--text-primary);
+        font-size: 0.75rem;
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 2px;
+    }
+
+    .btn-mini-control {
+        background: rgba(255, 255, 255, 0.1);
+        border: 1px solid var(--glass-border);
+        color: var(--text-primary);
+        font-size: 0.75rem;
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 2px;
+    }
+
+    .mini-timer-content {
+        display: flex;
+        align-items: center;
+        width: 100%;
+        justify-content: center;
+        gap: 5px;
+    }
+
+    .mobile-mini-timer.hidden {
+        display: flex !important;
+        /* Force visible on mobile */
+    }
+
+    /* 4. MODAL FULL SCREEN */
+    .modal-content {
+        width: 100%;
+        height: 100%;
+        max-height: 100vh;
+        border-radius: 0;
+        display: flex;
+        flex-direction: column;
+        padding: 0;
+    }
+
+    .modal-header {
+        padding: 20px;
+    }
+
+    .modal-body {
+        flex: 1;
+        padding: 20px;
+        max-height: none;
+    }
+
+    /* 5. HIDE FLOATING POMODORO ON MOBILE */
+    #pomodoro-panel {
+        display: none !important;
+    }
+
+    /* Filters in Header on Mobile */
+    .header-filters-section {
+        margin-top: 10px;
+        margin-bottom: 5px;
+        width: 100%;
+    }
+
+    /* Ensure scrollbar is visible on mobile too */
+    .main-content::-webkit-scrollbar,
+    .sidebar::-webkit-scrollbar {
+        width: 8px;
+    }
+}
+
+
+/* New Desktop Styles for Header Filters */
+.header-filters-section {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    margin: 0 15px;
+}
+
+/* Responsive adjustment for Top Bar with Filters */
+.top-bar {
+    flex-wrap: wrap;
+    height: auto;
+    padding: 10px 0;
+}
+
+.calendar-nav {
+    flex-wrap: wrap;
+    gap: 10px;
 }

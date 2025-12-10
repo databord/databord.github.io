@@ -17,6 +17,40 @@
 </head>
 
 <body>
+    <!-- MOBILE MINI TIMER (Top Bar) -->
+    <!-- MOBILE MINI TIMER (Top Bar) -->
+    <div id="mobile-mini-timer" class="mobile-mini-timer hidden">
+        <div class="mini-timer-content">
+            <div id="mini-task-name-mobile"
+                style="width: 100%; text-align: center; font-size: 0.8rem; margin-bottom: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: none;">
+            </div>
+            <div style="display: flex; align-items: center; justify-content: center;">
+                <button class="btn-adjust-mini" data-time="-5">-5</button>
+                <button class="btn-adjust-mini" data-time="-1">-1</button>
+
+                <button id="mini-prev-cycle" class="btn-adjust-mini" title="Ciclo Anterior" style="margin-left: 5px;"><i
+                        class="fa-solid fa-backward-step"></i></button>
+
+                <button id="mini-timer-toggle" class="icon-btn-circle" style="margin: 0 5px;">
+                    <i class="fa-solid fa-play"></i>
+                </button>
+                <span id="mini-timer-time" style="font-weight: 700; font-size: 1.1rem; margin: 0 5px;">25:00</span>
+
+                <button id="mini-next-cycle" class="btn-adjust-mini" title="Ciclo Siguiente"
+                    style="margin-right: 5px;"><i class="fa-solid fa-forward-step"></i></button>
+
+                <button class="btn-adjust-mini" data-time="1">+1</button>
+                <button class="btn-adjust-mini" data-time="5">+5</button>
+
+                <!-- New Expand Button for Desktop -->
+                <button id="mini-expand-btn" class="btn-mini-control" style="margin-left:10px;"
+                    title="Abrir Panel Completo">
+                    <i class="fa-solid fa-expand"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- PANTALLA DE LOGIN (Se muestra si no hay usuario) -->
     <div id="auth-screen" class="modal-overlay active" style="background-color: var(--bg-color); z-index: 2000;">
         <div class="modal-content" style="max-width: 350px; text-align: center;">
@@ -68,6 +102,11 @@
                 <button class="filter-btn active" data-filter="all">Todas</button>
                 <button class="filter-btn" data-filter="today">Hoy</button>
                 <button class="filter-btn" data-filter="high">Alta</button>
+                <button class="filter-btn" id="btn-tags-filter">Etiquetas</button>
+            </div>
+
+            <div id="category-tags-container" class="tags-container hidden">
+                <!-- Tags injected by JS -->
             </div>
 
             <div class="task-list-container" id="task-list">
@@ -99,8 +138,28 @@
                 </div>
                 <div class="user-profile">
                     <div class="pomodoro-widget-mini" id="pomodoro-mini">
+                        <span id="mini-task-name-desktop"
+                            style="font-size: 0.8rem; margin-right: 10px; max-width: 150px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; display: none;"></span>
+
+                        <button class="btn-adjust-mini" data-time="-5" style="margin-right:2px;">-5</button>
+                        <button class="btn-adjust-mini" data-time="-1" style="margin-right:5px;">-1</button>
+
+                        <button id="desk-mini-prev-cycle" class="btn-icon-sm" title="Ciclo Anterior"
+                            style="margin-right:5px;"><i class="fa-solid fa-backward-step"></i></button>
                         <span id="mini-timer">25:00</span>
-                        <button id="mini-play-btn"><i class="fa-solid fa-play"></i></button>
+                        <button id="desk-mini-next-cycle" class="btn-icon-sm" title="Ciclo Siguiente"
+                            style="margin-left:5px;"><i class="fa-solid fa-forward-step"></i></button>
+
+                        <button class="btn-adjust-mini" data-time="1" style="margin-left:5px;">+1</button>
+                        <button class="btn-adjust-mini" data-time="5" style="margin-left:2px;">+5</button>
+
+                        <button id="mini-play-btn" class="btn-icon-sm" style=" margin-left: 10px;"><i
+                                class="fa-solid fa-play"></i></button>
+
+                        <button id="desk-mini-expand-btn" class="btn-icon-sm" style="margin-left: 5px;"
+                            title="Abrir Panel Completo">
+                            <i class="fa-solid fa-expand"></i>
+                        </button>
                     </div>
                 </div>
             </header>
@@ -117,16 +176,23 @@
                 <h3>Pomodoro</h3>
                 <button id="close-pomodoro" class="icon-btn"><i class="fa-solid fa-xmark"></i></button>
             </div>
-            <div class="timer-display">
+            <div class="timer-display" style="flex-direction: column; gap: 5px;">
                 <svg class="progress-ring" width="120" height="120">
                     <circle class="progress-ring__circle" stroke="white" stroke-width="4" fill="transparent" r="52"
                         cx="60" cy="60" />
                 </svg>
                 <span id="main-timer">25:00</span>
+                <div id="cycle-display"
+                    style="position: absolute; bottom: 25px; font-size: 0.75rem; color: var(--text-secondary);">Ciclo
+                    1/1</div>
             </div>
-            <div class="timer-controls">
+            <div class="timer-controls" style="align-items: center;">
+                <button id="prev-cycle" class="icon-btn" style="font-size: 1rem;"><i
+                        class="fa-solid fa-backward-step"></i></button>
                 <button id="pomodoro-start" class="btn-icon-lg"><i class="fa-solid fa-play"></i></button>
                 <button id="pomodoro-reset" class="btn-icon-lg"><i class="fa-solid fa-rotate-right"></i></button>
+                <button id="next-cycle" class="icon-btn" style="font-size: 1rem;"><i
+                        class="fa-solid fa-forward-step"></i></button>
             </div>
             <div class="timer-adjustments" style="margin-top: 15px; display: flex; gap: 10px; justify-content: center;">
                 <button class="btn-adjust" data-time="-5">-5m</button>
@@ -160,9 +226,15 @@
                     </div>
                     <div class="form-row">
                         <div class="form-group">
-                            <label for="task-date">Fecha</label>
+                            <label for="task-date">Fecha Inicio</label>
                             <input type="date" id="task-date">
                         </div>
+                        <div class="form-group">
+                            <label for="task-end-date">Fecha Fin (Opcional)</label>
+                            <input type="date" id="task-end-date">
+                        </div>
+                    </div>
+                    <div class="form-row">
                         <div class="form-group">
                             <label for="task-priority">Prioridad</label>
                             <select id="task-priority">
@@ -170,6 +242,30 @@
                                 <option value="medium" selected>Media</option>
                                 <option value="high">Alta</option>
                             </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="task-recurrence">Repetición</label>
+                            <select id="task-recurrence">
+                                <option value="none">No se repite</option>
+                                <option value="daily">Diariamente</option>
+                                <option value="weekly">Semanalmente</option>
+                                <option value="monthly">Mensualmente</option>
+                                <option value="custom">Personalizado</option>
+                            </select>
+                        </div>
+                    </div>
+                    <!-- Contenedor para días personalizados (oculto por defecto) -->
+                    <div id="recurrence-days-container" class="form-group hidden"
+                        style="margin-top:-10px; margin-bottom:15px;">
+                        <label>Seleccionar días:</label>
+                        <div class="days-checkbox-group">
+                            <label class="day-check"><input type="checkbox" value="0"> Dom</label>
+                            <label class="day-check"><input type="checkbox" value="1"> Lun</label>
+                            <label class="day-check"><input type="checkbox" value="2"> Mar</label>
+                            <label class="day-check"><input type="checkbox" value="3"> Mié</label>
+                            <label class="day-check"><input type="checkbox" value="4"> Jue</label>
+                            <label class="day-check"><input type="checkbox" value="5"> Vie</label>
+                            <label class="day-check"><input type="checkbox" value="6"> Sáb</label>
                         </div>
                     </div>
                     <div class="form-group">
@@ -237,6 +333,22 @@
             </div>
         </div>
     </div>
+
+    <!-- MOBILE BOTTOM NAVIGATION -->
+    <nav class="mobile-bottom-nav">
+        <button class="nav-item active" data-tab="list" onclick="switchMobileTab('list')">
+            <i class="fa-solid fa-list-check"></i>
+            <span>Lista</span>
+        </button>
+        <button class="nav-item" data-tab="calendar" onclick="switchMobileTab('calendar')">
+            <i class="fa-regular fa-calendar"></i>
+            <span>Calendario</span>
+        </button>
+        <button class="nav-item" data-tab="timer" onclick="switchMobileTab('timer')">
+            <i class="fa-solid fa-clock"></i>
+            <span>Pomodoro</span>
+        </button>
+    </nav>
 
     <script src="script.js"></script>
 </body>
