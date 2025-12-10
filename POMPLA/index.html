@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Planner Pro</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- IMPORTANTE: Firebase Logic debe ser tipo 'module' -->
+    <script type="module" src="firebase-logic.js"></script>
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Sidebar: Task List -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h1>Mis Tareas</h1>
+                <button id="add-task-btn" class="btn-primary"><i class="fa-solid fa-plus"></i> Nueva</button>
+            </div>
+
+            <div class="task-filters">
+                <button class="filter-btn active" data-filter="all">Todas</button>
+                <button class="filter-btn" data-filter="today">Hoy</button>
+                <button class="filter-btn" data-filter="high">Alta Prioridad</button>
+            </div>
+
+            <div class="task-list-container" id="task-list">
+                <!-- Tasks will be injected here -->
+                <div class="empty-state">Cargando tareas...</div>
+            </div>
+        </aside>
+
+        <!-- Main Content: Calendar -->
+        <main class="main-content">
+            <header class="top-bar">
+                <div class="calendar-nav">
+                    <div class="view-toggles">
+                        <button id="view-calendar" class="view-btn active"><i class="fa-solid fa-calendar"></i></button>
+                        <button id="view-list" class="view-btn"><i class="fa-solid fa-list"></i></button>
+                    </div>
+                    <div class="month-nav-controls">
+                        <button id="prev-month" class="icon-btn"><i class="fa-solid fa-chevron-left"></i></button>
+                        <h2 id="current-month-year">Diciembre 2025</h2>
+                        <button id="next-month" class="icon-btn"><i class="fa-solid fa-chevron-right"></i></button>
+                    </div>
+                </div>
+                <div class="user-profile">
+                    <div class="pomodoro-widget-mini" id="pomodoro-mini">
+                        <span id="mini-timer">25:00</span>
+                        <button id="mini-play-btn"><i class="fa-solid fa-play"></i></button>
+                    </div>
+                </div>
+            </header>
+
+            <div class="calendar-grid" id="calendar-grid">
+                <!-- Calendar days will be injected here -->
+            </div>
+            <div class="list-view" id="list-view" style="display: none;">
+                <!-- List view will be injected here -->
+            </div>
+        </main>
+
+        <audio id="timer-sound" src="data/rec/ring.ogg"></audio>
+
+        <!-- Floating Pomodoro Panel -->
+        <div class="pomodoro-panel" id="pomodoro-panel">
+            <div class="pomodoro-header">
+                <h3>Pomodoro</h3>
+                <button id="close-pomodoro" class="icon-btn"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="timer-display">
+                <svg class="progress-ring" width="120" height="120">
+                    <circle class="progress-ring__circle" stroke="white" stroke-width="4" fill="transparent" r="52"
+                        cx="60" cy="60" />
+                </svg>
+                <span id="main-timer">25:00</span>
+            </div>
+            <div class="timer-controls">
+                <button id="pomodoro-start" class="btn-icon-lg"><i class="fa-solid fa-play"></i></button>
+                <button id="pomodoro-reset" class="btn-icon-lg"><i class="fa-solid fa-rotate-right"></i></button>
+            </div>
+            <div class="timer-adjustments" style="margin-top: 15px; display: flex; gap: 10px; justify-content: center;">
+                <button class="btn-adjust" data-time="-5">-5m</button>
+                <button class="btn-adjust" data-time="-1">-1m</button>
+                <button class="btn-adjust" data-time="1">+1m</button>
+                <button class="btn-adjust" data-time="5">+5m</button>
+            </div>
+            <div class="current-task-display">
+                <p>Trabajando en:</p>
+                <span id="active-task-name">Selecciona una tarea</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for Adding/Editing Tasks -->
+    <div class="modal-overlay" id="task-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modal-title">Nueva Tarea</h3>
+                <button id="close-modal" class="icon-btn"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body">
+                <form id="task-form">
+                    <div class="form-group">
+                        <label for="task-title">Título</label>
+                        <input type="text" id="task-title" required placeholder="¿Qué necesitas hacer?">
+                    </div>
+                    <div class="form-group">
+                        <label for="task-desc">Descripción (Opcional)</label>
+                        <textarea id="task-desc" rows="3"></textarea>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="task-date">Fecha</label>
+                            <input type="date" id="task-date">
+                        </div>
+                        <div class="form-group">
+                            <label for="task-priority">Prioridad</label>
+                            <select id="task-priority">
+                                <option value="low">Baja</option>
+                                <option value="medium" selected>Media</option>
+                                <option value="high">Alta</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="task-parent">Subtarea de (Opcional)</label>
+                        <select id="task-parent">
+                            <option value="">Ninguna (Tarea Principal)</option>
+                            <!-- Parent tasks will be populated here -->
+                        </select>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="task-category">Categoría</label>
+                            <input type="text" id="task-category" placeholder="Ej. Trabajo, Casa">
+                        </div>
+                        <div class="form-group">
+                            <label for="task-icon">Ícono (FontAwesome)</label>
+                            <select id="task-icon-select">
+                                <option value="">Seleccionar ícono...</option>
+                                <option value="fa-solid fa-house">Casa (House)</option>
+                                <option value="fa-solid fa-truck">Camión (Truck)</option>
+                                <option value="fa-solid fa-eye">Ojo (Eye)</option>
+                                <option value="fa-solid fa-phone">Teléfono (Phone)</option>
+                                <option value="fa-solid fa-bolt">Rayo (Bolt)</option>
+                                <option value="fa-solid fa-car">Auto (Car)</option>
+                                <option value="fa-solid fa-gift">Regalo (Gift)</option>
+                                <option value="fa-solid fa-pen">Lápiz (Pen)</option>
+                                <option value="fa-solid fa-book">Libro (Book)</option>
+                                <option value="fa-solid fa-gears">Engranajes (Gears)</option>
+                                <option value="fa-solid fa-ghost">Fantasma (Ghost)</option>
+                                <option value="fa-solid fa-cloud">Nube (Cloud)</option>
+                                <option value="fa-solid fa-business-time">Tiempo Negocios</option>
+                                <option value="fa-solid fa-clock">Reloj (Clock)</option>
+                                <option value="fa-solid fa-message">Mensaje (Message)</option>
+                                <option value="fa-solid fa-hand-holding-dollar">Pago (Hand Dollar)</option>
+                                <option value="fa-solid fa-map-location">Mapa (Map Location)</option>
+                                <option value="fa-solid fa-hand-middle-finger">Dedo Medio</option>
+                                <option value="custom">Agregar ícono...</option>
+                            </select>
+                            <input type="text" id="task-icon-custom" placeholder="fa-solid fa-briefcase"
+                                style="display: none; margin-top: 5px;">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Configuración Pomodoro</label>
+                        <div class="pomodoro-settings">
+                            <div class="setting-item">
+                                <label>Ciclos</label>
+                                <input type="number" id="pomo-cycles" value="1" min="1" max="10">
+                            </div>
+                            <div class="setting-item">
+                                <label>Trabajo (min)</label>
+                                <input type="number" id="pomo-work" value="25" min="1">
+                            </div>
+                            <div class="setting-item">
+                                <label>Descanso (min)</label>
+                                <input type="number" id="pomo-break" value="5" min="1">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn-secondary" id="cancel-task">Cancelar</button>
+                        <button type="submit" class="btn-primary">Guardar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Script principal (no es module, para que sea global) -->
+    <script src="script.js"></script>
+</body>
+
+</html>
