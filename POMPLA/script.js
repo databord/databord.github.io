@@ -7,6 +7,11 @@ let isTimerRunning = false;
 let activeTaskId = null;
 let currentView = 'calendar'; // 'calendar' or 'list'
 let pomodoroState = { cycle: 1, isBreak: false, totalCycles: 1, workTime: 25, breakTime: 5 };
+let dailyGoal = parseInt(localStorage.getItem('planner_daily_goal')) || 5;
+let confettiTriggeredToday = false;
+
+// Filtering State
+let activeFilters = { dateRange: 'today', tags: new Set(), status: 'all' }; // status: 'all' | 'completed'
 
 // DOM Elements & Icons
 const taskListEl = document.getElementById('task-list');
@@ -17,6 +22,7 @@ const modal = document.getElementById('task-modal');
 const taskForm = document.getElementById('task-form');
 const taskParentSelect = document.getElementById('task-parent');
 const timerSound = document.getElementById('timer-sound');
+const confettiCanvas = document.getElementById('confetti-canvas');
 
 const ICONS = {
     edit: '<i class="fa-solid fa-pen"></i>',
@@ -27,73 +33,279 @@ const ICONS = {
     chevronDown: '<i class="fa-solid fa-chevron-down"></i>'
 };
 
-const expandedTasks = new Set(); // Track expanded state of parent tasks
+const expandedTasks = new Set();
 
-// --- MOBILE TABS LOGIC ---
-window.switchMobileTab = function (tab) {
-    // Update Nav UI
-    document.querySelectorAll('.nav-item').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.tab === tab);
+// --- FILTERING LOGIC ---
+function applyFilters() {
+    // 1. Update UI Elements State (Desktop & Mobile Sync)
+    const dateSelect = document.getElementById('filter-date-range');
+    if (dateSelect) dateSelect.value = activeFilters.dateRange;
+
+    const mobileDateSelect = document.getElementById('mobile-filter-date-range');
+    if (mobileDateSelect) mobileDateSelect.value = activeFilters.dateRange;
+
+    // Tags (Updates class for chips in both containers)
+    document.querySelectorAll('.tag-chip').forEach(chip => {
+        if (activeFilters.tags.has(chip.textContent)) chip.classList.add('active');
+        else chip.classList.remove('active');
     });
 
-    // Update Body Classes for CSS
-    document.body.classList.remove('tab-list', 'tab-calendar', 'tab-timer');
-    document.body.classList.add(`tab-${tab}`);
-
-    // Action per tab
-    if (tab === 'list') {
-        switchView('list');
-        checkMiniTimerVisibility();
-    } else if (tab === 'calendar') {
-        switchView('calendar');
-        checkMiniTimerVisibility();
-    } else if (tab === 'timer') {
-        checkMiniTimerVisibility();
+    // Status Button Sync
+    const completedBtn = document.getElementById('filter-completed');
+    if (completedBtn) {
+        completedBtn.classList.toggle('active', activeFilters.status === 'completed');
     }
-};
-
-function checkMiniTimerVisibility() {
-    // Show mini timer only if Timer Interval is active AND NOT on Timer Tab
-    // ON MOBILE: User requested "Always Visible". CSS override handles this via media query.
-    // This function manages the class 'hidden' and 'has-mini-timer' for desktop behavior or non-mobile.
-
-    const isTimerTab = document.body.classList.contains('tab-timer');
-    const miniTimerEl = document.getElementById('mobile-mini-timer');
-
-    // Desktop/Default logic:
-    if (timerInterval && !isTimerTab) {
-        miniTimerEl.classList.remove('hidden');
-        document.body.classList.add('has-mini-timer');
-    } else {
-        miniTimerEl.classList.add('hidden');
-        document.body.classList.remove('has-mini-timer');
+    const mobileCompletedBtn = document.getElementById('mobile-filter-completed');
+    if (mobileCompletedBtn) {
+        mobileCompletedBtn.classList.toggle('active', activeFilters.status === 'completed');
     }
+
+    // 2. Determine Date Range
+    let start = null, end = null;
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    if (activeFilters.dateRange === 'today') {
+        start = new Date(today); end = new Date(today);
+    } else if (activeFilters.dateRange === 'yesterday') {
+        start = new Date(today); start.setDate(today.getDate() - 1);
+        end = new Date(start);
+    } else if (activeFilters.dateRange === 'tomorrow') {
+        start = new Date(today); start.setDate(today.getDate() + 1);
+        end = new Date(start);
+    } else if (activeFilters.dateRange === 'week') {
+        // Current week (Sunday to Saturday)
+        const day = today.getDay();
+        start = new Date(today); start.setDate(today.getDate() - day);
+        end = new Date(start); end.setDate(end.getDate() + 6);
+    } else if (activeFilters.dateRange === 'month') {
+        // "Este Mes": From TODAY to End of Month (User Request)
+        start = new Date(today);
+        end = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+    } else if (activeFilters.dateRange === 'last-month') {
+        start = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+        end = new Date(today.getFullYear(), today.getMonth(), 0);
+    }
+    // 'all' leaves start/end as null
+
+    // 3. Filter Tasks
+    const filteredTasks = tasks.filter(task => {
+        // Tag Filter (OR logic)
+        if (activeFilters.tags.size > 0) {
+            if (!task.category) return false;
+            const taskTags = task.category.split(',').map(t => t.trim());
+            if (![...activeFilters.tags].some(tag => taskTags.includes(tag))) return false;
+        }
+
+        // Status Filter
+        if (activeFilters.status === 'completed') {
+            if (task.status !== 'completed') return false;
+        }
+
+        // Date Filter
+        if (activeFilters.dateRange === 'all') return true;
+
+        // Optimizations
+        if (start.getTime() === end.getTime()) {
+            return isTaskOnDate(task, start);
+        } else {
+            // Range check
+            let d = new Date(start);
+            while (d <= end) {
+                if (isTaskOnDate(task, d)) return true;
+                d.setDate(d.getDate() + 1);
+            }
+            return false;
+        }
+    });
+
+    renderTasks(filteredTasks);
+    renderTasks(filteredTasks);
+    renderListView(activeFilters.dateRange, start, end);
+    if (currentView === 'timeline') renderTimeline(activeFilters.dateRange, start, end);
 }
 
 // --- MOBILE TABS LOGIC ---
 window.switchMobileTab = function (tab) {
-    // Update Nav UI
     document.querySelectorAll('.nav-item').forEach(btn => {
         btn.classList.toggle('active', btn.dataset.tab === tab);
     });
-
-    // Update Body Classes for CSS
     document.body.classList.remove('tab-list', 'tab-calendar', 'tab-timer');
     document.body.classList.add(`tab-${tab}`);
 
-    // Action per tab
-    if (tab === 'list') {
-        switchView('list');
-        checkMiniTimerVisibility();
-    } else if (tab === 'calendar') {
-        switchView('calendar');
-        checkMiniTimerVisibility();
-    } else if (tab === 'timer') {
-        checkMiniTimerVisibility();
-    }
+    if (tab === 'list') { switchView('list'); checkMiniTimerVisibility(); }
+    else if (tab === 'calendar') { switchView('calendar'); checkMiniTimerVisibility(); }
+    else if (tab === 'timeline') { switchView('timeline'); checkMiniTimerVisibility(); }
+    else if (tab === 'timer') { checkMiniTimerVisibility(); }
 };
 
-// --- VISIBILITY & UI LOGIC ---
+// --- DAILY GOAL LOGIC ---
+function updateDailyGoalUI() {
+    // MATCH FILTER LOGIC EXACTLY
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    // Helper: Check if task is valid for 'Today' (scheduled or recurring on today)
+    // Matches behavior of: activeFilters.dateRange === 'today'
+    const isToday = (t) => isTaskOnDate(t, today);
+
+    // Completed Today (Filter: Status=Completed AND Date=Today)
+    const completedTodayCount = tasks.filter(t =>
+        t.status === 'completed' && isToday(t)
+    ).length;
+
+    // Pending Today (Filter: Status!=Completed AND Date=Today)
+    const pendingTodayCount = tasks.filter(t =>
+        t.status !== 'completed' && isToday(t)
+    ).length;
+
+    // Total for Goal (Completed + Pending)
+    // Note: This means overdue tasks completed today will NOT count if their date wasn't moved.
+    // This matches the user request to follow the filter logic.
+    const totalToday = completedTodayCount + pendingTodayCount;
+
+    // Update Desktop Widget
+    const goalInput = document.getElementById('daily-goal-input');
+    if (goalInput) goalInput.value = dailyGoal;
+
+    const progressBar = document.getElementById('goal-progress-bar');
+    const percentage = dailyGoal > 0 ? Math.min(100, (completedTodayCount / dailyGoal) * 100) : 0;
+    if (progressBar) progressBar.style.width = `${percentage}%`;
+
+    const progressText = document.getElementById('goal-progress-text');
+    if (progressText) progressText.textContent = `${completedTodayCount}/${dailyGoal} completadas`;
+
+    const totalText = document.getElementById('today-total-text');
+    if (totalText) totalText.textContent = `${totalToday} total hoy`;
+
+    // Update Mobile Widget
+    const mobileProgress = document.getElementById('mobile-goal-progress');
+    if (mobileProgress) mobileProgress.textContent = `${completedTodayCount}/${dailyGoal}`;
+
+    const mobileBar = document.getElementById('mobile-goal-bar');
+    if (mobileBar) mobileBar.style.width = `${percentage}%`;
+
+    // Confetti Check
+    if (completedTodayCount >= dailyGoal && !confettiTriggeredToday && completedTodayCount > 0) {
+        triggerConfetti();
+        confettiTriggeredToday = true;
+    } else if (completedTodayCount < dailyGoal) {
+        confettiTriggeredToday = false; // Reset if user unchecks
+    }
+
+    // Pass the TODAY object to stats to ensure same reference
+    updateDailyStatsUI(totalToday, pendingTodayCount, today);
+}
+
+function updateDailyStatsUI(totalToday, pendingTodayCount, todayRef) {
+    // Use passed reference or fallback for robustness
+    const today = todayRef || new Date(new Date().setHours(0, 0, 0, 0));
+
+    // Pending Tasks Today breakdown
+    const pendingTasks = tasks.filter(t =>
+        t.status !== 'completed' && isTaskOnDate(t, today)
+    );
+
+    const highCount = pendingTasks.filter(t => t.priority === 'high').length;
+    const mediumCount = pendingTasks.filter(t => t.priority === 'medium').length;
+    const lowCount = pendingTasks.filter(t => t.priority === 'low').length;
+
+    // Avoid division by zero for pending percentages
+    const totalPending = pendingTasks.length;
+    const highPct = totalPending > 0 ? Math.round((highCount / totalPending) * 100) : 0;
+    const mediumPct = totalPending > 0 ? Math.round((mediumCount / totalPending) * 100) : 0;
+    const lowPct = totalPending > 0 ? Math.round((lowCount / totalPending) * 100) : 0;
+
+    // Completion Percentage
+    // completedCount is derived
+    const completedCount = totalToday - pendingTodayCount;
+    const completedPct = totalToday > 0 ? Math.round((completedCount / totalToday) * 100) : 0;
+
+    // Update Elements
+    const elTotal = document.getElementById('stats-total-today');
+    if (elTotal) elTotal.textContent = totalPending;
+
+    const elHigh = document.getElementById('stats-high');
+    if (elHigh) elHigh.textContent = `${highPct}%`;
+
+    const elMedium = document.getElementById('stats-medium');
+    if (elMedium) elMedium.textContent = `${mediumPct}%`;
+
+    const elLow = document.getElementById('stats-low');
+    if (elLow) elLow.textContent = `${lowPct}%`;
+
+    const elCompleted = document.getElementById('stats-completed-percent');
+    if (elCompleted) elCompleted.textContent = `${completedPct}%`;
+
+    // Only set quote if empty/loading
+    const elQuote = document.getElementById('stats-quote');
+    if (elQuote && elQuote.textContent.includes("Cargando")) {
+        if (typeof FRASES_MOTIVACIONALES !== 'undefined' && FRASES_MOTIVACIONALES.length > 0) {
+            const randomQuote = FRASES_MOTIVACIONALES[Math.floor(Math.random() * FRASES_MOTIVACIONALES.length)];
+            elQuote.textContent = `"${randomQuote}"`;
+        } else {
+            elQuote.textContent = "Haz que hoy cuente.";
+        }
+    }
+}
+
+function triggerConfetti() {
+    const canvas = document.getElementById('confetti-canvas');
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    const pieces = [];
+    const numberOfPieces = 150;
+    const colors = ['#f44336', '#e91e63', '#9c27b0', '#673ab7', '#3f51b5', '#2196f3', '#03a9f4', '#00bcd4', '#009688', '#4CAF50', '#8BC34A', '#CDDC39', '#FFEB3B', '#FFC107', '#FF9800', '#FF5722', '#795548'];
+
+    for (let i = 0; i < numberOfPieces; i++) {
+        pieces.push({
+            x: Math.random() * canvas.width,
+            y: Math.random() * canvas.height - canvas.height,
+            rotation: Math.random() * 360,
+            color: colors[Math.floor(Math.random() * colors.length)],
+            size: Math.random() * 10 + 5,
+            speed: Math.random() * 5 + 2,
+            opacity: 1
+        });
+    }
+
+    function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        pieces.forEach((p, i) => {
+            p.y += p.speed;
+            p.rotation += p.speed;
+
+            ctx.save();
+            ctx.translate(p.x, p.y);
+            ctx.rotate(p.rotation * Math.PI / 180);
+            ctx.fillStyle = p.color;
+            ctx.globalAlpha = p.opacity;
+            ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
+            ctx.restore();
+
+            if (p.y > canvas.height) {
+                p.y = -20;
+                p.x = Math.random() * canvas.width;
+            }
+        });
+    }
+
+    // Run animation for 3 seconds then stop
+    let startTime = Date.now();
+    function animate() {
+        if (Date.now() - startTime < 3000) {
+            draw();
+            requestAnimationFrame(animate);
+        } else {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+    }
+    animate();
+}
 
 function checkMiniTimerVisibility() {
     const miniTimerEl = document.getElementById('mobile-mini-timer');
@@ -102,25 +314,9 @@ function checkMiniTimerVisibility() {
     const isMobile = window.innerWidth <= 768;
 
     if (isMobile) {
-        // Mobile: Always visible if user wants (handled by CSS .hidden override usually, 
-        // but here we can support the logic too).
-        // Actually, CSS says .hidden { display: flex !important } on mobile.
-        // So this JS class toggle adds/removes 'hidden'.
-        // If we remove 'hidden', it shows on Desktop.
-        // If we add 'hidden', it HIDES on Desktop.
-
-        // On Mobile, we rely on CSS to force it visible if needed? 
-        // User asked: "Mobile minitimer appears on web version... Only should appear if float is closed".
-
-        // So for Desktop:
-        if (timerInterval && !isPanelVisible) {
-            miniTimerEl.classList.remove('hidden');
-        } else {
-            miniTimerEl.classList.add('hidden');
-        }
+        if (timerInterval && !isPanelVisible) miniTimerEl.classList.remove('hidden');
+        else miniTimerEl.classList.add('hidden');
     } else {
-        // Desktop Logic
-        // NEVER show mobile mini timer on desktop
         miniTimerEl.classList.add('hidden');
     }
 }
@@ -129,11 +325,9 @@ function togglePomodoroPanel(show) {
     const panel = document.getElementById('pomodoro-panel');
     if (show) {
         panel.style.display = 'flex';
-        // Hide mini timer immediately (as panel is open)
         checkMiniTimerVisibility();
     } else {
         panel.style.display = 'none';
-        // Show mini timer if running
         checkMiniTimerVisibility();
     }
 }
@@ -141,9 +335,7 @@ function togglePomodoroPanel(show) {
 window.addSubtask = (parentId) => {
     openModal();
     const parentSelect = document.getElementById('task-parent');
-    if (parentSelect) {
-        parentSelect.value = parentId;
-    }
+    if (parentSelect) parentSelect.value = parentId;
 };
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -151,123 +343,130 @@ document.addEventListener('DOMContentLoaded', () => {
     setupEventListeners();
     updateTimerDisplay();
     setupCustomSelect();
-    setupAuthListeners(); // Configurar botones de login/registro
+    setupAuthListeners();
 
     if (window.innerWidth <= 768) {
-        window.switchMobileTab('list'); // Default mobile tab
+        window.switchMobileTab('list');
     } else {
         document.body.classList.add('tab-list');
     }
+
+    // Initial Filter Apply
+    applyFilters();
+
+    // Daily Goals Setup
+    const goalInput = document.getElementById('daily-goal-input');
+    if (goalInput) {
+        goalInput.addEventListener('change', (e) => {
+            dailyGoal = parseInt(e.target.value) || 5;
+            localStorage.setItem('planner_daily_goal', dailyGoal);
+            updateDailyGoalUI();
+        });
+    }
 });
 
-// --- PUENTE CON FIREBASE ---
-// Esta función es llamada desde firebase-logic.js cuando hay datos nuevos
 window.recibirTareasDeFirebase = (tareasDescargadas) => {
-    // Ordenar por campo 'order' si existe, si no por fecha
     tasks = tareasDescargadas.sort((a, b) => {
         const orderA = a.order !== undefined ? a.order : Infinity;
         const orderB = b.order !== undefined ? b.order : Infinity;
         return orderA - orderB;
     });
 
-    // Renderizamos todo de nuevo con los datos frescos
-    // Renderizamos todo de nuevo con los datos frescos
-    renderTasks();
+    // Re-apply filters instead of raw render
     if (currentView === 'calendar') renderCalendar();
-    else renderListView();
+    applyFilters();
+
     updateParentSelect();
     renderCategoryTags();
+    updateParentSelect();
+    renderCategoryTags();
+    updateDailyGoalUI();
 };
 
 function renderCategoryTags() {
-    const container = document.getElementById('category-tags-container');
-    if (!container) return;
-    container.innerHTML = '';
+    // Desktop Container
+    const desktopContainer = document.getElementById('category-tags-container');
+    // Mobile Container
+    const mobileContainer = document.getElementById('mobile-category-tags-container');
 
-    // Extraer categorías únicas (excluyendo vacías) y separando por comas
     const categories = new Set();
     tasks.forEach(task => {
         if (task.category && task.category.trim() !== '') {
-            const tags = task.category.split(',').map(tag => tag.trim());
-            tags.forEach(tag => {
-                if (tag !== '') categories.add(tag);
+            task.category.split(',').forEach(tag => {
+                if (tag.trim() !== '') categories.add(tag.trim());
             });
         }
     });
 
-    if (categories.size === 0) {
-        container.innerHTML = '<span style="font-size:0.8rem;color:var(--text-secondary);">No hay etiquetas</span>';
-        return;
-    }
-
-    categories.forEach(cat => {
-        const chip = document.createElement('button');
-        chip.className = 'tag-chip';
-        chip.textContent = cat;
-        chip.addEventListener('click', () => {
-            // Toggle active state visual
-            document.querySelectorAll('.tag-chip').forEach(c => c.classList.remove('active'));
-            chip.classList.add('active');
-            renderTasks(`category:${cat}`);
+    // Helper to fill container
+    const fillContainer = (container) => {
+        if (!container) return;
+        container.innerHTML = '';
+        if (categories.size === 0) {
+            container.innerHTML = '<span style="font-size:0.8rem;color:var(--text-secondary);">No hay etiquetas</span>';
+            return;
+        }
+        categories.forEach(cat => {
+            const chip = document.createElement('button');
+            chip.className = 'tag-chip';
+            if (activeFilters.tags.has(cat)) chip.classList.add('active');
+            chip.textContent = cat;
+            chip.addEventListener('click', () => {
+                if (activeFilters.tags.has(cat)) activeFilters.tags.delete(cat);
+                else activeFilters.tags.add(cat);
+                applyFilters(); // Trigger update
+            });
+            container.appendChild(chip);
         });
-        container.appendChild(chip);
-    });
+    };
+
+    fillContainer(desktopContainer);
+    fillContainer(mobileContainer);
 }
 
-// --- NUEVA LÓGICA DE LOGIN/LOGOUT ---
 function setupAuthListeners() {
     const loginForm = document.getElementById('login-form');
+    // ... same as before
     const emailInput = document.getElementById('login-email');
     const passInput = document.getElementById('login-password');
     const errorMsg = document.getElementById('login-error');
     const btnRegister = document.getElementById('btn-register');
     const btnLogout = document.getElementById('logout-btn');
 
-    // Manejar Login
     if (loginForm) {
         loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             errorMsg.style.display = 'none';
-
             if (window.authLogin) {
                 const result = await window.authLogin(emailInput.value, passInput.value);
                 if (!result.success) {
                     errorMsg.textContent = result.message;
                     errorMsg.style.display = 'block';
                 } else {
-                    // Limpiar campos
-                    emailInput.value = '';
-                    passInput.value = '';
+                    emailInput.value = ''; passInput.value = '';
                 }
             }
         });
     }
-
-    // Manejar Registro
     if (btnRegister) {
         btnRegister.addEventListener('click', async () => {
             errorMsg.style.display = 'none';
             if (passInput.value.length < 6) {
-                errorMsg.textContent = "La contraseña debe tener al menos 6 caracteres para registrarse.";
-                errorMsg.style.display = 'block';
-                return;
+                errorMsg.textContent = "La contraseña debe tener al menos 6 caracteres.";
+                errorMsg.style.display = 'block'; return;
             }
-
             if (window.authRegister) {
                 const result = await window.authRegister(emailInput.value, passInput.value);
                 if (!result.success) {
                     errorMsg.textContent = result.message;
                     errorMsg.style.display = 'block';
                 } else {
-                    alert("Cuenta creada con éxito. Iniciando sesión...");
-                    emailInput.value = '';
-                    passInput.value = '';
+                    alert("Cuenta creada. Iniciando sesión...");
+                    emailInput.value = ''; passInput.value = '';
                 }
             }
         });
     }
-
-    // Manejar Logout
     if (btnLogout) {
         btnLogout.addEventListener('click', () => {
             if (confirm("¿Cerrar sesión?")) {
@@ -278,6 +477,7 @@ function setupAuthListeners() {
 }
 
 function setupCustomSelect() {
+    // ... exact copy of existing custom select logic ...
     const select = document.getElementById('task-icon-select');
     if (!select) return;
     const wrapper = document.createElement('div');
@@ -346,6 +546,7 @@ function setupEventListeners() {
 
     document.getElementById('view-calendar').addEventListener('click', () => switchView('calendar'));
     document.getElementById('view-list').addEventListener('click', () => switchView('list'));
+    document.getElementById('view-timeline').addEventListener('click', () => switchView('timeline'));
 
     document.getElementById('pomodoro-start').addEventListener('click', toggleTimer);
     document.getElementById('pomodoro-reset').addEventListener('click', resetTimer);
@@ -377,42 +578,23 @@ function setupEventListeners() {
         });
     }
 
-    // Event Listeners for Mini Timer Cycle Controls
+    // Mini Cycle Controls
     const miniPrev = document.getElementById('mini-prev-cycle');
     if (miniPrev) miniPrev.addEventListener('click', () => changeCycle(-1));
-
     const miniNext = document.getElementById('mini-next-cycle');
     if (miniNext) miniNext.addEventListener('click', () => changeCycle(1));
-
     const deskMiniPrev = document.getElementById('desk-mini-prev-cycle');
     if (deskMiniPrev) deskMiniPrev.addEventListener('click', () => changeCycle(-1));
-
     const deskMiniNext = document.getElementById('desk-mini-next-cycle');
     if (deskMiniNext) deskMiniNext.addEventListener('click', () => changeCycle(1));
 
     const deskMiniExpand = document.getElementById('desk-mini-expand-btn');
-    if (deskMiniExpand) {
-        deskMiniExpand.addEventListener('click', () => {
-            togglePomodoroPanel(true);
-        });
-    }
+    if (deskMiniExpand) deskMiniExpand.addEventListener('click', () => togglePomodoroPanel(true));
 
-
-    // Confirm Close Pomodoro
-    document.getElementById('close-pomodoro').addEventListener('click', () => {
-        // Just hide the panel, do not stop timer (Desktop behavior preference)
-        togglePomodoroPanel(false);
-    });
-
-    // Expand Button on Mini Timer
+    document.getElementById('close-pomodoro').addEventListener('click', () => togglePomodoroPanel(false));
     const expandBtn = document.getElementById('mini-expand-btn');
-    if (expandBtn) {
-        expandBtn.addEventListener('click', () => {
-            togglePomodoroPanel(true);
-        });
-    }
+    if (expandBtn) expandBtn.addEventListener('click', () => togglePomodoroPanel(true));
 
-    // LISTENER MINI TIMER TOGGLE
     const miniTimerToggle = document.getElementById('mini-timer-toggle');
     if (miniTimerToggle) {
         miniTimerToggle.addEventListener('click', () => {
@@ -421,10 +603,8 @@ function setupEventListeners() {
         });
     }
 
-    // LISTENER MINI TIMER ADJUST
     document.querySelectorAll('.btn-adjust-mini').forEach(btn => {
         btn.addEventListener('click', (e) => {
-            // Ensure we get the button element (in case click hits the icon)
             const target = e.target.closest('.btn-adjust-mini');
             if (target && target.dataset.time) {
                 const time = parseInt(target.dataset.time);
@@ -433,29 +613,84 @@ function setupEventListeners() {
         });
     });
 
+    // --- REPLACED FILTER BUTTONS LOGIC ---
 
-    document.querySelectorAll('.filter-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-            e.target.classList.add('active');
-            renderTasks(e.target.dataset.filter);
+    // 1. Date Range Dropdown
+    const dateRangeSelect = document.getElementById('filter-date-range');
+    if (dateRangeSelect) {
+        dateRangeSelect.addEventListener('change', (e) => {
+            activeFilters.dateRange = e.target.value;
+            applyFilters();
         });
-    });
+    }
 
-    taskListEl.addEventListener('dragover', handleDragOver);
-    taskListEl.addEventListener('drop', handleDrop);
+    // Mobile Date Range
+    const mobileDateRangeSelect = document.getElementById('mobile-filter-date-range');
+    if (mobileDateRangeSelect) {
+        mobileDateRangeSelect.addEventListener('change', (e) => {
+            activeFilters.dateRange = e.target.value;
+            applyFilters();
+        });
+    }
 
+    // 2. Todos / Reset Button
+    const resetBtn = document.getElementById('filter-reset');
+    if (resetBtn) {
+        resetBtn.addEventListener('click', () => {
+            activeFilters = { dateRange: 'today', tags: new Set(), status: 'all' };
+            applyFilters();
+        });
+    }
+
+    // Mobile Reset
+    const mobileResetBtn = document.getElementById('mobile-filter-reset');
+    if (mobileResetBtn) {
+        mobileResetBtn.addEventListener('click', () => {
+            activeFilters = { dateRange: 'today', tags: new Set(), status: 'all' };
+            applyFilters();
+        });
+    }
+
+    // 3. Completed Button
+    const completedBtn = document.getElementById('filter-completed');
+    if (completedBtn) {
+        completedBtn.addEventListener('click', () => {
+            if (activeFilters.status === 'completed') { activeFilters.status = 'all'; }
+            else { activeFilters.status = 'completed'; }
+            applyFilters();
+        });
+    }
+
+    // Mobile Completed
+    const mobileCompletedBtn = document.getElementById('mobile-filter-completed');
+    if (mobileCompletedBtn) {
+        mobileCompletedBtn.addEventListener('click', () => {
+            if (activeFilters.status === 'completed') { activeFilters.status = 'all'; }
+            else { activeFilters.status = 'completed'; }
+            applyFilters();
+        });
+    }
+
+    // Tags Toggle Button (Show/Hide Container)
     const btnTags = document.getElementById('btn-tags-filter');
     if (btnTags) {
         btnTags.addEventListener('click', () => {
             const container = document.getElementById('category-tags-container');
             container.classList.toggle('hidden');
             btnTags.classList.toggle('active');
-            renderCategoryTags();
         });
     }
 
-    // Listener for Recurrence Select
+    // Mobile Tags Toggle
+    const mobileBtnTags = document.getElementById('mobile-btn-tags-filter');
+    if (mobileBtnTags) {
+        mobileBtnTags.addEventListener('click', () => {
+            const container = document.getElementById('mobile-category-tags-container');
+            container.classList.toggle('hidden');
+            mobileBtnTags.classList.toggle('active');
+        });
+    }
+
     const recurrenceSelect = document.getElementById('task-recurrence');
     const recurrenceDaysContainer = document.getElementById('recurrence-days-container');
     if (recurrenceSelect && recurrenceDaysContainer) {
@@ -467,24 +702,66 @@ function setupEventListeners() {
             }
         });
     }
+
+    // Modal & Drag
+    document.getElementById('close-day-details').addEventListener('click', closeDayDetails);
+    document.getElementById('day-details-modal').addEventListener('click', (e) => {
+        if (e.target === document.getElementById('day-details-modal')) closeDayDetails();
+    });
+    taskListEl.addEventListener('dragover', handleDragOver);
+    taskListEl.addEventListener('drop', handleDrop);
+
+    // Daily Stats Toggle
+    const statsHeader = document.getElementById('stats-header');
+    const statsBody = document.getElementById('stats-body');
+    const statsChevron = document.getElementById('stats-chevron');
+    if (statsHeader && statsBody) {
+        statsHeader.addEventListener('click', () => {
+            if (statsBody.style.display === 'none') {
+                statsBody.style.display = 'block';
+                statsChevron.style.transform = 'rotate(180deg)';
+                localStorage.setItem('planner_stats_expanded', 'true');
+            } else {
+                statsBody.style.display = 'none';
+                statsChevron.style.transform = 'rotate(0deg)';
+                localStorage.setItem('planner_stats_expanded', 'false');
+            }
+        });
+
+        // Restore State
+        const isExpanded = localStorage.getItem('planner_stats_expanded') === 'true';
+        if (isExpanded) {
+            statsBody.style.display = 'block';
+            statsChevron.style.transform = 'rotate(180deg)';
+        }
+    }
 }
 
 function switchView(view) {
     currentView = view;
     document.getElementById('view-calendar').classList.toggle('active', view === 'calendar');
     document.getElementById('view-list').classList.toggle('active', view === 'list');
+    document.getElementById('view-timeline').classList.toggle('active', view === 'timeline');
     if (view === 'calendar') {
         calendarGridEl.style.display = 'grid';
         listViewEl.style.display = 'none';
+        document.getElementById('timeline-view').style.display = 'none';
         renderCalendar();
-    } else {
+    } else if (view === 'list') {
         calendarGridEl.style.display = 'none';
         listViewEl.style.display = 'flex';
-        renderListView();
+        document.getElementById('timeline-view').style.display = 'none';
+        applyFilters();
+    } else if (view === 'timeline') {
+        calendarGridEl.style.display = 'none';
+        listViewEl.style.display = 'none';
+        document.getElementById('timeline-view').style.display = 'block';
+        applyFilters(); // Apply filters calls renderTimeline via activeFilters check or manual call
     }
 }
 
 function openModal(editId = null) {
+    // ... Copy existing implementation ...
     modal.classList.add('active');
     updateParentSelect();
     if (editId) {
@@ -500,7 +777,6 @@ function openModal(editId = null) {
         const recurrenceDaysContainer = document.getElementById('recurrence-days-container');
         if (task.recurrence === 'custom') {
             recurrenceDaysContainer.classList.remove('hidden');
-            // Check boxes
             const checks = document.querySelectorAll('.days-checkbox-group input');
             checks.forEach(chk => {
                 chk.checked = (task.recurrenceDays || []).includes(parseInt(chk.value));
@@ -601,6 +877,10 @@ function handleTaskSubmit(e) {
 
     if (editId) { if (window.updateTaskInFirebase) window.updateTaskInFirebase(editId, taskData); }
     else { if (window.addTaskToFirebase) window.addTaskToFirebase(taskData); }
+
+    // Optimistic Update for immediate UI feedback (optional, but good)
+    // Actually receiving Firebase update will trigger UI refresh, but let's ensure goal checks happen
+    setTimeout(updateDailyGoalUI, 500); // Small delay to allow Firebase callback
     closeModal();
 }
 
@@ -609,173 +889,149 @@ function deleteTask(id) {
         if (window.deleteTaskFromFirebase) window.deleteTaskFromFirebase(id);
         const subtasks = tasks.filter(t => t.parentId === id);
         subtasks.forEach(sub => { if (window.deleteTaskFromFirebase) window.deleteTaskFromFirebase(sub.id); });
+        setTimeout(updateDailyGoalUI, 500);
     }
 }
 
 function calculateNextOccurrence(currentDateStr, recurrence, recurrenceDays) {
+    // ... default calc logic ...
     const date = new Date(currentDateStr + 'T00:00:00');
     let nextDate = new Date(date);
-
-    if (recurrence === 'daily') {
-        nextDate.setDate(date.getDate() + 1);
-    } else if (recurrence === 'weekly') {
-        nextDate.setDate(date.getDate() + 7);
-    } else if (recurrence === 'monthly') {
-        nextDate.setMonth(date.getMonth() + 1);
-    } else if (recurrence === 'custom') {
-        // days is array of 0-6 (Sun-Sat)
-        // Find next day in array that is after today (specifically, after the current scheduled date)
+    if (recurrence === 'daily') nextDate.setDate(date.getDate() + 1);
+    else if (recurrence === 'weekly') nextDate.setDate(date.getDate() + 7);
+    else if (recurrence === 'monthly') nextDate.setMonth(date.getMonth() + 1);
+    else if (recurrence === 'custom') {
         if (!recurrenceDays || recurrenceDays.length === 0) return null;
-
-        // Sort days just in case
         const sortedDays = [...recurrenceDays].sort((a, b) => a - b);
         const currentDay = date.getDay();
-
-        // Find first day > currentDay
         let nextDay = sortedDays.find(d => d > currentDay);
-
-        if (nextDay !== undefined) {
-            // Same week
-            nextDate.setDate(date.getDate() + (nextDay - currentDay));
-        } else {
-            // Next week, first available day
-            nextDay = sortedDays[0];
-            const daysUntilNextWeek = 7 - currentDay + nextDay;
-            nextDate.setDate(date.getDate() + daysUntilNextWeek);
-        }
+        if (nextDay !== undefined) { nextDate.setDate(date.getDate() + (nextDay - currentDay)); }
+        else { nextDay = sortedDays[0]; const daysUntilNextWeek = 7 - currentDay + nextDay; nextDate.setDate(date.getDate() + daysUntilNextWeek); }
     }
     return nextDate.toISOString().split('T')[0];
 }
 
+function isTaskOnDate(task, targetDateObj) {
+    if (!task.date) return false;
+    const taskStart = new Date(task.date + 'T00:00:00');
+    const targetStr = targetDateObj.toISOString().split('T')[0];
+    const taskEnd = task.endDate ? new Date(task.endDate + 'T00:00:00') : null;
+
+    if (task.recurrence === 'none' || !task.recurrence) {
+        if (taskEnd) return targetDateObj >= taskStart && targetDateObj <= taskEnd;
+        else return task.date === targetStr;
+    } else {
+        if (targetDateObj < taskStart) return false;
+        if (taskEnd && targetDateObj > taskEnd) return false;
+        if (task.recurrence === 'daily') return true;
+        if (task.recurrence === 'weekly') return targetDateObj.getDay() === taskStart.getDay();
+        if (task.recurrence === 'monthly') return targetDateObj.getDate() === taskStart.getDate();
+        if (task.recurrence === 'custom') return (task.recurrenceDays || []).includes(targetDateObj.getDay());
+    }
+    return false;
+}
+
+function openDayDetails(date) {
+    const modal = document.getElementById('day-details-modal');
+    const title = document.getElementById('day-details-title');
+    const body = document.getElementById('day-details-body');
+    const btnAdd = document.getElementById('btn-add-task-on-day');
+
+    const dateObj = new Date(date + 'T00:00:00');
+    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+    title.textContent = dateObj.toLocaleDateString('es-ES', options);
+    body.innerHTML = '';
+    const dayTasks = tasks.filter(t => isTaskOnDate(t, dateObj));
+
+    if (dayTasks.length === 0) {
+        body.innerHTML = '<p style="text-align:center; color:var(--text-secondary); margin-top:20px;">No hay tareas para este día.</p>';
+    } else {
+        dayTasks.forEach(task => {
+            const item = document.createElement('div');
+            item.className = 'task-item';
+            const taskEl = createTaskElement(task, false);
+            const toggle = taskEl.querySelector('.btn-toggle-subtasks');
+            if (toggle) toggle.style.visibility = 'hidden';
+            item.appendChild(taskEl);
+            body.appendChild(taskEl);
+        });
+    }
+
+    btnAdd.onclick = () => { closeDayDetails(); openModal(); document.getElementById('task-date').value = date; };
+    modal.classList.add('active');
+}
+
+function closeDayDetails() { document.getElementById('day-details-modal').classList.remove('active'); }
+
 function toggleTaskStatus(id) {
     const task = tasks.find(t => t.id === id);
     if (!task) return;
-
-    // Check if it's a recurring task being marked as Completed (pending -> completed)
     if (task.status !== 'completed' && task.recurrence && task.recurrence !== 'none') {
-        // Smart Recurrence Logic
-        // 1. Clone current task as "Completed History Item"
-        // 2. Reschedule original task to next occurrence
-
-        const historyTask = {
-            ...task,
-            id: null, // Create new ID
-            status: 'completed',
-            recurrence: 'none', // The history item doesn't repeat
-            parentId: task.parentId, // Keep hierarchy? Usually OK.
-            title: `${task.title} (Completado)`, // Optional visual cue or keep same
-            completedAt: new Date().toISOString()
-        };
-        // Remove id from object to ensure Firebase creates new
+        const historyTask = { ...task, id: null, status: 'completed', recurrence: 'none', completedAt: new Date().toISOString() };
         delete historyTask.id;
-
-        // Calculate Next Date
         const nextDateStr = calculateNextOccurrence(task.date, task.recurrence, task.recurrenceDays);
-
         if (nextDateStr) {
-            // Save History Item
             if (window.addTaskToFirebase) window.addTaskToFirebase(historyTask);
-
-            // Update Original Task
-            if (window.updateTaskInFirebase) {
-                window.updateTaskInFirebase(id, {
-                    date: nextDateStr,
-                    status: 'pending' // Ensure it stays pending for the future
-                });
-            }
+            if (window.updateTaskInFirebase) window.updateTaskInFirebase(id, { date: nextDateStr, status: 'pending' });
         } else {
-            // Fallback if calcs fail (e.g. invalid custom days), just complete it
-            if (window.updateTaskInFirebase) {
-                window.updateTaskInFirebase(id, { status: 'completed' });
-            }
+            if (window.updateTaskInFirebase) window.updateTaskInFirebase(id, { status: 'completed' });
         }
-
     } else {
-        // Normal behavior (completed -> pending OR non-recurring pending -> completed)
-        if (window.updateTaskInFirebase) {
-            window.updateTaskInFirebase(id, { status: task.status === 'completed' ? 'pending' : 'completed' });
-        }
+        if (window.updateTaskInFirebase) window.updateTaskInFirebase(id, { status: task.status === 'completed' ? 'pending' : 'completed', completedAt: task.status !== 'completed' ? new Date().toISOString() : null });
     }
+    // Note: We rely on the firebase callback to update global state and UI, but if we want instant feedback logic should be here.
+    // For now assuming firebase callback 'recibirTareasDeFirebase' handles the re-render.
 }
 
-function renderTasks(filter = 'all') {
+// UPDATED RENDER TASKS (Accepts pre-filtered list)
+function renderTasks(tasksToRender) {
     taskListEl.innerHTML = '';
 
-    // Función auxiliar para chequear etiquetas
-    const hasCategory = (task, catName) => {
-        if (!task.category) return false;
-        const tags = task.category.split(',').map(c => c.trim());
-        return tags.includes(catName);
-    };
+    // We only render what is in tasksToRender, but respecting hierarchy:
+    // 1. Group by Parents (if parent is in tasksToRender)
+    // 2. Orphans (if parent NOT in tasksToRender but subtask is)
 
-    let itemsRendering = []; // Array de { type: 'wrapper' | 'orphan', task: obj, children: [] }
+    const groups = [];
+    const processedIds = new Set();
+    const renderSet = new Set(tasksToRender.map(t => t.id));
 
-    if (filter.startsWith('category:')) {
-        const catName = filter.split(':')[1];
+    // 1. Find Parents in list
+    const parentsInList = tasksToRender.filter(t => !t.parentId);
+    parentsInList.forEach(p => {
+        // Collect children also in list
+        const children = tasksToRender.filter(t => t.parentId === p.id);
+        groups.push({ type: 'wrapper', parent: p, children: children });
+        processedIds.add(p.id);
+        children.forEach(c => processedIds.add(c.id));
+    });
 
-        const allParents = tasks.filter(t => !t.parentId);
-
-        allParents.forEach(parent => {
-            const parentMatches = hasCategory(parent, catName);
-            const allSubtasks = tasks.filter(t => t.parentId === parent.id);
-            const matchingSubtasks = allSubtasks.filter(sub => hasCategory(sub, catName));
-
-            if (parentMatches) {
-                // Caso A: Padre coincide. Mostramos padre.
-                // Mostramos todos los hijos para contexto si el padre es el seleccionado
-                itemsRendering.push({
-                    type: 'wrapper',
-                    task: parent,
-                    children: allSubtasks
-                });
-            } else {
-                // Caso B: Padre NO coincide.
-                if (matchingSubtasks.length > 0) {
-                    // Hay hijos que coinciden. Mostrarlos como "Huérfanos" con indicador de padre.
-                    matchingSubtasks.forEach(sub => {
-                        itemsRendering.push({
-                            type: 'orphan',
-                            task: sub,
-                            parent: parent
-                        });
-                    });
-                }
-            }
-        });
-
-    } else {
-        // Filtros estandares
-        let filteredParents = tasks.filter(t => !t.parentId);
-        if (filter === 'today') {
-            const todayStr = new Date().toISOString().split('T')[0];
-            filteredParents = filteredParents.filter(t => t.date === todayStr);
-        } else if (filter === 'high') {
-            filteredParents = filteredParents.filter(t => t.priority === 'high');
+    // 2. Find Orphans (items in list whose parent is NOT in list)
+    const orphans = tasksToRender.filter(t => !processedIds.has(t.id) && t.parentId);
+    orphans.forEach(sub => {
+        // Fetch parent info from GLOBAL tasks for context
+        const parent = tasks.find(t => t.id === sub.parentId);
+        if (parent) {
+            groups.push({ type: 'orphan', task: sub, parent: parent });
         }
+    });
 
-        filteredParents.forEach(parent => {
-            const subtasks = tasks.filter(t => t.parentId === parent.id);
-            itemsRendering.push({
-                type: 'wrapper',
-                task: parent,
-                children: subtasks
-            });
-        });
-    }
-
-    if (itemsRendering.length === 0) {
+    if (groups.length === 0) {
         taskListEl.innerHTML = '<div class="empty-state" style="text-align:center; color:var(--text-secondary); padding:20px;">No hay tareas con este filtro</div>';
         return;
     }
 
-    const allowDrag = filter === 'all';
+    // Sort groups? For now iterate as is (order field handled in receiving data)
 
-    itemsRendering.forEach(item => {
+    // Disable drag if ANY filtering is active (Status 'completed' enabled OR Range not 'all' OR Tags active)
+    // Actually, simple rule: If filtered view, disable drag.
+    // 'all' range + no tags + status 'all' = Drag OK.
+    const allowDrag = activeFilters.dateRange === 'all' && activeFilters.tags.size === 0 && activeFilters.status === 'all';
+
+    groups.forEach(item => {
         if (item.type === 'wrapper') {
-            const parent = item.task;
+            const parent = item.parent;
             const subtasks = item.children;
             const hasSubtasks = subtasks.length > 0;
-
             const wrapper = document.createElement('div');
             wrapper.className = 'task-wrapper';
             wrapper.dataset.id = parent.id;
@@ -783,19 +1039,12 @@ function renderTasks(filter = 'all') {
             if (allowDrag) {
                 wrapper.draggable = true;
                 wrapper.addEventListener('dragstart', (e) => {
-                    if (e.target.closest('.task-item') && e.target.closest('.subtask-container')) {
-                        e.preventDefault(); return;
-                    }
+                    if (e.target.closest('.task-item') && e.target.closest('.subtask-container')) return;
                     wrapper.classList.add('dragging');
                     wrapper.dataset.dragType = 'parent';
                     e.dataTransfer.setData('text/plain', parent.id);
-                    e.stopPropagation();
                 });
-                wrapper.addEventListener('dragend', () => {
-                    wrapper.classList.remove('dragging');
-                    delete wrapper.dataset.dragType;
-                    saveTaskOrder();
-                });
+                wrapper.addEventListener('dragend', () => { wrapper.classList.remove('dragging'); delete wrapper.dataset.dragType; saveTaskOrder(); });
             }
 
             const taskEl = createTaskElement(parent, hasSubtasks);
@@ -813,47 +1062,28 @@ function renderTasks(filter = 'all') {
                     const subEl = createTaskElement(sub, false, true);
                     if (allowDrag) {
                         subEl.draggable = true;
-                        subEl.addEventListener('dragstart', (e) => {
-                            e.stopPropagation();
-                            subEl.classList.add('dragging');
-                            subEl.dataset.dragType = 'subtask';
-                            e.dataTransfer.setData('text/plain', sub.id);
-                        });
-                        subEl.addEventListener('dragend', (e) => {
-                            e.stopPropagation();
-                            subEl.classList.remove('dragging');
-                            delete subEl.dataset.dragType;
-                            saveTaskOrder();
-                        });
+                        subEl.addEventListener('dragstart', (e) => { e.stopPropagation(); subEl.classList.add('dragging'); subEl.dataset.dragType = 'subtask'; e.dataTransfer.setData('text/plain', sub.id); });
+                        subEl.addEventListener('dragend', (e) => { e.stopPropagation(); subEl.classList.remove('dragging'); delete subEl.dataset.dragType; saveTaskOrder(); });
                     }
                     subContainer.appendChild(subEl);
                 });
                 wrapper.appendChild(subContainer);
             }
             taskListEl.appendChild(wrapper);
-
         } else if (item.type === 'orphan') {
-            // Renderizar subtarea "huérfana" pero con indicador
             const sub = item.task;
-
             const container = document.createElement('div');
             container.style.marginBottom = '10px';
-
             const parentLabel = document.createElement('div');
             parentLabel.className = 'parent-indicator';
             parentLabel.innerHTML = `<i class="fa-solid fa-turn-up" style="transform: rotate(90deg); margin-right:5px;"></i> Subtarea de: <strong>${item.parent.title}</strong>`;
             container.appendChild(parentLabel);
-
             const subEl = createTaskElement(sub, false, true);
             subEl.classList.add('orphan-subtask');
-
             const fakeContainer = document.createElement('div');
-            fakeContainer.className = 'subtask-container'; // Para estilo reducido
-            fakeContainer.style.marginLeft = '0';
-            fakeContainer.style.paddingLeft = '0';
-            fakeContainer.style.borderLeft = 'none';
+            fakeContainer.className = 'subtask-container';
+            fakeContainer.style.marginLeft = '0'; fakeContainer.style.paddingLeft = '0'; fakeContainer.style.borderLeft = 'none';
             fakeContainer.appendChild(subEl);
-
             container.appendChild(fakeContainer);
             taskListEl.appendChild(container);
         }
@@ -861,139 +1091,67 @@ function renderTasks(filter = 'all') {
 }
 
 function saveTaskOrder() {
-    // Capturar hijos directos del container principal.
+    // ... copy existing ...
     const children = Array.from(taskListEl.children);
-
-    // Mapa actual para referencia
     const taskMap = new Map(tasks.map(t => [t.id, t]));
-
-    // Array temporal para reconstruir el estado local ordenado
     const newTasks = [];
-
-    // Variable para controlar el índice de orden global
-    // Usamos espacios grandes (e.g. 1000) por si queremos insertar cosas en medio sin reordenar todo (aunque aquí reordenamos todo por simplicidad y robustez)
-    let currentOrderIndex = 0;
-    const ORDER_STEP = 1000;
-
+    let currentOrderIndex = 0; const ORDER_STEP = 1000;
     children.forEach(child => {
-        const id = child.dataset.id;
-        const task = taskMap.get(id);
-
+        const id = child.dataset.id; const task = taskMap.get(id);
         if (task) {
-            let needsUpdate = false;
-            let updates = {};
-
-            // 1. Verificar si fue promovido a padre (era subtarea y ahora esta en root)
-            if (child.classList.contains('task-item') && task.parentId) {
-                task.parentId = null;
-                updates.parentId = null;
-                needsUpdate = true;
-            }
-
-            // 2. Actualizar Orden del Padre
+            let needsUpdate = false; let updates = {};
+            if (child.classList.contains('task-item') && task.parentId) { task.parentId = null; updates.parentId = null; needsUpdate = true; }
             currentOrderIndex += ORDER_STEP;
-            if (task.order !== currentOrderIndex) {
-                task.order = currentOrderIndex;
-                updates.order = currentOrderIndex;
-                needsUpdate = true;
-            }
-
-            // Aplicar actualización a Firebase si hubo cambios
-            if (needsUpdate && window.updateTaskInFirebase) {
-                window.updateTaskInFirebase(task.id, updates);
-            }
-
-            newTasks.push(task);
-            taskMap.delete(id);
-
-            // 3. Procesar Subtareas (si es un wrapper)
+            if (task.order !== currentOrderIndex) { task.order = currentOrderIndex; updates.order = currentOrderIndex; needsUpdate = true; }
+            if (needsUpdate && window.updateTaskInFirebase) window.updateTaskInFirebase(task.id, updates);
+            newTasks.push(task); taskMap.delete(id);
             if (child.classList.contains('task-wrapper')) {
-                // Buscamos las subtareas que pertenecen a este ID en el DOM
-                // NOTA: Con la lógica actual de render, las subtareas están dentro del .subtask-container del wrapper
-
                 const subContainer = child.querySelector('.subtask-container');
                 if (subContainer) {
-                    const subElements = Array.from(subContainer.querySelectorAll('.task-item'));
-                    subElements.forEach(subEl => {
-                        const subId = subEl.dataset.id;
-                        const subTask = taskMap.get(subId); // OJO: Las subtareas siguen en el map global inicial
-
+                    Array.from(subContainer.querySelectorAll('.task-item')).forEach(subEl => {
+                        const subId = subEl.dataset.id; const subTask = taskMap.get(subId);
                         if (subTask) {
-                            currentOrderIndex += ORDER_STEP;
-                            let subNeedsUpdate = false;
-                            let subUpdates = {};
-
-                            if (subTask.order !== currentOrderIndex) {
-                                subTask.order = currentOrderIndex;
-                                subUpdates.order = currentOrderIndex;
-                                subNeedsUpdate = true;
-                            }
-
-                            if (subNeedsUpdate && window.updateTaskInFirebase) {
-                                window.updateTaskInFirebase(subTask.id, subUpdates);
-                            }
-
-                            newTasks.push(subTask);
-                            taskMap.delete(subId);
+                            currentOrderIndex += ORDER_STEP; let subNeedsUpdate = false; let subUpdates = {};
+                            if (subTask.order !== currentOrderIndex) { subTask.order = currentOrderIndex; subUpdates.order = currentOrderIndex; subNeedsUpdate = true; }
+                            if (subNeedsUpdate && window.updateTaskInFirebase) window.updateTaskInFirebase(subTask.id, subUpdates);
+                            newTasks.push(subTask); taskMap.delete(subId);
                         }
                     });
                 }
             }
         }
     });
-
-    // Agregar remanentes (por si aca - e.g. tareas de otros filtros si no fuera 'all', pero drag solo es en all)
-    taskMap.forEach(t => newTasks.push(t));
-
-    tasks = newTasks;
-    // No llamamos a renderTasks aquí para evitar parpadeos, el DOM ya está en su lugar.
+    taskMap.forEach(t => newTasks.push(t)); tasks = newTasks;
 }
 
 function toggleSubtasks(taskId, btn) {
-    if (expandedTasks.has(taskId)) {
-        expandedTasks.delete(taskId);
-        btn.classList.add('rotate');
-    } else {
-        expandedTasks.add(taskId);
-        btn.classList.remove('rotate');
-    }
-    // Buscar el contenedor hermano y togglear
-    const wrapper = btn.closest('.task-wrapper');
-    const container = wrapper.querySelector('.subtask-container');
+    if (expandedTasks.has(taskId)) { expandedTasks.delete(taskId); btn.classList.add('rotate'); } else { expandedTasks.add(taskId); btn.classList.remove('rotate'); }
+    const wrapper = btn.closest('.task-wrapper'); const container = wrapper.querySelector('.subtask-container');
     if (container) container.classList.toggle('hidden');
 }
 
 function createTaskElement(task, hasSubtasks = false, isSubtask = false) {
+    // ... Copy existing ...
     const div = document.createElement('div');
     div.className = `task-item priority-${task.priority}`;
     div.dataset.id = task.id;
     if (task.status === 'completed') div.style.opacity = '0.6';
 
-    // Toggle Button Logic
     let toggleHtml = '';
-    // Si tiene subtareas, mostrar el toggle.
-    // Si NO tiene subtareas pero NO es una subtarea (es padre potencial), podríamos mostrarlo inactivo o nada.
-    // Mostramos solo si hasSubtasks es true para no ensuciar UI.
-    // Pero espera, si añado una subtarea, necesito refrescar para ver el botón. (renderTasks se llama tras crear)
     if (hasSubtasks) {
         toggleHtml = `<button class="btn-toggle-subtasks" onclick="toggleSubtasks('${task.id}', this)">${ICONS.chevronDown}</button>`;
-        // Añadir al set inicial si no se habia interactuado (default: abierto)
-        if (!expandedTasks.has(task.id) && !div.dataset.initialized) {
-            expandedTasks.add(task.id);
-        }
+        if (!expandedTasks.has(task.id) && !div.dataset.initialized) { expandedTasks.add(task.id); }
     } else {
-        toggleHtml = `<span style="width:20px;display:inline-block;margin-right:5px;"></span>`; // Espaciador para alinear
+        toggleHtml = `<span style="width:20px;display:inline-block;margin-right:5px;"></span>`;
     }
 
     const iconHtml = task.icon ? `<i class="${task.icon}" style="margin-right:5px;"></i>` : '';
-
     let categoryHtml = '';
     if (task.category) {
         const tags = task.category.split(',').map(t => t.trim()).filter(t => t);
         categoryHtml = tags.map(tag => `<span class="task-category-badge">${tag}</span>`).join('');
     }
 
-    // Recurrence Text Logic
     let recurrenceText = '';
     if (task.recurrence && task.recurrence !== 'none') {
         let text = '';
@@ -1032,9 +1190,6 @@ function createTaskElement(task, hasSubtasks = false, isSubtask = false) {
             <button class="action-btn" onclick="deleteTask('${task.id}')">${ICONS.delete}</button>
         </div>
     `;
-    // Drag listeners removidos de aquí para evitar conflictos con el wrapper
-    // div.addEventListener('dragstart', (e) => { ... });
-    // div.addEventListener('dragend', () => ... );
     return div;
 }
 
@@ -1050,7 +1205,6 @@ function handleDragOver(e) {
 function handleDrop(e) { e.preventDefault(); }
 
 function getDragAfterElement(container, y) {
-    // Aceptamos tanto wrappers (padres existentes) como task-items (subtareas migrantes) como objetivos de orden
     const draggableElements = [...container.querySelectorAll(':scope > .task-wrapper:not(.dragging), :scope > .task-item:not(.dragging)')];
     return draggableElements.reduce((closest, child) => {
         const box = child.getBoundingClientRect();
@@ -1068,11 +1222,10 @@ function renderCalendar() {
     const firstDay = new Date(year, month, 1);
     const lastDay = new Date(year, month + 1, 0);
     const daysInMonth = lastDay.getDate();
-    const startingDay = firstDay.getDay(); // 0 (Sun) to 6 (Sat)
+    const startingDay = firstDay.getDay();
 
     calendarGridEl.innerHTML = '';
 
-    // headers
     const days = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
     days.forEach(d => {
         const header = document.createElement('div');
@@ -1085,93 +1238,33 @@ function renderCalendar() {
         calendarGridEl.appendChild(header);
     });
 
-    // Empty slots before first day
     for (let i = 0; i < startingDay; i++) {
         const empty = document.createElement('div');
         empty.className = 'calendar-day empty';
         calendarGridEl.appendChild(empty);
     }
 
-    // Days
     for (let i = 1; i <= daysInMonth; i++) {
         const dayEl = document.createElement('div');
         dayEl.className = 'calendar-day';
-
-        // Current rendered date
         const currentDayDate = new Date(year, month, i);
         const currentDayDateStr = currentDayDate.toISOString().split('T')[0];
-
-        // Highlight today
-        if (currentDayDateStr === new Date().toISOString().split('T')[0]) {
-            dayEl.classList.add('today');
-        }
-
+        if (currentDayDateStr === new Date().toISOString().split('T')[0]) { dayEl.classList.add('today'); }
         dayEl.innerHTML = `<div class="day-number">${i}</div>`;
+        dayEl.addEventListener('click', () => { openDayDetails(currentDayDateStr); });
 
-        // Check for tasks
         tasks.forEach(task => {
-            // Ignorar subtasks en calendario para no saturar? O mostrarlas?
-            // El usuario no especificó, pero generalmente el calendario muestra items principales o todo.
-            // Mostraremos todo.
-
-            if (!task.date) return;
-
-            let shouldRender = false;
-            const taskStart = new Date(task.date + 'T00:00:00'); // Force local time interpretation mostly
-            const taskEnd = task.endDate ? new Date(task.endDate + 'T00:00:00') : null;
-
-            // 1. Single Date or Duration Range
-            if (task.recurrence === 'none' || !task.recurrence) {
-                if (taskEnd) {
-                    // Range
-                    if (currentDayDate >= taskStart && currentDayDate <= taskEnd) shouldRender = true;
-                } else {
-                    // Single Day
-                    if (task.date === currentDayDateStr) shouldRender = true;
-                }
-            }
-            // 2. Recurrence
-            else {
-                // Check if task started before or on this day
-                if (currentDayDate >= taskStart) {
-                    // Check if task ended (if endDate is set for recurrence termination)
-                    if (taskEnd && currentDayDate > taskEnd) {
-                        shouldRender = false;
-                    } else {
-                        // Check Logic
-                        if (task.recurrence === 'daily') {
-                            shouldRender = true;
-                        } else if (task.recurrence === 'weekly') {
-                            // Same day of week
-                            if (currentDayDate.getDay() === taskStart.getDay()) shouldRender = true;
-                        } else if (task.recurrence === 'monthly') {
-                            // Same day of month
-                            if (currentDayDate.getDate() === taskStart.getDate()) shouldRender = true;
-                        } else if (task.recurrence === 'custom') {
-                            // Check if current day of week is in recurrenceDays
-                            const days = task.recurrenceDays || [];
-                            if (days.includes(currentDayDate.getDay())) shouldRender = true;
-                        }
-                    }
-                }
-            }
-
-            if (shouldRender) {
+            if (isTaskOnDate(task, currentDayDate)) {
                 const dot = document.createElement('div');
                 dot.className = 'day-task-dot';
                 dot.title = task.title;
-                // Visual distinction for recurring?
-                if (task.recurrence && task.recurrence !== 'none') {
-                    dot.style.borderRadius = '2px'; // Square-ish for recurring maybe?
-                }
-
+                if (task.recurrence && task.recurrence !== 'none') { dot.style.borderRadius = '2px'; }
                 if (task.priority === 'high') dot.style.backgroundColor = 'var(--danger-color)';
                 else if (task.priority === 'medium') dot.style.backgroundColor = 'var(--warning-color)';
                 else dot.style.backgroundColor = 'var(--success-color)';
                 dayEl.appendChild(dot);
             }
         });
-
         calendarGridEl.appendChild(dayEl);
     }
 }
@@ -1179,79 +1272,351 @@ function renderCalendar() {
 function changeMonth(delta) {
     currentDate.setMonth(currentDate.getMonth() + delta);
     if (currentView === 'calendar') renderCalendar();
-    else renderListView();
+    else {
+        // Switch to Month view likely if navigating months?
+        // Or if in list view and range is 'today', does nav change TODAY? No.
+        // It should probably just render based on 'month' logic if the user navigates.
+        activeFilters.dateRange = 'month'; // Snap to month view logic
+        applyFilters();
+    }
 }
 
-function renderListView() {
+function renderListView(rangeType = 'month', startDate = null, endDate = null) {
     listViewEl.innerHTML = '';
-    const tasksByDate = {};
 
-    // Agrupar por fecha solo los PADRES (o huérfanos sin padre en esta fecha???)
-    // Estrategia: Agrupar TODO por fecha.
-    // Luego al renderizar grupo:
-    // Identificar padres. Renderizarlos + sus hijos (si los hijos están también en la lista general? O siempre mostrar hijos?)
-    // Si mostramos hijos SIEMPRE bajo el padre, debemos evitar mostrarlos sueltos si caen en la misma fecha.
-    // Si un hijo cae en FECHA distinta al padre... ¿Dónde se muestra?
-    // Para simplificar y cumplir "vista de lista... reflejarse subtareas mas pequeñas":
-    // 1. Agrupamos Padres por fecha.
-    // 2. Renderizamos Padre.
-    // 3. Renderizamos sus hijos (todos) dentro del padre.
-    // 4. Si un hijo NO tiene padre (huérfano de datos, error) o su padre no matchea filtro?
-    // En 'filteredTasks' de sidebar filtramos !parentId.
-    // Aquí 'tasks' tiene todo.
+    // Determine loop range
+    let loopStart, loopEnd;
 
-    // Paso 1: Filtrar Padres
-    const parents = tasks.filter(t => !t.parentId);
-    parents.forEach(task => {
-        const date = task.date || 'Sin fecha';
-        if (!tasksByDate[date]) tasksByDate[date] = [];
-        tasksByDate[date].push(task);
-    });
+    if (rangeType === 'month' && !startDate) {
+        const year = currentDate.getFullYear();
+        const month = currentDate.getMonth();
+        currentMonthYearEl.textContent = new Intl.DateTimeFormat('es-ES', { month: 'long', year: 'numeric' }).format(currentDate);
+        loopStart = new Date(year, month, 1);
+        loopEnd = new Date(year, month + 1, 0);
+    } else if (startDate && endDate) {
+        loopStart = startDate;
+        loopEnd = endDate;
+        if (rangeType === 'today') currentMonthYearEl.textContent = "Hoy";
+        else if (rangeType === 'tomorrow') currentMonthYearEl.textContent = "Mañana";
+        else if (rangeType === 'yesterday') currentMonthYearEl.textContent = "Ayer";
 
-    const sortedDates = Object.keys(tasksByDate).sort();
-    sortedDates.forEach(date => {
-        const group = document.createElement('div');
-        group.className = 'list-date-group';
-        const header = document.createElement('div');
-        header.className = 'list-date-header';
-        header.textContent = date === 'Sin fecha' ? 'Sin fecha' : new Date(date).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
-        group.appendChild(header);
+        else if (rangeType === 'week') currentMonthYearEl.textContent = "Esta Semana";
+        else if (rangeType === 'last-month') currentMonthYearEl.textContent = new Intl.DateTimeFormat('es-ES', { month: 'long', year: 'numeric' }).format(loopStart);
+        else currentMonthYearEl.textContent = new Intl.DateTimeFormat('es-ES', { month: 'long', year: 'numeric' }).format(loopStart);
+    } else {
+        const year = currentDate.getFullYear();
+        const month = currentDate.getMonth();
+        currentMonthYearEl.textContent = new Intl.DateTimeFormat('es-ES', { month: 'long', year: 'numeric' }).format(currentDate);
+        loopStart = new Date(year, month, 1);
+        loopEnd = new Date(year, month + 1, 0);
+    }
 
-        tasksByDate[date].forEach(parent => {
-            const subtasks = tasks.filter(t => t.parentId === parent.id);
-            const hasSubtasks = subtasks.length > 0;
+    const sortedDates = [];
+    let d = new Date(loopStart);
+    while (d <= loopEnd) { sortedDates.push(d.toISOString().split('T')[0]); d.setDate(d.getDate() + 1); }
 
-            // Reusamos lógica de toggle Wrapper
-            const wrapper = document.createElement('div');
-            wrapper.className = 'task-wrapper'; // Reusamos estilo wrapper (spacing)
-            wrapper.dataset.id = parent.id;
-
-            // Render Parent
-            const taskEl = createTaskElement(parent, hasSubtasks);
-            wrapper.appendChild(taskEl);
-
-            // Render Subtasks
-            if (hasSubtasks) {
-                const subContainer = document.createElement('div');
-                subContainer.className = 'subtask-container'; // Aplica estilo small
-
-                // Chequear si está expandido
-                if (!expandedTasks.has(parent.id)) {
-                    subContainer.classList.add('hidden');
-                    const btn = taskEl.querySelector('.btn-toggle-subtasks');
-                    if (btn) btn.classList.add('rotate');
-                }
-
-                subtasks.forEach(sub => {
-                    const subEl = createTaskElement(sub, false, true); // isSubtask=true
-                    subContainer.appendChild(subEl);
-                });
-                wrapper.appendChild(subContainer);
+    sortedDates.forEach(dateStr => {
+        const dateObj = new Date(dateStr + 'T00:00:00');
+        const tasksOnDay = tasks.filter(t => {
+            if (!isTaskOnDate(t, dateObj)) return false;
+            // Respect Status Filter
+            if (activeFilters.status === 'completed' && t.status !== 'completed') return false;
+            // Respect Active Tag Filter too
+            if (activeFilters.tags.size > 0) {
+                if (!t.category) return false;
+                const taskTags = t.category.split(',').map(tag => tag.trim());
+                if (![...activeFilters.tags].some(tag => taskTags.includes(tag))) return false;
             }
-            group.appendChild(wrapper);
+            return true;
         });
 
+        const groupsToRender = [];
+        const processedParents = new Set();
+        const visibleParents = tasksOnDay.filter(t => !t.parentId);
+
+        visibleParents.forEach(p => {
+            const subs = tasks.filter(t => t.parentId === p.id);
+            groupsToRender.push({ type: 'wrapper', parent: p, children: subs });
+            processedParents.add(p.id);
+        });
+
+        const visibleSubtasks = tasksOnDay.filter(t => t.parentId);
+        visibleSubtasks.forEach(sub => {
+            if (!processedParents.has(sub.parentId)) {
+                const parent = tasks.find(t => t.id === sub.parentId);
+                if (parent) { groupsToRender.push({ type: 'orphan-context', parent: parent, subtask: sub }); }
+            }
+        });
+
+        const group = document.createElement('div');
+        group.className = 'list-date-group';
+
+        const header = document.createElement('div');
+        header.className = 'list-date-header';
+        header.style.cursor = 'pointer'; header.style.userSelect = 'none'; header.style.display = 'flex'; header.style.alignItems = 'center';
+
+        const todayStr = new Date().toISOString().split('T')[0];
+        let dateLabel = dateObj.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
+        if (dateStr === todayStr) dateLabel = "Hoy - " + dateLabel;
+
+        const chevron = document.createElement('i');
+        chevron.className = 'fa-solid fa-chevron-down';
+        chevron.style.marginRight = '10px';
+        chevron.style.transition = 'transform 0.2s';
+
+        const labelSpan = document.createElement('span');
+        labelSpan.textContent = dateLabel;
+        const countBadge = document.createElement('span');
+        countBadge.style.marginLeft = 'auto'; countBadge.style.fontSize = '0.8rem'; countBadge.style.color = 'var(--text-secondary)';
+        countBadge.textContent = groupsToRender.length > 0 ? `${tasksOnDay.length} tareas` : '';
+
+        header.appendChild(chevron); header.appendChild(labelSpan); header.appendChild(countBadge);
+        group.appendChild(header);
+
+        const content = document.createElement('div');
+        content.className = 'list-date-content';
+
+        header.onclick = () => {
+            if (content.style.display === 'none') {
+                content.style.display = 'block'; chevron.style.transform = 'rotate(0deg)'; group.dataset.collapsed = 'false';
+            } else {
+                content.style.display = 'none'; chevron.style.transform = 'rotate(-90deg)'; group.dataset.collapsed = 'true';
+            }
+        };
+
+        if (groupsToRender.length === 0) {
+            content.innerHTML = '<div style="padding:10px; color:var(--glass-border); font-style:italic; font-size:0.9rem;">Sin tareas</div>';
+            content.style.display = 'none'; chevron.style.transform = 'rotate(-90deg)';
+        } else {
+            groupsToRender.forEach(g => {
+                if (g.type === 'wrapper') {
+                    const parent = g.parent;
+                    const subtasksAll = g.children;
+                    const hasSubtasks = subtasksAll.length > 0;
+                    const wrapper = document.createElement('div');
+                    wrapper.className = 'task-wrapper';
+
+                    const taskEl = createTaskElement(parent, hasSubtasks);
+                    wrapper.appendChild(taskEl);
+
+                    if (hasSubtasks) {
+                        const subContainer = document.createElement('div');
+                        subContainer.className = 'subtask-container';
+                        if (!expandedTasks.has(parent.id)) { subContainer.classList.add('hidden'); const btn = taskEl.querySelector('.btn-toggle-subtasks'); if (btn) btn.classList.add('rotate'); }
+                        subtasksAll.forEach(sub => { subContainer.appendChild(createTaskElement(sub, false, true)); });
+                        wrapper.appendChild(subContainer);
+                    }
+                    content.appendChild(wrapper);
+
+                } else if (g.type === 'orphan-context') {
+                    const parent = g.parent; const sub = g.subtask;
+                    const container = document.createElement('div'); container.style.marginBottom = '10px';
+                    const parentLabel = document.createElement('div'); parentLabel.className = 'parent-indicator';
+                    parentLabel.innerHTML = `<i class="fa-solid fa-turn-up" style="transform: rotate(90deg); margin-right:5px;"></i> Subtarea de: <strong>${parent.title}</strong>`;
+                    container.appendChild(parentLabel);
+                    const subEl = createTaskElement(sub, false, true); subEl.classList.add('orphan-subtask');
+                    const fakeContainer = document.createElement('div'); fakeContainer.className = 'subtask-container'; fakeContainer.style.marginLeft = '0'; fakeContainer.style.paddingLeft = '0'; fakeContainer.style.borderLeft = 'none';
+                    fakeContainer.appendChild(subEl);
+                    container.appendChild(fakeContainer);
+                    content.appendChild(container);
+                }
+            });
+        }
+
+        group.appendChild(content);
         listViewEl.appendChild(group);
+    });
+}
+
+function renderTimeline(rangeType = 'today', startDate = null, endDate = null) {
+    const timelineViewEl = document.getElementById('timeline-view');
+    timelineViewEl.innerHTML = '';
+
+    // Determine loop range (Copy logic from renderListView)
+    let loopStart, loopEnd;
+
+    if (rangeType === 'month' && !startDate) {
+        const year = currentDate.getFullYear();
+        const month = currentDate.getMonth();
+        currentMonthYearEl.textContent = new Intl.DateTimeFormat('es-ES', { month: 'long', year: 'numeric' }).format(currentDate);
+        loopStart = new Date(year, month, 1);
+        loopEnd = new Date(year, month + 1, 0);
+    } else if (startDate && endDate) {
+        loopStart = startDate;
+        loopEnd = endDate;
+        // Simple Header Update Logic (Shared)
+        if (rangeType === 'today') currentMonthYearEl.textContent = "Hoy";
+        else if (rangeType === 'tomorrow') currentMonthYearEl.textContent = "Mañana";
+        else if (rangeType === 'yesterday') currentMonthYearEl.textContent = "Ayer";
+        else if (rangeType === 'week') currentMonthYearEl.textContent = "Esta Semana";
+        else currentMonthYearEl.textContent = new Intl.DateTimeFormat('es-ES', { month: 'long', year: 'numeric' }).format(loopStart);
+    } else {
+        const year = currentDate.getFullYear();
+        const month = currentDate.getMonth();
+        currentMonthYearEl.textContent = new Intl.DateTimeFormat('es-ES', { month: 'long', year: 'numeric' }).format(currentDate);
+        loopStart = new Date(year, month, 1);
+        loopEnd = new Date(year, month + 1, 0);
+    }
+
+    const sortedDates = [];
+    let d = new Date(loopStart);
+    while (d <= loopEnd) { sortedDates.push(d.toISOString().split('T')[0]); d.setDate(d.getDate() + 1); }
+
+    sortedDates.forEach(dateStr => {
+        const dateObj = new Date(dateStr + 'T00:00:00');
+        const tasksOnDay = tasks.filter(t => {
+            if (!isTaskOnDate(t, dateObj)) return false;
+            if (activeFilters.status === 'completed' && t.status !== 'completed') return false;
+            if (activeFilters.tags.size > 0) {
+                if (!t.category) return false;
+                const taskTags = t.category.split(',').map(tag => tag.trim());
+                if (![...activeFilters.tags].some(tag => taskTags.includes(tag))) return false;
+            }
+            return true;
+        });
+
+        // Skip empty days if strictly filtering? (matches ListView behavior to show them but maybe collapsed or empty msg)
+        // ListView shows them.
+
+        const group = document.createElement('div');
+        group.className = 'list-date-group';
+
+        const header = document.createElement('div');
+        header.className = 'list-date-header';
+        header.style.cursor = 'pointer'; header.style.userSelect = 'none'; header.style.display = 'flex'; header.style.alignItems = 'center';
+
+        const todayStr = new Date().toISOString().split('T')[0];
+        let dateLabel = dateObj.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
+        if (dateStr === todayStr) dateLabel = "Hoy - " + dateLabel;
+
+        const chevron = document.createElement('i');
+        chevron.className = 'fa-solid fa-chevron-down';
+        chevron.style.marginRight = '10px';
+        chevron.style.transition = 'transform 0.2s';
+        // Auto-expand Today
+        if (dateStr !== todayStr) chevron.style.transform = 'rotate(-90deg)';
+
+        const labelSpan = document.createElement('span');
+        labelSpan.textContent = dateLabel;
+        const countBadge = document.createElement('span');
+        countBadge.style.marginLeft = 'auto'; countBadge.style.fontSize = '0.8rem'; countBadge.style.color = 'var(--text-secondary)';
+        countBadge.textContent = tasksOnDay.length > 0 ? `${tasksOnDay.length} tareas` : '';
+
+        header.appendChild(chevron); header.appendChild(labelSpan); header.appendChild(countBadge);
+        group.appendChild(header);
+
+        const content = document.createElement('div');
+        content.className = 'list-date-content';
+        if (dateStr !== todayStr) content.style.display = 'none';
+
+        header.onclick = () => {
+            if (content.style.display === 'none') {
+                content.style.display = 'block'; chevron.style.transform = 'rotate(0deg)';
+            } else {
+                content.style.display = 'none'; chevron.style.transform = 'rotate(-90deg)';
+            }
+        };
+
+        if (tasksOnDay.length === 0) {
+            content.innerHTML = '<div style="padding:10px; color:var(--glass-border); font-style:italic; font-size:0.9rem;">Sin tareas</div>';
+        } else {
+            // TIMELINE GENERATION
+            const timelineContainer = document.createElement('div');
+            timelineContainer.className = 'timeline-container';
+
+            // Partition Tasks
+            const completed = tasksOnDay.filter(t => t.status === 'completed').sort((a, b) => {
+                // Ascending time
+                return new Date(a.completedAt || 0) - new Date(b.completedAt || 0);
+            });
+            const pending = tasksOnDay.filter(t => t.status !== 'completed');
+            // Sort pending by Priority? or Order?
+            pending.sort((a, b) => {
+                const pMap = { high: 3, medium: 2, low: 1 };
+                return pMap[b.priority] - pMap[a.priority];
+            });
+
+            // 1. Pending Items (Top of Timeline)
+            pending.forEach(task => {
+                const item = document.createElement('div');
+                item.className = 'timeline-item';
+
+                const marker = document.createElement('div');
+                marker.className = 'timeline-marker';
+                if (task.priority === 'high') marker.style.borderColor = 'var(--danger-color)';
+                else if (task.priority === 'medium') marker.style.borderColor = 'var(--warning-color)';
+                else marker.style.borderColor = 'var(--success-color)';
+
+                // Allow check to complete from timeline
+                marker.style.cursor = 'pointer';
+                marker.title = "Click para completar";
+                marker.onclick = () => { toggleTaskStatus(task.id); };
+
+                const info = document.createElement('div');
+                info.className = 'timeline-content';
+
+                const timeDiv = document.createElement('div');
+                timeDiv.className = 'timeline-time';
+                timeDiv.textContent = 'Pendiente';
+
+                const titleDiv = document.createElement('div');
+                titleDiv.className = 'timeline-title';
+                titleDiv.textContent = task.title;
+
+                info.appendChild(timeDiv);
+                info.appendChild(titleDiv);
+
+                // Category tag
+                if (task.category) {
+                    const tag = document.createElement('span');
+                    tag.style.fontSize = '0.75rem'; tag.style.color = 'var(--accent-color)';
+                    tag.textContent = task.category;
+                    info.appendChild(tag);
+                }
+
+                item.appendChild(marker);
+                item.appendChild(info);
+                timelineContainer.appendChild(item);
+            });
+
+            // 2. Completed Items
+            completed.forEach(task => {
+                const item = document.createElement('div');
+                item.className = 'timeline-item';
+
+                const marker = document.createElement('div');
+                marker.className = 'timeline-marker task-complete';
+                // Click to undo?
+                marker.style.cursor = 'pointer';
+                marker.onclick = () => { toggleTaskStatus(task.id); };
+
+                const info = document.createElement('div');
+                info.className = 'timeline-content';
+                info.style.opacity = '0.7';
+
+                const timeDiv = document.createElement('div');
+                timeDiv.className = 'timeline-time';
+                const dateC = new Date(task.completedAt);
+                const timeStr = !isNaN(dateC.getTime()) ? dateC.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Completada';
+                timeDiv.textContent = timeStr;
+
+                const titleDiv = document.createElement('div');
+                titleDiv.className = 'timeline-title';
+                titleDiv.style.textDecoration = 'line-through';
+                titleDiv.textContent = task.title;
+
+                info.appendChild(timeDiv);
+                info.appendChild(titleDiv);
+                item.appendChild(marker);
+                item.appendChild(info);
+                timelineContainer.appendChild(item);
+            });
+
+            content.appendChild(timelineContainer);
+        }
+
+        group.appendChild(content);
+        timelineViewEl.appendChild(group);
     });
 }
 
@@ -1260,19 +1625,13 @@ function updateTimerDisplay() {
     const seconds = timeLeft % 60;
     const timeStr = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
     document.getElementById('main-timer').textContent = timeStr;
-
-    // Update Mini Timer
     const miniTimerTime = document.getElementById('mini-timer-time');
     if (miniTimerTime) miniTimerTime.textContent = timeStr;
     const miniTimerDesk = document.getElementById('mini-timer');
     if (miniTimerDesk) miniTimerDesk.textContent = timeStr;
-
     const miniBtn = document.getElementById('mini-timer-toggle');
-    if (miniBtn) {
-        miniBtn.innerHTML = timerInterval ? '<i class="fa-solid fa-pause"></i>' : '<i class="fa-solid fa-play"></i>';
-    }
+    if (miniBtn) { miniBtn.innerHTML = timerInterval ? '<i class="fa-solid fa-pause"></i>' : '<i class="fa-solid fa-play"></i>'; }
     checkMiniTimerVisibility();
-
     document.title = `${timeStr} - Planner Pro`;
     const circle = document.querySelector('.progress-ring__circle');
     const totalTime = pomodoroState.isBreak ? pomodoroState.breakTime * 60 : pomodoroState.workTime * 60;
@@ -1280,58 +1639,28 @@ function updateTimerDisplay() {
     const circumference = radius * 2 * Math.PI;
     const offset = circumference - (timeLeft / totalTime) * circumference;
     circle.style.strokeDashoffset = offset;
-
-    // Cycle Display Update
     const cycleDisplay = document.getElementById('cycle-display');
-    if (cycleDisplay && pomodoroState) {
-        cycleDisplay.textContent = `Ciclo ${pomodoroState.cycle}/${pomodoroState.totalCycles} (${pomodoroState.isBreak ? 'Descanso' : 'Trabajo'})`;
-    }
+    if (cycleDisplay && pomodoroState) { cycleDisplay.textContent = `Ciclo ${pomodoroState.cycle}/${pomodoroState.totalCycles} (${pomodoroState.isBreak ? 'Descanso' : 'Trabajo'})`; }
 }
 
 function toggleTimer() {
     if (Notification.permission === 'default') Notification.requestPermission();
-    if (isTimerRunning) {
-        clearInterval(timerInterval);
-        isTimerRunning = false;
-        document.getElementById('pomodoro-start').innerHTML = ICONS.play;
-        document.getElementById('mini-play-btn').innerHTML = ICONS.play;
-    } else {
-        isTimerRunning = true;
-        document.getElementById('pomodoro-start').innerHTML = '<i class="fa-solid fa-pause"></i>';
-        document.getElementById('mini-play-btn').innerHTML = '<i class="fa-solid fa-pause"></i>';
-        timerInterval = setInterval(() => {
-            if (timeLeft > 0) { timeLeft--; updateTimerDisplay(); }
-            else completeCycle();
-        }, 1000);
-    }
+    if (isTimerRunning) { clearInterval(timerInterval); isTimerRunning = false; document.getElementById('pomodoro-start').innerHTML = ICONS.play; document.getElementById('mini-play-btn').innerHTML = ICONS.play; }
+    else { isTimerRunning = true; document.getElementById('pomodoro-start').innerHTML = '<i class="fa-solid fa-pause"></i>'; document.getElementById('mini-play-btn').innerHTML = '<i class="fa-solid fa-pause"></i>'; timerInterval = setInterval(() => { if (timeLeft > 0) { timeLeft--; updateTimerDisplay(); } else completeCycle(); }, 1000); }
 }
 
-function resetTimer() {
-    clearInterval(timerInterval);
-    isTimerRunning = false;
-    timeLeft = (pomodoroState.isBreak ? pomodoroState.breakTime : pomodoroState.workTime) * 60;
-    updateTimerDisplay();
-    document.getElementById('pomodoro-start').innerHTML = ICONS.play;
-    document.getElementById('mini-play-btn').innerHTML = ICONS.play;
-}
+function resetTimer() { clearInterval(timerInterval); isTimerRunning = false; timeLeft = (pomodoroState.isBreak ? pomodoroState.breakTime : pomodoroState.workTime) * 60; updateTimerDisplay(); document.getElementById('pomodoro-start').innerHTML = ICONS.play; document.getElementById('mini-play-btn').innerHTML = ICONS.play; }
 
-function adjustTimer(minutes) {
-    timeLeft += minutes * 60;
-    if (timeLeft < 0) timeLeft = 0;
-    updateTimerDisplay();
-}
+function adjustTimer(minutes) { timeLeft += minutes * 60; if (timeLeft < 0) timeLeft = 0; updateTimerDisplay(); }
 
 function startPomodoroForTask(id) {
     activeTaskId = id;
     const task = tasks.find(t => t.id === id);
     document.getElementById('active-task-name').textContent = task.title;
-
-    // Mini Timer Task Name
     const miniDesktop = document.getElementById('mini-task-name-desktop');
     if (miniDesktop) { miniDesktop.textContent = task.title; miniDesktop.style.display = 'inline-block'; }
     const miniMobile = document.getElementById('mini-task-name-mobile');
     if (miniMobile) { miniMobile.textContent = task.title; miniMobile.style.display = 'block'; }
-
     document.getElementById('pomodoro-panel').style.display = 'flex';
     const settings = task.pomodoroSettings || { cycles: 1, work: 25, break: 5 };
     pomodoroState = { cycle: 1, isBreak: false, totalCycles: settings.cycles, workTime: settings.work, breakTime: settings.break };
@@ -1342,80 +1671,29 @@ function startPomodoroForTask(id) {
 
 function changeCycle(direction) {
     if (!pomodoroState) return;
-
-    // Logic: Flatten cycle/phase to a linear index
-    // 0: C1 Work, 1: C1 Break, 2: C2 Work, 3: C2 Break...
     let totalPhases = pomodoroState.totalCycles * 2;
-    // Wait, last cycle usually ends after work? Or work+break? 
-    // Standard Pomodoro: 4 pomodoros -> Long break. 
-    // Here: User defines "Cycles". 
-    // Assumption: Cycle = Work + Break.
-
     let currentPhaseIndex = (pomodoroState.cycle - 1) * 2 + (pomodoroState.isBreak ? 1 : 0);
     let nextPhaseIndex = currentPhaseIndex + direction;
-
-    if (nextPhaseIndex < 0) {
-        // Reset to start
-        nextPhaseIndex = 0;
-    } else if (nextPhaseIndex >= totalPhases) {
-        // Already at end, do nothing or complete
-        return;
-    }
-
-    // Convert back
+    if (nextPhaseIndex < 0) { nextPhaseIndex = 0; } else if (nextPhaseIndex >= totalPhases) { return; }
     const wasRunning = isTimerRunning;
-    if (isTimerRunning) {
-        clearInterval(timerInterval);
-        isTimerRunning = false;
-        document.getElementById('pomodoro-start').innerHTML = ICONS.play;
-        document.getElementById('mini-play-btn').innerHTML = ICONS.play;
-    }
-
+    if (isTimerRunning) { clearInterval(timerInterval); isTimerRunning = false; document.getElementById('pomodoro-start').innerHTML = ICONS.play; document.getElementById('mini-play-btn').innerHTML = ICONS.play; }
     pomodoroState.cycle = Math.floor(nextPhaseIndex / 2) + 1;
     pomodoroState.isBreak = (nextPhaseIndex % 2) === 1;
-
-    // Reset time for new phase
     timeLeft = (pomodoroState.isBreak ? pomodoroState.breakTime : pomodoroState.workTime) * 60;
-
     updateTimerDisplay();
-
-    // Optionally auto-start if it was running? Or stop?
-    // User asked for "adelantar", implying "skip this, go to next". 
-    // Usually one wants to start the next one immediately? Or await?
-    // Let's stop and let user press play to follow 'completeCycle' pattern of alerts (though here no alerts).
-    // Better: Just reset to ready state.
 }
 
 function completeCycle() {
-    clearInterval(timerInterval);
-    isTimerRunning = false;
+    clearInterval(timerInterval); isTimerRunning = false;
     timerSound.play().catch(e => console.log('Audio play failed', e));
-    if (Notification.permission === 'granted') {
-        new Notification('Pomodoro Planner', {
-            body: pomodoroState.isBreak ? '¡Descanso terminado!' : '¡Ciclo completado!',
-            icon: 'favicon.ico'
-        });
-    }
+    if (Notification.permission === 'granted') { new Notification('Pomodoro Planner', { body: pomodoroState.isBreak ? '¡Descanso terminado!' : '¡Ciclo completado!', icon: 'favicon.ico' }); }
     if (pomodoroState.isBreak) {
-        pomodoroState.isBreak = false;
-        pomodoroState.cycle++;
+        pomodoroState.isBreak = false; pomodoroState.cycle++;
         if (pomodoroState.cycle > pomodoroState.totalCycles) {
             alert('¡Todos los ciclos completados!');
-            if (activeTaskId && window.updateTaskInFirebase) {
-                const task = tasks.find(t => t.id === activeTaskId);
-                if (task) window.updateTaskInFirebase(task.id, { pomodoros: (task.pomodoros || 0) + pomodoroState.totalCycles });
-            }
-            resetTimer();
-            return;
-        } else {
-            timeLeft = pomodoroState.workTime * 60;
-            alert(`Ciclo ${pomodoroState.cycle} de ${pomodoroState.totalCycles}: ¡A trabajar!`);
-        }
-    } else {
-        pomodoroState.isBreak = true;
-        timeLeft = pomodoroState.breakTime * 60;
-        alert('¡Tiempo de descanso!');
-    }
+            if (activeTaskId && window.updateTaskInFirebase) { const task = tasks.find(t => t.id === activeTaskId); if (task) window.updateTaskInFirebase(task.id, { pomodoros: (task.pomodoros || 0) + pomodoroState.totalCycles }); }
+            resetTimer(); return;
+        } else { timeLeft = pomodoroState.workTime * 60; alert(`Ciclo ${pomodoroState.cycle} de ${pomodoroState.totalCycles}: ¡A trabajar!`); }
+    } else { pomodoroState.isBreak = true; timeLeft = pomodoroState.breakTime * 60; alert('¡Hora de un descanso!'); }
     updateTimerDisplay();
-    toggleTimer();
 }
