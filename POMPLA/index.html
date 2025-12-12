@@ -150,6 +150,25 @@
                 </div>
             </div>
 
+            <!-- MOBILE FILTERS SECTION (Moved Here) -->
+            <div class="mobile-filters-section" style="display:none; margin-bottom: 15px;">
+                <button class="filter-btn" id="mobile-filter-completed" title="Ver completadas"><i
+                        class="fa-solid fa-check-double"></i></button>
+                <button class="filter-btn" id="mobile-btn-view-density"><i class="fa-solid fa-bars"></i></button>
+                <button class="filter-btn" id="mobile-filter-reset" title="Resetear"><i
+                        class="fa-solid fa-rotate-left"></i></button>
+                <select id="mobile-filter-date-range" class="filter-select" style="flex:1;">
+                    <option value="today">Hoy</option>
+                    <option value="yesterday">Ayer</option>
+                    <option value="tomorrow">Mañana</option>
+                    <option value="week">Esta Semana</option>
+                    <option value="month">Este Mes</option>
+                    <option value="last-month">Mes Pasado</option>
+                    <option value="all">Siempre</option>
+                </select>
+                <button class="filter-btn" id="mobile-btn-tags-filter"><i class="fa-solid fa-tags"></i></button>
+            </div>
+
             <div style="margin-bottom: 15px;">
                 <button id="add-task-btn" class="btn-primary" style="width: 100%; justify-content: center;">
                     <i class="fa-solid fa-plus"></i> Nueva Tarea
@@ -157,6 +176,10 @@
             </div>
 
             <div class="task-filters">
+                <button class="filter-btn" id="filter-completed" title="Ver tareas completadas"><i
+                        class="fa-solid fa-check-double"></i></button>
+                <button class="filter-btn" id="btn-view-density" title="Cambiar Vista (Normal / Compacta / Amplia)"><i
+                        class="fa-solid fa-bars"></i></button>
                 <button class="filter-btn" id="filter-reset" title="Resetear Filtros">Todos</button>
                 <select id="filter-date-range" class="filter-select">
                     <option value="today">Hoy</option>
@@ -168,8 +191,6 @@
                     <option value="all">Siempre</option>
                 </select>
                 <button class="filter-btn" id="btn-tags-filter">Etiquetas</button>
-                <button class="filter-btn" id="filter-completed" title="Ver tareas completadas"><i
-                        class="fa-solid fa-check-double"></i></button>
             </div>
 
             <div id="category-tags-container" class="tags-container hidden">
@@ -232,23 +253,7 @@
                 </div>
             </header>
 
-            <!-- MOBILE FILTERS SECTION -->
-            <div class="mobile-filters-section" style="display:none;">
-                <button class="filter-btn" id="mobile-filter-reset" title="Resetear"><i
-                        class="fa-solid fa-rotate-left"></i></button>
-                <select id="mobile-filter-date-range" class="filter-select" style="flex:1;">
-                    <option value="today">Hoy</option>
-                    <option value="yesterday">Ayer</option>
-                    <option value="tomorrow">Mañana</option>
-                    <option value="week">Esta Semana</option>
-                    <option value="month">Este Mes</option>
-                    <option value="last-month">Mes Pasado</option>
-                    <option value="all">Siempre</option>
-                </select>
-                <button class="filter-btn" id="mobile-btn-tags-filter"><i class="fa-solid fa-tags"></i></button>
-                <button class="filter-btn" id="mobile-filter-completed" title="Ver completadas"><i
-                        class="fa-solid fa-check-double"></i></button>
-            </div>
+
             <!-- Mobile Goal Compact -->
             <div id="mobile-daily-goal"
                 style="display:none; margin: 0 15px 10px 15px; background:var(--card-bg); padding:8px 12px; border-radius:12px; border:1px solid var(--glass-border); align-items:center; justify-content:space-between;">

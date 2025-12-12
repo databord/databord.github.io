@@ -45,7 +45,7 @@ function applyFilters() {
     if (mobileDateSelect) mobileDateSelect.value = activeFilters.dateRange;
 
     // Tags (Updates class for chips in both containers)
-    document.querySelectorAll('.tag-chip').forEach(chip => {
+    document.querySelectorAll('.filter-chip').forEach(chip => {
         if (activeFilters.tags.has(chip.textContent)) chip.classList.add('active');
         else chip.classList.remove('active');
     });
@@ -426,16 +426,42 @@ function renderCategoryTags() {
     });
 
     // Helper to fill container
-    const fillContainer = (container) => {
+    const fillContainer = (container, isMobile) => {
         if (!container) return;
         container.innerHTML = '';
+
+        // Add "Volver" Button
+        const backBtn = document.createElement('button');
+        backBtn.className = 'tag-chip';
+        // Style manually to distinguish or just rely on tag-chip
+        backBtn.style.border = '1px solid var(--accent-color)';
+        backBtn.innerHTML = '<i class="fa-solid fa-arrow-left"></i> Volver';
+        backBtn.onclick = () => {
+            container.classList.add('hidden');
+            if (isMobile) {
+                const mobFilters = document.querySelector('.mobile-filters-section');
+                if (mobFilters) mobFilters.classList.remove('hidden');
+                document.getElementById('mobile-btn-tags-filter').classList.remove('active');
+            } else {
+                const filters = document.querySelector('.task-filters');
+                if (filters) filters.classList.remove('hidden');
+                document.getElementById('btn-tags-filter').classList.remove('active');
+            }
+        };
+        container.appendChild(backBtn);
+
         if (categories.size === 0) {
-            container.innerHTML = '<span style="font-size:0.8rem;color:var(--text-secondary);">No hay etiquetas</span>';
+            const msg = document.createElement('span');
+            msg.style.fontSize = '0.8rem';
+            msg.style.color = 'var(--text-secondary)';
+            msg.style.marginLeft = '8px';
+            msg.textContent = 'No hay etiquetas';
+            container.appendChild(msg);
             return;
         }
         categories.forEach(cat => {
             const chip = document.createElement('button');
-            chip.className = 'tag-chip';
+            chip.className = 'tag-chip filter-chip';
             if (activeFilters.tags.has(cat)) chip.classList.add('active');
             chip.textContent = cat;
             chip.addEventListener('click', () => {
@@ -447,8 +473,8 @@ function renderCategoryTags() {
         });
     };
 
-    fillContainer(desktopContainer);
-    fillContainer(mobileContainer);
+    fillContainer(desktopContainer, false);
+    fillContainer(mobileContainer, true);
 }
 
 function setupAuthListeners() {
@@ -706,8 +732,11 @@ function setupEventListeners() {
     if (btnTags) {
         btnTags.addEventListener('click', () => {
             const container = document.getElementById('category-tags-container');
-            container.classList.toggle('hidden');
-            btnTags.classList.toggle('active');
+            const filters = document.querySelector('.task-filters');
+
+            container.classList.remove('hidden');
+            filters.classList.add('hidden');
+            btnTags.classList.add('active');
         });
     }
 
@@ -716,8 +745,11 @@ function setupEventListeners() {
     if (mobileBtnTags) {
         mobileBtnTags.addEventListener('click', () => {
             const container = document.getElementById('mobile-category-tags-container');
-            container.classList.toggle('hidden');
-            mobileBtnTags.classList.toggle('active');
+            const filters = document.querySelector('.mobile-filters-section');
+
+            container.classList.remove('hidden');
+            if (filters) filters.classList.add('hidden');
+            mobileBtnTags.classList.add('active');
         });
     }
 
@@ -740,6 +772,22 @@ function setupEventListeners() {
     });
     taskListEl.addEventListener('dragover', handleDragOver);
     taskListEl.addEventListener('drop', handleDrop);
+
+    // Touch Drag & Drop
+    taskListEl.addEventListener('touchstart', handleTouchStart, { passive: false });
+    taskListEl.addEventListener('touchmove', handleTouchMove, { passive: false });
+    taskListEl.addEventListener('touchend', handleTouchEnd);
+
+
+    // View Density Toggles
+    const densityBtn = document.getElementById('btn-view-density');
+    if (densityBtn) densityBtn.addEventListener('click', toggleListDensity);
+
+    const mobileDensityBtn = document.getElementById('mobile-btn-view-density');
+    if (mobileDensityBtn) mobileDensityBtn.addEventListener('click', toggleListDensity);
+
+    // Initial Apply
+    applyListDensity();
 
     // Daily Stats Toggle
     const statsHeader = document.getElementById('stats-header');
@@ -1237,8 +1285,67 @@ function toggleSubtasks(taskId, btn) {
     if (container) container.classList.toggle('hidden');
 }
 
+// View Density State
+let listDensity = localStorage.getItem('planner_list_density') || 'normal'; // normal, compact, large
+
+function applyListDensity() {
+    taskListEl.classList.remove('normal', 'compact', 'large');
+    taskListEl.classList.add(listDensity);
+
+    // Also apply to list view container if it exists
+    if (listViewEl) {
+        listViewEl.classList.remove('normal', 'compact', 'large');
+        listViewEl.classList.add(listDensity);
+    }
+
+    // Update Button Icon based on next state
+    const updateBtn = (btnId) => {
+        const btn = document.getElementById(btnId);
+        if (!btn) return;
+
+        // Cycle: Normal -> Compact -> Large -> Normal
+        let iconClass = 'fa-bars'; // Default Normal
+        let title = "Vista Normal";
+
+        if (listDensity === 'normal') {
+            // Next is Compact
+            iconClass = 'fa-bars';
+            title = "Vista Normal (Click para Compacta)";
+        } else if (listDensity === 'compact') {
+            iconClass = 'fa-compress';
+            title = "Vista Compacta (Click para Amplia)";
+        } else if (listDensity === 'large') {
+            iconClass = 'fa-align-left';
+            title = "Vista Amplia (Click para Normal)";
+        }
+
+        btn.innerHTML = `<i class="fa-solid ${iconClass}"></i>`;
+        btn.title = title;
+    };
+
+    updateBtn('btn-view-density');
+    updateBtn('mobile-btn-view-density');
+}
+
+function toggleListDensity() {
+    console.log("toggleListDensity called. Current:", listDensity);
+    if (listDensity === 'normal') listDensity = 'compact';
+    else if (listDensity === 'compact') listDensity = 'large';
+    else listDensity = 'large';
+    // Logic error in previous snippet check: normal -> compact -> large -> normal
+    if (listDensity === 'large' && localStorage.getItem('planner_list_density') === 'large') listDensity = 'normal'; // Fix cycle
+
+    // Better cycle logic:
+    const modes = ['normal', 'compact', 'large'];
+    let idx = modes.indexOf(localStorage.getItem('planner_list_density') || 'normal');
+    idx = (idx + 1) % modes.length;
+    listDensity = modes[idx];
+
+    localStorage.setItem('planner_list_density', listDensity);
+    applyListDensity();
+}
+
 function createTaskElement(task, hasSubtasks = false, isSubtask = false) {
-    // ... Copy existing ...
     const div = document.createElement('div');
     div.className = `task-item priority-${task.priority}`;
     div.dataset.id = task.id;
@@ -1273,6 +1380,9 @@ function createTaskElement(task, hasSubtasks = false, isSubtask = false) {
         recurrenceText = `<div class="task-recurrence-text"><i class="fa-solid fa-rotate-right"></i> ${text}</div>`;
     }
 
+    // Description (Hidden unless .large mode)
+    const descriptionHtml = task.description ? `<div class="task-description">${task.description}</div>` : '';
+
     div.innerHTML = `
         <div style="display:flex;align-items:center;">
              ${!isSubtask ? toggleHtml : ''}
@@ -1284,6 +1394,7 @@ function createTaskElement(task, hasSubtasks = false, isSubtask = false) {
             <div class="task-title" style="${task.status === 'completed' ? 'text-decoration:line-through' : ''}">
                 ${iconHtml}${task.title}${categoryHtml}
             </div>
+            ${descriptionHtml}
             ${recurrenceText}
             <div class="task-meta">
                 <span><i class="fa-regular fa-calendar"></i> ${task.date || 'Sin fecha'}</span>
@@ -1292,50 +1403,214 @@ function createTaskElement(task, hasSubtasks = false, isSubtask = false) {
         </div>
         <div class="task-actions">
             <button class="action-btn" onclick="startPomodoroForTask('${task.id}')" title="Iniciar Pomodoro">${ICONS.play}</button>
-            <button class="action-btn" onclick="openModal('${task.id}')">${ICONS.edit}</button>
-            <button class="action-btn" onclick="window.addSubtask('${task.id}')" title="Agregar Subtarea">${ICONS.add}</button>
-            <button class="action-btn" onclick="deleteTask('${task.id}')">${ICONS.delete}</button>
+            <button class="action-btn" onclick="openModal('${task.id}')" title="Editar">${ICONS.edit}</button>
+            <button class="action-btn" onclick="deleteTask('${task.id}')" title="Eliminar">${ICONS.delete}</button>
+            ${!isSubtask ? `<button class="action-btn" onclick="addSubtask('${task.id}')" title="Añadir Subtarea">${ICONS.add}</button>` : ''}
         </div>
     `;
+
+    // Allow dragging
+    div.draggable = true;
+    div.addEventListener('dragstart', () => {
+        div.classList.add('dragging');
+        // If it's a subtask, we might store dragType on it here, or rely on wrapper logic in startTouchDrag
+        div.dataset.dragType = isSubtask ? 'subtask' : 'parent';
+    });
+    div.addEventListener('dragend', () => {
+        div.classList.remove('dragging');
+    });
+
     return div;
 }
 
-const DRAG_THRESHOLD_Y = 10; // Pixels from top/bottom to trigger reorder vs nest
+// --- TOUCH SUPPORT FOR DRAG & DROP ---
+let touchTimer = null;
+let touchDragItem = null;
+let touchClone = null;
+let touchStartX = 0;
+let touchStartY = 0;
+let touchOffsetX = 0;
+let touchOffsetY = 0;
+
+function handleTouchStart(e) {
+    if (e.target.closest('.btn-toggle-subtasks') || e.target.closest('.action-btn') || e.target.closest('.task-check')) return;
+
+    const taskItem = e.target.closest('.task-item');
+    if (!taskItem) return;
+
+    // Find wrapper if it's a parent, or allow dragging subtask
+    // Logic: We want to drag the "Draggable Unit".
+    // If it's a parent task, we drag the wrapper. If it's a subtask, we drag the item.
+    let draggable = taskItem.closest('.draggable-unit');
+    // Wait, we didn't add 'draggable-unit' class. 
+    // Existing logic: .task-wrapper (parent) or .task-item (subtask, if draggable=true).
+
+    // Let's deduce what we should drag.
+    let target = taskItem.closest('.task-wrapper');
+    if (!target) {
+        // Maybe it's a subtask in a sub list?
+        target = taskItem;
+    } else {
+        // It is a wrapper, but are we touching a subtask inside it?
+        const subtaskItem = e.target.closest('.subtask-container .task-item');
+        if (subtaskItem) {
+            target = subtaskItem;
+        }
+    }
+
+    // Check if dragging is allowed
+    if (!target) return;
+
+    touchDragItem = target;
+    const touch = e.touches[0];
+    touchStartX = touch.clientX;
+    touchStartY = touch.clientY;
+
+    // Long Press Timer (500ms)
+    touchTimer = setTimeout(() => {
+        startTouchDrag(touch);
+    }, 500);
+}
+
+function handleTouchMove(e) {
+    if (!touchDragItem) return;
+
+    const touch = e.touches[0];
+    const dx = Math.abs(touch.clientX - touchStartX);
+    const dy = Math.abs(touch.clientY - touchStartY);
+
+    // If moved significantly before timer fires, cancel timer (it's a scroll)
+    if (touchTimer && (dx > 10 || dy > 10)) {
+        clearTimeout(touchTimer);
+        touchTimer = null;
+        touchDragItem = null;
+    }
+
+    if (touchClone) {
+        e.preventDefault(); // Prevent scrolling while dragging
+        touchClone.style.transform = `translate(${touch.clientX - touchOffsetX}px, ${touch.clientY - touchOffsetY}px)`;
+
+        // Synthesize DragOver
+        // We need to find element under cursor
+        const elementBelow = document.elementFromPoint(touch.clientX, touch.clientY);
+        if (elementBelow) {
+            // Emulate event for handleDragOver
+            const mockEvent = {
+                preventDefault: () => { },
+                target: elementBelow,
+                clientX: touch.clientX,
+                clientY: touch.clientY,
+                dataTransfer: { dropEffect: 'move' }
+            };
+            handleDragOver(mockEvent);
+        }
+    }
+}
+
+function handleTouchEnd(e) {
+    if (touchTimer) {
+        clearTimeout(touchTimer);
+        touchTimer = null;
+    }
+
+    if (touchClone) {
+        touchClone.remove();
+        touchClone = null;
+        touchDragItem.classList.remove('dragging');
+
+        // Execute Drop
+        const touch = e.changedTouches[0];
+        const elementBelow = document.elementFromPoint(touch.clientX, touch.clientY);
+
+        const mockEvent = {
+            preventDefault: () => { },
+            target: elementBelow || document.body,
+            clientX: touch.clientX,
+            clientY: touch.clientY
+        };
+        handleDrop(mockEvent);
+
+        touchDragItem = null;
+    }
+    else {
+        touchDragItem = null;
+    }
+}
+
+function startTouchDrag(touch) {
+    touchTimer = null;
+    if (!touchDragItem) return;
+
+    // Feedback
+    if (navigator.vibrate) navigator.vibrate(50);
+
+    // Set Dragging Class to real item (for logic)
+    touchDragItem.classList.add('dragging');
+
+    // Determine Type
+    if (touchDragItem.classList.contains('task-wrapper')) {
+        touchDragItem.dataset.dragType = 'parent';
+    } else {
+        touchDragItem.dataset.dragType = 'subtask';
+    }
+
+    // Create Clone
+    const rect = touchDragItem.getBoundingClientRect();
+    touchOffsetX = touch.clientX - rect.left;
+    touchOffsetY = touch.clientY - rect.top;
+
+    touchClone = touchDragItem.cloneNode(true);
+    touchClone.style.position = 'fixed';
+    touchClone.style.left = `${rect.left}px`;
+    touchClone.style.top = `${rect.top}px`;
+    touchClone.style.width = `${rect.width}px`;
+    touchClone.style.zIndex = '9999';
+    touchClone.style.opacity = '0.9';
+    touchClone.style.boxShadow = '0 10px 20px rgba(0,0,0,0.3)';
+    touchClone.style.pointerEvents = 'none'; // Click through to detect underlying elements
+
+    document.body.appendChild(touchClone);
+}
+
+// ... (Existing Handle Drag Functions) ...
+
+// [INSERT handleDragOver and handleDrop here - Keeping them as they were in the previous step]
+// I will just return the full block including the new touch listeners hookup.
+
+// Hook up listeners in createTaskElement or setupEventListeners? 
+// Better in setupEventListeners for the container, but we need delegation.
+// Or attach to taskListEl.
+
+// Let's modify handleDragOver/Drop to be compatible if called manually (already compatible mostly).
+// But we need to ensure they don't crash on mocked events.
+
+const DRAG_THRESHOLD_Y = 10;
 
 function handleDragOver(e) {
-    e.preventDefault();
+    if (e.preventDefault) e.preventDefault(); // Safety check
     const draggable = document.querySelector('.dragging');
     if (!draggable) return;
 
-    const dragType = draggable.dataset.dragType; // 'parent' or 'subtask'
+    const dragType = draggable.dataset.dragType;
 
-    // We need to identify WHERE we are dragging over.
-    const closestSubContainer = e.target.closest('.subtask-container');
-    const closestTaskWrapper = e.target.closest('.task-wrapper');
+    // Support touch target (elementFromPoint might return child)
+    let target = e.target;
 
-    // Clear previous nest targets
+    const closestSubContainer = target.closest('.subtask-container');
+    const closestTaskWrapper = target.closest('.task-wrapper');
+
     document.querySelectorAll('.drop-target-nest').forEach(el => el.classList.remove('drop-target-nest'));
 
-    // --- CASE 1: Reordering Subtasks WITHIN a specific parent ---
     if (dragType === 'subtask' && closestSubContainer) {
-        // We are dragging a subtask INSIDE a subtask container
-        // Allow reordering within this container
         const afterElement = getDragAfterElement(closestSubContainer, e.clientY);
         if (afterElement == null) {
             closestSubContainer.appendChild(draggable);
         } else {
             closestSubContainer.insertBefore(draggable, afterElement);
         }
-        e.dataTransfer.dropEffect = 'move';
+        if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
         return;
     }
-
-    // --- CASE 2: Nesting a Parent into another Parent (Parent -> Subtask) --- 
-    // OR Nesting a Subtask into a DIFFERENT Parent
-
-    // Logic: If hovering over a Task Wrapper (that isn't self), potentially nest.
-    // However, if we are just sorting in the main list, we might hover a wrapper too.
-    // We use a "zone" check (middle of the element) to trigger nesting.
 
     const elements = [...taskListEl.querySelectorAll('.task-wrapper:not(.dragging)')];
     let nestingTarget = null;
@@ -1343,7 +1618,6 @@ function handleDragOver(e) {
 
     for (const wrapper of elements) {
         const rect = wrapper.getBoundingClientRect();
-        // Check middle zone for nesting (20% to 80% of height) to avoid conflict with sorting
         const threshold = rect.height * 0.25;
         if (mouseY > rect.top + threshold && mouseY < rect.bottom - threshold) {
             nestingTarget = wrapper;
@@ -1352,26 +1626,11 @@ function handleDragOver(e) {
     }
 
     if (nestingTarget) {
-        // Can't nest into self or own parent?
         if (nestingTarget.dataset.id === draggable.dataset.id) return;
-
-        // If it's a subtask, preventing nesting into OWN parent (unnecessary, just reorder)
-        if (dragType === 'subtask') {
-            // Find current parent id
-            // We can check the dataset of the dragging element if we stored it, or verify in drop
-            // Visual feedback is okay though.
-        }
-
-        // Visual Feedback
         nestingTarget.classList.add('drop-target-nest');
-        e.dataTransfer.dropEffect = 'copy';
+        if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
         return;
     }
-
-    // --- CASE 3: Reordering in Main List OR promoting Subtask to Main List ---
-
-    // If we are NOT in a subtask container (dragging out) and NOT nesting, 
-    // we treat it as a main list reorder/promotion.
 
     const afterElement = getDragAfterElement(taskListEl, e.clientY);
 
@@ -1380,84 +1639,72 @@ function handleDragOver(e) {
     } else {
         taskListEl.insertBefore(draggable, afterElement);
     }
-    e.dataTransfer.dropEffect = 'move';
+    if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
 }
 
 function handleDrop(e) {
-    e.preventDefault();
+    if (e.preventDefault) e.preventDefault();
     document.querySelectorAll('.drop-target-nest').forEach(el => el.classList.remove('drop-target-nest'));
 
     const draggable = document.querySelector('.dragging');
     if (!draggable) return;
 
-    const draggedId = draggable.dataset.id || draggable.querySelector('.task-item').dataset.id;
+    const draggedId = draggable.dataset.id || (draggable.querySelector('.task-item') ? draggable.querySelector('.task-item').dataset.id : null);
+    if (!draggedId) return; // Safety
+
     const dragType = draggable.dataset.dragType;
 
     const task = tasks.find(t => t.id === draggedId);
     if (!task) return;
 
-    // Detect where it ended up
-    const parentOfDraggable = draggable.parentElement;
-    const isNowInMainList = parentOfDraggable === taskListEl;
-    const isNowInSubContainer = parentOfDraggable.classList.contains('subtask-container');
-    const nestingTarget = e.target.closest('.task-wrapper.drop-target-nest') ||
-        (e.target.classList.contains('drop-target-nest') ? e.target : null);
+    let target = e.target;
+    // Nesting
+    const nestingTarget = target.closest('.task-wrapper.drop-target-nest') ||
+        (target.classList.contains('drop-target-nest') ? target : null);
 
-    // 1. Handled via Nesting Target (Explicit Drop ON TOP of a parent)
     if (nestingTarget) {
         const newParentId = nestingTarget.dataset.id;
-        if (newParentId === draggedId) return; // Self check
+        if (newParentId === draggedId) return;
 
         if (task.parentId !== newParentId) {
             task.parentId = newParentId;
             if (window.updateTaskInFirebase) {
                 window.updateTaskInFirebase(draggedId, { parentId: newParentId });
             }
-            applyFilters(); // Re-render logic to ensure correct DOM structure
+            applyFilters();
         }
         return;
     }
 
-    // 2. Handled via Position
+    // Position
+    const parentOfDraggable = draggable.parentElement;
+    const isNowInMainList = parentOfDraggable === taskListEl;
+    const isNowInSubContainer = parentOfDraggable.classList.contains('subtask-container');
 
-    // A) PROMOTION: Subtask -> Main List
     if (dragType === 'subtask' && isNowInMainList) {
-        // It was dropped in the main list area
         if (task.parentId) {
-            task.parentId = ""; // Remove parent
+            task.parentId = "";
             if (window.updateTaskInFirebase) {
                 window.updateTaskInFirebase(draggedId, { parentId: "" });
             }
-
-            // Save the new order based on where the user dropped it
             saveTaskOrder();
-
-            // We need to re-render because a subtask DOM element (.task-item) isn't the same as a root Wrapper
             applyFilters();
             return;
         }
     }
 
-    // B) SUBTASK REORDER or TRANSFER: Inside a subtask container
     if (isNowInSubContainer) {
         const newWrapper = parentOfDraggable.closest('.task-wrapper');
         if (newWrapper) {
             const newParentId = newWrapper.dataset.id;
-
-            // Did we change parent? (drag from one sublist to another)
             if (task.parentId !== newParentId) {
                 task.parentId = newParentId;
                 if (window.updateTaskInFirebase) {
                     window.updateTaskInFirebase(draggedId, { parentId: newParentId });
                 }
             }
-            // Just reorder logic below will handle the index
         }
     }
-
-    // C) PARENT REORDER: Just sorting wrappers (handled by saveTaskOrder)
-
-    // Finally, save the visual order
     saveTaskOrder();
 }
 
