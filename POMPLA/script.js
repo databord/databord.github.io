@@ -1994,12 +1994,27 @@ function renderCalendar() {
             if (categories.size > 0) {
                 const catContainer = document.createElement('div');
                 catContainer.className = 'day-categories';
-                categories.forEach(cat => {
+                
+                const catArray = Array.from(categories);
+                const displayLimit = 5;
+                const visibleCats = catArray.slice(0, displayLimit);
+                const remainingCount = catArray.length - displayLimit;
+
+                visibleCats.forEach(cat => {
                     const tag = document.createElement('span');
                     tag.className = 'calendar-category-tag';
                     tag.textContent = cat;
                     catContainer.appendChild(tag);
                 });
+
+                if (remainingCount > 0) {
+                    const moreTag = document.createElement('span');
+                    moreTag.className = 'calendar-category-tag';
+                    moreTag.style.opacity = '0.7';
+                    moreTag.textContent = `y ${remainingCount} más`;
+                    catContainer.appendChild(moreTag);
+                }
+
                 wrapper.appendChild(catContainer);
             }
 
