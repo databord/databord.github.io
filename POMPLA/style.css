@@ -191,6 +191,8 @@ body {
     align-items: center;
     justify-content: space-between;
     cursor: grab;
+    user-select: none;
+    -webkit-user-select: none;
     transition: transform 0.2s, box-shadow 0.2s;
     border-left: 4px solid transparent;
 
@@ -263,6 +265,33 @@ body {
     flex-direction: column;
     gap: 8px;
     margin-top: 8px;
+}
+
+/* Nesting Drag Styles */
+.task-wrapper.drop-target-nest>.task-item,
+.task-item.drop-target-nest {
+    outline: 2px dashed var(--accent-color);
+    outline-offset: -2px;
+    background-color: rgba(255, 255, 255, 0.1);
+    position: relative;
+}
+
+.task-wrapper.drop-target-nest>.task-item::after,
+.task-item.drop-target-nest::after {
+    content: "\f0c9  Convertir en subtarea";
+    font-family: "Font Awesome 6 Free";
+    font-weight: 900;
+    position: absolute;
+    right: 50px;
+    top: 50%;
+    transform: translateY(-50%);
+    background-color: var(--accent-color);
+    color: white;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    pointer-events: none;
+    z-index: 10;
 }
 
 /* Main Content */

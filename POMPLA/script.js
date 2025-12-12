@@ -51,14 +51,7 @@ function applyFilters() {
     });
 
     // Status Button Sync
-    const completedBtn = document.getElementById('filter-completed');
-    if (completedBtn) {
-        completedBtn.classList.toggle('active', activeFilters.status === 'completed');
-    }
-    const mobileCompletedBtn = document.getElementById('mobile-filter-completed');
-    if (mobileCompletedBtn) {
-        mobileCompletedBtn.classList.toggle('active', activeFilters.status === 'completed');
-    }
+    updateFilterButtonIcon();
 
     // 2. Determine Date Range
     let start = null, end = null;
@@ -100,6 +93,8 @@ function applyFilters() {
         // Status Filter
         if (activeFilters.status === 'completed') {
             if (task.status !== 'completed') return false;
+        } else if (activeFilters.status === 'pending') {
+            if (task.status === 'completed') return false;
         }
 
         // Date Filter
@@ -120,9 +115,41 @@ function applyFilters() {
     });
 
     renderTasks(filteredTasks);
-    renderTasks(filteredTasks);
     renderListView(activeFilters.dateRange, start, end);
     if (currentView === 'timeline') renderTimeline(activeFilters.dateRange, start, end);
+}
+
+// Helper: Update Status Button Icon & State
+function updateFilterButtonIcon() {
+    const btns = [
+        document.getElementById('filter-completed'),
+        document.getElementById('mobile-filter-completed')
+    ];
+
+    btns.forEach(btn => {
+        if (!btn) return;
+
+        // Remove active class initially
+        btn.classList.remove('active');
+
+        if (activeFilters.status === 'all') {
+            // Icon: Double Check (Gray/Inactive state) - implying "Click to filter"
+            // User requested retaining the fa-check-double class concept, but we need to show states.
+            // Let's use a clear "All" state or "Layer Group"
+            btn.innerHTML = '<i class="fa-solid fa-layer-group"></i>';
+            btn.title = "Viendo: Todos";
+        } else if (activeFilters.status === 'pending') {
+            // Icon: Square (Pending)
+            btn.innerHTML = '<i class="fa-regular fa-square"></i>';
+            btn.title = "Viendo: Pendientes";
+            btn.classList.add('active');
+        } else if (activeFilters.status === 'completed') {
+            // Icon: Check Double (Completed)
+            btn.innerHTML = '<i class="fa-solid fa-check-double"></i>';
+            btn.title = "Viendo: Completadas";
+            btn.classList.add('active');
+        }
+    });
 }
 
 // --- MOBILE TABS LOGIC ---
@@ -651,24 +678,27 @@ function setupEventListeners() {
         });
     }
 
-    // 3. Completed Button
+    // 3. Completed Button (Tri-state: All -> Pending -> Completed -> All)
+    const handleStatusToggle = () => {
+        if (activeFilters.status === 'all') {
+            activeFilters.status = 'pending';
+        } else if (activeFilters.status === 'pending') {
+            activeFilters.status = 'completed';
+        } else {
+            activeFilters.status = 'all';
+        }
+        applyFilters();
+    };
+
     const completedBtn = document.getElementById('filter-completed');
     if (completedBtn) {
-        completedBtn.addEventListener('click', () => {
-            if (activeFilters.status === 'completed') { activeFilters.status = 'all'; }
-            else { activeFilters.status = 'completed'; }
-            applyFilters();
-        });
+        completedBtn.addEventListener('click', handleStatusToggle);
     }
 
     // Mobile Completed
     const mobileCompletedBtn = document.getElementById('mobile-filter-completed');
     if (mobileCompletedBtn) {
-        mobileCompletedBtn.addEventListener('click', () => {
-            if (activeFilters.status === 'completed') { activeFilters.status = 'all'; }
-            else { activeFilters.status = 'completed'; }
-            applyFilters();
-        });
+        mobileCompletedBtn.addEventListener('click', handleStatusToggle);
     }
 
     // Tags Toggle Button (Show/Hide Container)
@@ -1022,10 +1052,8 @@ function renderTasks(tasksToRender) {
 
     // Sort groups? For now iterate as is (order field handled in receiving data)
 
-    // Disable drag if ANY filtering is active (Status 'completed' enabled OR Range not 'all' OR Tags active)
-    // Actually, simple rule: If filtered view, disable drag.
-    // 'all' range + no tags + status 'all' = Drag OK.
-    const allowDrag = activeFilters.dateRange === 'all' && activeFilters.tags.size === 0 && activeFilters.status === 'all';
+    // Enable drag always, as requested by user ("si hay aplicados filtros igual deberia poderse ordenar")
+    const allowDrag = true;
 
     groups.forEach(item => {
         if (item.type === 'wrapper') {
@@ -1039,12 +1067,17 @@ function renderTasks(tasksToRender) {
             if (allowDrag) {
                 wrapper.draggable = true;
                 wrapper.addEventListener('dragstart', (e) => {
-                    if (e.target.closest('.task-item') && e.target.closest('.subtask-container')) return;
+                    // Simplified: We trust stopPropagation from children subtasks
                     wrapper.classList.add('dragging');
                     wrapper.dataset.dragType = 'parent';
                     e.dataTransfer.setData('text/plain', parent.id);
+                    e.dataTransfer.effectAllowed = 'move';
                 });
-                wrapper.addEventListener('dragend', () => { wrapper.classList.remove('dragging'); delete wrapper.dataset.dragType; saveTaskOrder(); });
+                wrapper.addEventListener('dragend', () => {
+                    wrapper.classList.remove('dragging');
+                    delete wrapper.dataset.dragType;
+                    saveTaskOrder();
+                });
             }
 
             const taskEl = createTaskElement(parent, hasSubtasks);
@@ -1062,8 +1095,19 @@ function renderTasks(tasksToRender) {
                     const subEl = createTaskElement(sub, false, true);
                     if (allowDrag) {
                         subEl.draggable = true;
-                        subEl.addEventListener('dragstart', (e) => { e.stopPropagation(); subEl.classList.add('dragging'); subEl.dataset.dragType = 'subtask'; e.dataTransfer.setData('text/plain', sub.id); });
-                        subEl.addEventListener('dragend', (e) => { e.stopPropagation(); subEl.classList.remove('dragging'); delete subEl.dataset.dragType; saveTaskOrder(); });
+                        subEl.addEventListener('dragstart', (e) => {
+                            e.stopPropagation();
+                            subEl.classList.add('dragging');
+                            subEl.dataset.dragType = 'subtask';
+                            e.dataTransfer.setData('text/plain', sub.id);
+                            e.dataTransfer.effectAllowed = 'move';
+                        });
+                        subEl.addEventListener('dragend', (e) => {
+                            e.stopPropagation();
+                            subEl.classList.remove('dragging');
+                            delete subEl.dataset.dragType;
+                            saveTaskOrder();
+                        });
                     }
                     subContainer.appendChild(subEl);
                 });
@@ -1090,38 +1134,101 @@ function renderTasks(tasksToRender) {
     });
 }
 
+// UPDATED Save Task Order (Slot Swapping for Filters)
 function saveTaskOrder() {
-    // ... copy existing ...
-    const children = Array.from(taskListEl.children);
-    const taskMap = new Map(tasks.map(t => [t.id, t]));
-    const newTasks = [];
-    let currentOrderIndex = 0; const ORDER_STEP = 1000;
-    children.forEach(child => {
-        const id = child.dataset.id; const task = taskMap.get(id);
-        if (task) {
-            let needsUpdate = false; let updates = {};
-            if (child.classList.contains('task-item') && task.parentId) { task.parentId = null; updates.parentId = null; needsUpdate = true; }
-            currentOrderIndex += ORDER_STEP;
-            if (task.order !== currentOrderIndex) { task.order = currentOrderIndex; updates.order = currentOrderIndex; needsUpdate = true; }
-            if (needsUpdate && window.updateTaskInFirebase) window.updateTaskInFirebase(task.id, updates);
-            newTasks.push(task); taskMap.delete(id);
-            if (child.classList.contains('task-wrapper')) {
-                const subContainer = child.querySelector('.subtask-container');
-                if (subContainer) {
-                    Array.from(subContainer.querySelectorAll('.task-item')).forEach(subEl => {
-                        const subId = subEl.dataset.id; const subTask = taskMap.get(subId);
-                        if (subTask) {
-                            currentOrderIndex += ORDER_STEP; let subNeedsUpdate = false; let subUpdates = {};
-                            if (subTask.order !== currentOrderIndex) { subTask.order = currentOrderIndex; subUpdates.order = currentOrderIndex; subNeedsUpdate = true; }
-                            if (subNeedsUpdate && window.updateTaskInFirebase) window.updateTaskInFirebase(subTask.id, subUpdates);
-                            newTasks.push(subTask); taskMap.delete(subId);
-                        }
-                    });
-                }
+    // 1. Get the current visual order from the DOM
+    const visualWrappers = Array.from(taskListEl.children);
+    const visibleTaskIds = [];
+
+    // Helper to extract IDs recursively (Wrapper -> Parent + Subtasks)
+    visualWrappers.forEach(child => {
+        // Wrapper cases
+        if (child.classList.contains('task-wrapper')) {
+            const parentId = child.dataset.id;
+            if (parentId) visibleTaskIds.push(parentId);
+
+            const subContainer = child.querySelector('.subtask-container');
+            if (subContainer) {
+                const subs = subContainer.querySelectorAll('.task-item');
+                subs.forEach(s => visibleTaskIds.push(s.dataset.id));
+            }
+        }
+        // Orphan container cases
+        else if (child.children.length > 0) {
+            // Likely orphan container
+            // The orphan itself is usually inside a .subtask-container inside this div
+            // structure: div > div.parent-indicator + div.subtask-container > div.task-item.orphan-subtask
+            const orphans = child.querySelectorAll('.task-item');
+            orphans.forEach(o => visibleTaskIds.push(o.dataset.id));
+        }
+        // Direct item (shouldn't happen with current render, but safety)
+        else if (child.classList.contains('task-item')) {
+            visibleTaskIds.push(child.dataset.id);
+        }
+    });
+
+    if (visibleTaskIds.length === 0) return;
+
+    // 2. Separate global tasks into "Visible" and "Hidden" buckets
+    // We want to preserve the relative "slots" of the visible tasks in the global list
+    // so that when we re-insert the shuffled visible tasks, they take the original positions(indexes) 
+    // of the visible tasks, leaving hidden tasks untouched in between.
+
+    // Sort global tasks by current order first to ensure reliable index mapping
+    // (Though they should be sorted, let's be safe)
+    tasks.sort((a, b) => (a.order || 0) - (b.order || 0));
+
+    const visibleIdSet = new Set(visibleTaskIds);
+    const visibleTasksIndices = []; // Indices in the global `tasks` array
+    const hiddenTasks = []; // The objects of hidden tasks
+
+    tasks.forEach((t, index) => {
+        if (visibleIdSet.has(t.id)) {
+            visibleTasksIndices.push(index);
+        } else {
+            // It's a hidden task, we don't touch it, but we need to know it exists
+        }
+    });
+
+    // 3. Create the new global order list
+    const newTasks = [...tasks]; // Copy
+
+    // 4. Place the VISIBLE tasks back into the VISIBLE slots in their NEW visual order
+    // visibleTaskIds has the ID sequence [C, A]
+    // visibleTasksIndices has the indices [0, 5] (example) where visible tasks USED to be
+    // We put C at index 0, A at index 5.
+
+    if (visibleTasksIndices.length !== visibleTaskIds.length) {
+        console.warn("Mismatch in visible task tracking during reorder", visibleTasksIndices.length, visibleTaskIds.length);
+        // Fallback: just append? No, dangerous. Abort reorder to save data.
+        return;
+    }
+
+    visibleTasksIndices.forEach((globalIndex, i) => {
+        const taskId = visibleTaskIds[i];
+        const taskObj = tasks.find(t => t.id === taskId);
+        if (taskObj) {
+            newTasks[globalIndex] = taskObj;
+        }
+    });
+
+    // 5. Reassign 'order' property to ALL tasks based on this new array sequence
+    // This preserves the gap logic essentially.
+    const updatesBatch = {};
+    const ORDER_STEP = 1000;
+
+    newTasks.forEach((t, i) => {
+        const newOrder = (i + 1) * ORDER_STEP;
+        if (t.order !== newOrder) {
+            t.order = newOrder;
+            if (window.updateTaskInFirebase) {
+                window.updateTaskInFirebase(t.id, { order: newOrder });
             }
         }
     });
-    taskMap.forEach(t => newTasks.push(t)); tasks = newTasks;
+
+    // 6. Update global state
+    tasks = newTasks;
 }
 
 function toggleSubtasks(taskId, btn) {
@@ -1193,24 +1300,151 @@ function createTaskElement(task, hasSubtasks = false, isSubtask = false) {
     return div;
 }
 
+const DRAG_THRESHOLD_Y = 10; // Pixels from top/bottom to trigger reorder vs nest
+
 function handleDragOver(e) {
     e.preventDefault();
-    const afterElement = getDragAfterElement(taskListEl, e.clientY);
     const draggable = document.querySelector('.dragging');
     if (!draggable) return;
-    if (afterElement == null) taskListEl.appendChild(draggable);
-    else taskListEl.insertBefore(draggable, afterElement);
+
+    const dragType = draggable.dataset.dragType; // 'parent' or 'subtask'
+    const afterElement = getDragAfterElement(taskListEl, e.clientY);
+    const containerRect = taskListEl.getBoundingClientRect();
+
+    // Clear previous nest targets
+    document.querySelectorAll('.drop-target-nest').forEach(el => el.classList.remove('drop-target-nest'));
+
+    // Check for nesting target
+    // We can nest a 'parent' (becoming subtask) into another 'parent'.
+    // We can nest a 'subtask' into another 'parent'.
+    // We CANNOT nest into a Subtask (1 level max).
+
+    const mouseY = e.clientY;
+    const elements = [...taskListEl.querySelectorAll('.task-wrapper:not(.dragging)')];
+
+    let nestingTarget = null;
+
+    for (const wrapper of elements) {
+        const rect = wrapper.getBoundingClientRect();
+        // Check if mouse is strictly INSIDE the vertical bounds of the item, 
+        // avoiding the very top and very bottom edges which are for reordering.
+        if (mouseY > rect.top + DRAG_THRESHOLD_Y && mouseY < rect.bottom - DRAG_THRESHOLD_Y) {
+            // It's in the middle zone -> Potential Nesting
+            // Ensure we are not dragging a parent onto itself (handled by :not(.dragging))
+            // Ensure target is a parent wrapper
+            nestingTarget = wrapper;
+            break;
+        }
+    }
+
+    if (nestingTarget) {
+        // Visual Feedback for Nesting
+        // We add the class to the wrapper or the task-item inside it.
+        // styling expects .task-wrapper.drop-target-nest > .task-item
+        nestingTarget.classList.add('drop-target-nest');
+        e.dataTransfer.dropEffect = 'copy'; // Changed icon behavior slightly
+        return; // Don't do reorder logic if we are consistently hovering for nest
+    }
+
+    // Default Reorder Logic
+    e.dataTransfer.dropEffect = 'move';
+    if (afterElement == null) {
+        taskListEl.appendChild(draggable);
+    } else {
+        taskListEl.insertBefore(draggable, afterElement);
+    }
 }
 
-function handleDrop(e) { e.preventDefault(); }
+function handleDrop(e) {
+    e.preventDefault();
+    document.querySelectorAll('.drop-target-nest').forEach(el => el.classList.remove('drop-target-nest'));
 
+    const draggable = document.querySelector('.dragging');
+    if (!draggable) return;
+
+    const draggedId = draggable.dataset.id || draggable.querySelector('.task-item').dataset.id;
+    // Note: wrapper dataset.id vs task-item dataset.id. 
+    // Wrappers have dataset.id set in renderTasks. Subtasks (task-item) also have dataset.id.
+
+    // Check if we dropped on a nesting target
+    const nestingTarget = e.target.closest('.task-wrapper.drop-target-nest') ||
+        (e.target.classList && e.target.classList.contains('task-wrapper') && e.target.classList.contains('drop-target-nest') ? e.target : null);
+
+    if (nestingTarget) {
+        const newParentId = nestingTarget.dataset.id;
+
+        // Prevent nesting into self (should be impossible via UI but good safety)
+        if (newParentId === draggedId) return;
+
+        // Prevent nesting parent into its own child (circular) - requires check
+        // Since we only have 1 level, a 'parent' being dragged has no parent. 
+        // If it becomes a subtask, its previous children would become orphans 
+        // OR we don't allow nesting if it has children?
+        // Let's assume we can move it, and its children become orphans (common behavior) or they move with it (2-level).
+        // Current app structure flats everything to 1 level sort of.
+        // Let's perform the move.
+
+        const task = tasks.find(t => t.id === draggedId);
+        if (task) {
+            // Update Parent
+            task.parentId = newParentId;
+
+            // If the moved task had children, they are now orphans (parentId points to a task that is now a subtask).
+            // Logic in `renderTasks` handles orphans (orphan-context).
+            // Ideally, we might want to update children recursively, but for now 1-level deep.
+            // If A has sub B. Drag A into C. A becomes sub of C. B stays sub of A?
+            // If B stays sub of A, but A is sub of C. 
+            // `renderTasks` logic:
+            // 1. Find Parents (no parentId). C is parent. A is NOT parent.
+            // 2. Orphans: orphans are tasks with parentId that isn't found in processed parents.
+            // A is child of C. C is processed. A is processed as child.
+            // B is child of A. A is NOT in 'parentsInList' (it is a child).
+            // So B becomes an orphan in render logic? 
+            // "orphans.forEach... parent = tasks.find... if (parent) ..." 
+            // A exists. So B renders as orphan attached to A. 
+            // Visual result: C -> A. And separate block: Subtarea de A -> B. 
+            // This is acceptable behavior for "1-level nesting enforcement" or "soft multilevel".
+
+            if (window.updateTaskInFirebase) {
+                window.updateTaskInFirebase(draggedId, { parentId: newParentId });
+            }
+
+            // Force refresh to handle structure change AND KEEP PROPER VIEW
+            applyFilters();
+            return;
+        }
+    }
+
+    // If not nesting, it was a reorder. Current DOM position is already correct from DragOver.
+    // Just save order.
+    saveTaskOrder();
+}
+
+// Logic unchanged for simple sort determination
 function getDragAfterElement(container, y) {
-    const draggableElements = [...container.querySelectorAll(':scope > .task-wrapper:not(.dragging), :scope > .task-item:not(.dragging)')];
+    // Only consider Wrappers and Top-Level Items for main list sorting 
+    // or we need to respect the list we are in.
+    // But since we are dragging in main list...
+    // The querySelectorAll includes :scope > .task-wrapper:not(.dragging)
+    // Nesting logic handled in dragOver loop.
+
+    // We need to exclude the currently interacting "nest target" if we want to be clean, 
+    // but the nesting visual feedback is separate.
+
+    // Robust selector: Direct children that are draggable-candidates (wrappers or items)
+    // We ignore :scope to ensure compatibility
+    const draggableElements = [...container.children].filter(child => {
+        return (child.classList.contains('task-wrapper') || child.classList.contains('task-item')) && !child.classList.contains('dragging');
+    });
+
     return draggableElements.reduce((closest, child) => {
         const box = child.getBoundingClientRect();
         const offset = y - box.top - box.height / 2;
-        if (offset < 0 && offset > closest.offset) return { offset: offset, element: child };
-        else return closest;
+        if (offset < 0 && offset > closest.offset) {
+            return { offset: offset, element: child };
+        } else {
+            return closest;
+        }
     }, { offset: Number.NEGATIVE_INFINITY }).element;
 }
 
