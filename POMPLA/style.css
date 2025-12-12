@@ -81,11 +81,19 @@ body {
 
 .task-filters {
     display: flex;
-    gap: 10px;
-    padding-bottom: 10px;
+    align-items: center;
+    /* Center items vertically */
+    gap: 12px;
+    padding: 10px 5px 15px 5px;
+    /* Added side padding for scroll safety */
     border-bottom: 1px solid var(--glass-border);
     overflow-x: auto;
+    overflow-y: hidden;
     white-space: nowrap;
+    flex-shrink: 0;
+    /* Prevent collapsing in flex column */
+    min-height: 70px;
+    /* Ensure enough height for buttons + scrollbar */
     -webkit-overflow-scrolling: touch;
     /* Smooth scroll on mobile */
     scrollbar-width: thin;
@@ -96,11 +104,15 @@ body {
     background: transparent;
     border: 1px solid var(--glass-border);
     color: var(--text-secondary);
-    padding: 6px 12px;
+    padding: 8px 16px;
     border-radius: 20px;
     cursor: pointer;
-    font-size: 0.85rem;
+    font-size: 0.95rem;
     transition: all 0.3s;
+    min-height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .filter-btn.active,
@@ -115,16 +127,17 @@ body {
     background: transparent;
     border: 1px solid var(--glass-border);
     color: var(--text-secondary);
-    padding: 6px 12px;
+    padding: 8px 16px;
     border-radius: 20px;
     cursor: pointer;
-    font-size: 0.85rem;
+    font-size: 0.95rem;
     transition: all 0.3s;
     outline: none;
     -webkit-appearance: none;
     -moz-appearance: none;
     appearance: none;
     text-align: center;
+    min-height: 36px;
 }
 
 .filter-select:hover,
@@ -1461,6 +1474,23 @@ body {
     background: rgba(0, 0, 0, 0.03);
     padding: 8px;
     border-radius: 4px;
+}
+
+#task-list.large .task-meta {
+    display: flex !important;
+    margin-top: 10px;
+    padding-top: 8px;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+#task-list.large .task-recurrence-text {
+    display: block !important;
+}
+
+/* NORMAL MODE (Default) - Hide Meta as requested, but keep recurrence if not explicitly hidden */
+#task-list.normal .task-meta,
+.task-list-container:not(.large):not(.compact) .task-meta {
+    display: none;
 }
 
 .task-description {
