@@ -605,6 +605,10 @@ function setupEventListeners() {
     document.getElementById('cancel-task').addEventListener('click', closeModal);
     taskForm.addEventListener('submit', handleTaskSubmit);
 
+    // Dynamic Parent Filtering
+    document.getElementById('task-date').addEventListener('change', updateParentSelect);
+    document.getElementById('task-end-date').addEventListener('change', updateParentSelect);
+
     // Mobile Widgets Toggle
     const mobileToggle = document.getElementById('mobile-widgets-toggle');
     const mobileContainer = document.getElementById('mobile-widgets-container');
@@ -903,7 +907,7 @@ function switchView(view) {
 function openModal(editId = null) {
     // ... Copy existing implementation ...
     modal.classList.add('active');
-    updateParentSelect();
+    // moved updateParentSelect to end
     if (editId) {
         const task = tasks.find(t => t.id === editId);
         document.getElementById('modal-title').textContent = 'Editar Tarea';
@@ -992,28 +996,58 @@ function openModal(editId = null) {
         iconSelect.dispatchEvent(new Event('change'));
         delete taskForm.dataset.editId;
     }
+    updateParentSelect();
 }
 
 function closeModal() { modal.classList.remove('active'); }
 
 function updateParentSelect() {
+    const editId = taskForm.dataset.editId;
+    const dateVal = document.getElementById('task-date').value;
+    const endDateVal = document.getElementById('task-end-date').value;
+    const currentParentId = document.getElementById('task-parent').value;
+
     taskParentSelect.innerHTML = '<option value="">Ninguna (Tarea Principal)</option>';
+
+    // Helper to check validity
+    const isValidParent = (t) => {
+        if (editId && t.id === editId) return false; // Prevent self-parenting
+
+        const isFolder = !!t.isFolder || (!t.date && !!t.color);
+        if (isFolder) return true; // Folders always available
+
+        if (!dateVal && !endDateVal) return true; // Show all if no dates set
+
+        let onStart = false;
+        if (dateVal) onStart = isTaskOnDate(t, new Date(dateVal + 'T00:00:00'));
+
+        let onEnd = false;
+        if (endDateVal) onEnd = isTaskOnDate(t, new Date(endDateVal + 'T00:00:00'));
+
+        return onStart || onEnd;
+    };
 
     // Render options with indentation for hierarchy
     const renderOption = (t, depth) => {
-        if (depth > 2) return; // Limit depth to allow only up to level 3 (Root(0) -> Child(1) -> Sub(2)) - Parent of new task can be at most level 2
+        if (depth > 2) return;
 
-        const option = document.createElement('option');
-        option.value = t.id;
-        option.textContent = '\u00A0\u00A0'.repeat(depth) + (depth > 0 ? '↳ ' : '') + t.title;
-        taskParentSelect.appendChild(option);
+        // If valid, show it
+        if (isValidParent(t)) {
+            const option = document.createElement('option');
+            option.value = t.id;
+            option.textContent = '\u00A0\u00A0'.repeat(depth) + (depth > 0 ? '↳ ' : '') + t.title;
+            taskParentSelect.appendChild(option);
+        }
 
-        // Find children and recurse
+        // Recurse to children regardless (they might be valid even if parent isn't)
         tasks.filter(child => child.parentId === t.id).forEach(c => renderOption(c, depth + 1));
     };
 
     // Start with roots
     tasks.filter(t => !t.parentId).forEach(t => renderOption(t, 0));
+
+    // Restore value if possible
+    if (currentParentId) taskParentSelect.value = currentParentId;
 }
 
 function handleTaskSubmit(e) {
@@ -1102,13 +1136,19 @@ function calculateNextOccurrence(currentDateStr, recurrence, recurrenceDays) {
 function isTaskOnDate(task, targetDateObj) {
     if (!task.date) return false;
     const taskStart = new Date(task.date + 'T00:00:00');
-    const targetStr = targetDateObj.toISOString().split('T')[0];
+    // Fix: Use local date string construction instead of UTC ISO to prevent timezone shifts
+    const y = targetDateObj.getFullYear();
+    const m = String(targetDateObj.getMonth() + 1).padStart(2, '0');
+    const d = String(targetDateObj.getDate()).padStart(2, '0');
+    const targetStr = `${y}-${m}-${d}`;
+
     const taskEnd = task.endDate ? new Date(task.endDate + 'T00:00:00') : null;
 
     if (task.recurrence === 'none' || !task.recurrence) {
         if (taskEnd) return targetDateObj >= taskStart && targetDateObj <= taskEnd;
         else return task.date === targetStr;
     } else {
+        // ... Recurrence logic continues ...
         if (targetDateObj < taskStart) return false;
         if (taskEnd && targetDateObj > taskEnd) return false;
         if (task.recurrence === 'daily') return true;
