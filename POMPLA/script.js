@@ -90,7 +90,18 @@ function applyFilters() {
             if (![...activeFilters.tags].some(tag => taskTags.includes(tag))) return false;
         }
 
+        // Folder Check: Always show folders (unless filtered by tags above)
+        const isFolder = !!task.isFolder || (!task.date && !!task.color);
+        if (isFolder) return true;
+
         // Status Filter
+        if (activeFilters.status === 'completed') {
+            if (task.status !== 'completed') return false;
+        } else if (activeFilters.status === 'pending') {
+            if (task.status === 'completed') return false;
+        }
+
+        // Date Filter
         if (activeFilters.status === 'completed') {
             if (task.status !== 'completed') return false;
         } else if (activeFilters.status === 'pending') {
@@ -610,6 +621,41 @@ function setupEventListeners() {
         });
     }
 
+    // Folder Checkbox Logic
+    const folderCheckbox = document.getElementById('task-is-folder');
+    if (folderCheckbox) {
+        folderCheckbox.addEventListener('change', (e) => {
+            const isFolder = e.target.checked;
+            const dateInput = document.getElementById('task-date');
+            const colorInput = document.getElementById('task-color');
+            const parentSelect = document.getElementById('task-parent'); // User requested to hide this
+
+            // Find wrappers to hide
+            const dateRow = dateInput.closest('.form-row'); // Contains date and end-date usually
+            const parentGroup = parentSelect.closest('.form-group');
+            const priorityGroup = document.getElementById('task-priority').closest('.form-group');
+            const recurrenceGroup = document.getElementById('task-recurrence').closest('.form-group');
+
+            if (isFolder) {
+                if (dateRow) dateRow.style.display = 'none';
+                if (parentGroup) parentGroup.style.display = 'none';
+                if (priorityGroup) priorityGroup.style.display = 'none';
+                if (recurrenceGroup) recurrenceGroup.style.display = 'none';
+
+                colorInput.style.display = 'block';
+                document.getElementById('recurrence-days-container').classList.add('hidden');
+            } else {
+                if (dateRow) dateRow.style.display = 'flex';
+                if (parentGroup) parentGroup.style.display = 'block';
+                if (priorityGroup) priorityGroup.style.display = 'block';
+                if (recurrenceGroup) recurrenceGroup.style.display = 'block';
+
+                colorInput.style.display = 'none';
+                // Recurrence container remains hidden unless custom is selected (handled by its own listener)
+            }
+        });
+    }
+
     document.getElementById('prev-month').addEventListener('click', () => changeMonth(-1));
     document.getElementById('next-month').addEventListener('click', () => changeMonth(1));
 
@@ -910,10 +956,29 @@ function openModal(editId = null) {
         document.getElementById('pomo-work').value = settings.work;
         document.getElementById('pomo-break').value = settings.break;
 
+        const isFolder = !!task.isFolder || (!task.date && !!task.color); // Derived or explicit
+        document.getElementById('task-is-folder').checked = isFolder;
+        document.getElementById('task-color').value = task.color || '#3b82f6';
+
+        // Trigger UI update
+        document.getElementById('task-is-folder').dispatchEvent(new Event('change'));
+
+        // If not folder, restore values (listener might have cleared them)
+        if (!isFolder) {
+            document.getElementById('task-date').value = task.date || '';
+            document.getElementById('task-priority').value = task.priority;
+            document.getElementById('task-recurrence').value = task.recurrence || 'none';
+        }
+
         taskForm.dataset.editId = editId;
     } else {
         document.getElementById('modal-title').textContent = 'Nueva Tarea';
         taskForm.reset();
+
+        // Reset Folder UI
+        document.getElementById('task-is-folder').checked = false;
+        document.getElementById('task-is-folder').dispatchEvent(new Event('change'));
+
         document.getElementById('task-date').valueAsDate = new Date();
         document.getElementById('task-recurrence').value = 'none';
         document.getElementById('recurrence-days-container').classList.add('hidden');
@@ -933,24 +998,37 @@ function closeModal() { modal.classList.remove('active'); }
 
 function updateParentSelect() {
     taskParentSelect.innerHTML = '<option value="">Ninguna (Tarea Principal)</option>';
-    tasks.forEach(task => {
-        if (!task.parentId) {
-            const option = document.createElement('option');
-            option.value = task.id;
-            option.textContent = task.title;
-            taskParentSelect.appendChild(option);
-        }
-    });
+
+    // Render options with indentation for hierarchy
+    const renderOption = (t, depth) => {
+        if (depth > 2) return; // Limit depth to allow only up to level 3 (Root(0) -> Child(1) -> Sub(2)) - Parent of new task can be at most level 2
+
+        const option = document.createElement('option');
+        option.value = t.id;
+        option.textContent = '\u00A0\u00A0'.repeat(depth) + (depth > 0 ? '↳ ' : '') + t.title;
+        taskParentSelect.appendChild(option);
+
+        // Find children and recurse
+        tasks.filter(child => child.parentId === t.id).forEach(c => renderOption(c, depth + 1));
+    };
+
+    // Start with roots
+    tasks.filter(t => !t.parentId).forEach(t => renderOption(t, 0));
 }
 
 function handleTaskSubmit(e) {
     e.preventDefault();
     const title = document.getElementById('task-title').value;
     const desc = document.getElementById('task-desc').value;
-    const date = document.getElementById('task-date').value;
-    const endDate = document.getElementById('task-end-date').value;
-    const priority = document.getElementById('task-priority').value;
-    const recurrence = document.getElementById('task-recurrence').value;
+    const isFolder = document.getElementById('task-is-folder').checked; // Capture explicitly
+
+    // Logic for Folders: Clear Date/Time/Priority
+    const date = isFolder ? null : document.getElementById('task-date').value;
+    const endDate = isFolder ? null : document.getElementById('task-end-date').value;
+    const priority = isFolder ? 'none' : document.getElementById('task-priority').value;
+    const recurrence = isFolder ? 'none' : document.getElementById('task-recurrence').value;
+    const color = document.getElementById('task-color').value; // Capture color
+
     let recurrenceDays = [];
     if (recurrence === 'custom') {
         const checks = document.querySelectorAll('.days-checkbox-group input:checked');
@@ -967,7 +1045,23 @@ function handleTaskSubmit(e) {
         break: parseInt(document.getElementById('pomo-break').value) || 5
     };
     const editId = taskForm.dataset.editId;
-    const taskData = { title, desc, date, endDate, priority, recurrence, recurrenceDays, parentId, category, icon, pomodoroSettings };
+
+    // Include color and isFolder in the payload
+    const taskData = {
+        title,
+        desc,
+        date,
+        endDate,
+        priority,
+        recurrence,
+        recurrenceDays,
+        parentId: parentId || null,
+        category,
+        icon,
+        pomodoroSettings,
+        color: isFolder ? color : null,
+        isFolder: isFolder
+    };
 
     if (editId) { if (window.updateTaskInFirebase) window.updateTaskInFirebase(editId, taskData); }
     else { if (window.addTaskToFirebase) window.addTaskToFirebase(taskData); }
@@ -1080,122 +1174,116 @@ function toggleTaskStatus(id) {
 // UPDATED RENDER TASKS (Accepts pre-filtered list)
 function renderTasks(tasksToRender) {
     taskListEl.innerHTML = '';
-
-    // We only render what is in tasksToRender, but respecting hierarchy:
-    // 1. Group by Parents (if parent is in tasksToRender)
-    // 2. Orphans (if parent NOT in tasksToRender but subtask is)
-
-    const groups = [];
     const processedIds = new Set();
     const renderSet = new Set(tasksToRender.map(t => t.id));
 
-    // 1. Find Parents in list
-    const parentsInList = tasksToRender.filter(t => !t.parentId);
-    parentsInList.forEach(p => {
-        // Collect children also in list
-        const children = tasksToRender.filter(t => t.parentId === p.id);
-        groups.push({ type: 'wrapper', parent: p, children: children });
-        processedIds.add(p.id);
-        children.forEach(c => processedIds.add(c.id));
-    });
+    // Recursive Helper function for N-level nesting
+    function renderRecursive(parentId, container, depth) {
+        if (depth > 2) return; // Limit depth (Root=0, Child=1, Grand=2 -> 3 levels total)
 
-    // 2. Find Orphans (items in list whose parent is NOT in list)
-    const orphans = tasksToRender.filter(t => !processedIds.has(t.id) && t.parentId);
-    orphans.forEach(sub => {
-        // Fetch parent info from GLOBAL tasks for context
-        const parent = tasks.find(t => t.id === sub.parentId);
-        if (parent) {
-            groups.push({ type: 'orphan', task: sub, parent: parent });
-        }
-    });
+        const children = tasksToRender.filter(t => t.parentId === parentId);
+        if (children.length === 0) return;
 
-    if (groups.length === 0) {
-        taskListEl.innerHTML = '<div class="empty-state" style="text-align:center; color:var(--text-secondary); padding:20px;">No hay tareas con este filtro</div>';
-        return;
-    }
+        children.forEach(child => {
+            if (processedIds.has(child.id)) return;
+            processedIds.add(child.id);
 
-    // Sort groups? For now iterate as is (order field handled in receiving data)
+            // Check if this child has its own children to show toggle
+            const hasGrandChildren = tasksToRender.some(t => t.parentId === child.id);
 
-    // Enable drag always, as requested by user ("si hay aplicados filtros igual deberia poderse ordenar")
-    const allowDrag = true;
+            const taskEl = createTaskElement(child, hasGrandChildren, true);
 
-    groups.forEach(item => {
-        if (item.type === 'wrapper') {
-            const parent = item.parent;
-            const subtasks = item.children;
-            const hasSubtasks = subtasks.length > 0;
-            const wrapper = document.createElement('div');
-            wrapper.className = 'task-wrapper';
-            wrapper.dataset.id = parent.id;
+            // Helper Drag Logic for Subtask
+            taskEl.draggable = true;
+            taskEl.addEventListener('dragstart', (e) => {
+                e.stopPropagation();
+                taskEl.classList.add('dragging');
+                taskEl.dataset.dragType = 'subtask';
+                e.dataTransfer.setData('text/plain', child.id);
+                e.dataTransfer.effectAllowed = 'move';
+            });
+            taskEl.addEventListener('dragend', (e) => {
+                e.stopPropagation();
+                taskEl.classList.remove('dragging');
+                delete taskEl.dataset.dragType;
+                saveTaskOrder();
+            });
 
-            if (allowDrag) {
-                wrapper.draggable = true;
-                wrapper.addEventListener('dragstart', (e) => {
-                    // Simplified: We trust stopPropagation from children subtasks
-                    wrapper.classList.add('dragging');
-                    wrapper.dataset.dragType = 'parent';
-                    e.dataTransfer.setData('text/plain', parent.id);
-                    e.dataTransfer.effectAllowed = 'move';
-                });
-                wrapper.addEventListener('dragend', () => {
-                    wrapper.classList.remove('dragging');
-                    delete wrapper.dataset.dragType;
-                    saveTaskOrder();
-                });
-            }
+            container.appendChild(taskEl);
 
-            const taskEl = createTaskElement(parent, hasSubtasks);
-            wrapper.appendChild(taskEl);
-
-            if (hasSubtasks) {
+            if (hasGrandChildren) {
                 const subContainer = document.createElement('div');
                 subContainer.className = 'subtask-container';
-                if (!expandedTasks.has(parent.id)) {
+                if (!expandedTasks.has(child.id)) {
                     subContainer.classList.add('hidden');
                     const btn = taskEl.querySelector('.btn-toggle-subtasks');
                     if (btn) btn.classList.add('rotate');
                 }
-                subtasks.forEach(sub => {
-                    const subEl = createTaskElement(sub, false, true);
-                    if (allowDrag) {
-                        subEl.draggable = true;
-                        subEl.addEventListener('dragstart', (e) => {
-                            e.stopPropagation();
-                            subEl.classList.add('dragging');
-                            subEl.dataset.dragType = 'subtask';
-                            e.dataTransfer.setData('text/plain', sub.id);
-                            e.dataTransfer.effectAllowed = 'move';
-                        });
-                        subEl.addEventListener('dragend', (e) => {
-                            e.stopPropagation();
-                            subEl.classList.remove('dragging');
-                            delete subEl.dataset.dragType;
-                            saveTaskOrder();
-                        });
-                    }
-                    subContainer.appendChild(subEl);
-                });
+                renderRecursive(child.id, subContainer, depth + 1);
+                container.appendChild(subContainer);
+            }
+        });
+    }
+
+    // 1. Identify Roots and Render
+    // A root is either a top-level task (no parent) OR a task whose parent is NOT in the current filtered list (phanotm orphan)
+    tasksToRender.forEach(task => {
+        const isRoot = !task.parentId || !renderSet.has(task.parentId);
+
+        if (isRoot && !processedIds.has(task.id)) {
+            processedIds.add(task.id);
+            const hasChildren = tasksToRender.some(t => t.parentId === task.id);
+
+            const wrapper = document.createElement('div');
+            wrapper.className = 'task-wrapper';
+            wrapper.dataset.id = task.id;
+
+            // Orphan Context Logic
+            if (task.parentId) {
+                const realParent = tasks.find(p => p.id === task.parentId);
+                const pName = realParent ? realParent.title : '...';
+                const context = document.createElement('div');
+                context.className = 'parent-indicator';
+                context.innerHTML = `<i class="fa-solid fa-turn-up" style="transform: rotate(90deg); margin-right:5px;"></i> Subtarea de: <strong>${pName}</strong>`;
+                wrapper.appendChild(context);
+            }
+
+            // Wrapper Drag Logic
+            wrapper.draggable = true;
+            wrapper.addEventListener('dragstart', (e) => {
+                wrapper.classList.add('dragging');
+                wrapper.dataset.dragType = 'parent';
+                e.dataTransfer.setData('text/plain', task.id);
+                e.dataTransfer.effectAllowed = 'move';
+            });
+            wrapper.addEventListener('dragend', () => {
+                wrapper.classList.remove('dragging');
+                delete wrapper.dataset.dragType;
+                saveTaskOrder();
+            });
+
+            const taskEl = createTaskElement(task, hasChildren, false);
+            wrapper.appendChild(taskEl);
+
+            if (hasChildren) {
+                const subContainer = document.createElement('div');
+                subContainer.className = 'subtask-container';
+                if (!expandedTasks.has(task.id)) {
+                    subContainer.classList.add('hidden');
+                    const btn = taskEl.querySelector('.btn-toggle-subtasks');
+                    if (btn) btn.classList.add('rotate');
+                }
+                renderRecursive(task.id, subContainer, 1);
                 wrapper.appendChild(subContainer);
             }
+
             taskListEl.appendChild(wrapper);
-        } else if (item.type === 'orphan') {
-            const sub = item.task;
-            const container = document.createElement('div');
-            container.style.marginBottom = '10px';
-            const parentLabel = document.createElement('div');
-            parentLabel.className = 'parent-indicator';
-            parentLabel.innerHTML = `<i class="fa-solid fa-turn-up" style="transform: rotate(90deg); margin-right:5px;"></i> Subtarea de: <strong>${item.parent.title}</strong>`;
-            container.appendChild(parentLabel);
-            const subEl = createTaskElement(sub, false, true);
-            subEl.classList.add('orphan-subtask');
-            const fakeContainer = document.createElement('div');
-            fakeContainer.className = 'subtask-container';
-            fakeContainer.style.marginLeft = '0'; fakeContainer.style.paddingLeft = '0'; fakeContainer.style.borderLeft = 'none';
-            fakeContainer.appendChild(subEl);
-            container.appendChild(fakeContainer);
-            taskListEl.appendChild(container);
         }
     });
+
+    if (tasksToRender.length === 0) {
+        taskListEl.innerHTML = '<div class="empty-state" style="text-align:center; color:var(--text-secondary); padding:20px;">No hay tareas con este filtro</div>';
+    }
 }
 
 // UPDATED Save Task Order (Slot Swapping for Filters)
@@ -1362,10 +1450,18 @@ function toggleListDensity() {
 }
 
 function createTaskElement(task, hasSubtasks = false, isSubtask = false) {
+    const isFolder = !!task.isFolder || (!task.date && !!task.color);
     const div = document.createElement('div');
-    div.className = `task-item priority-${task.priority}`;
+    // Use 'priority-none' for folders to avoid priority colors, add 'is-folder' class
+    div.className = `task-item ${isFolder ? 'priority-none is-folder' : 'priority-' + task.priority}`;
     div.dataset.id = task.id;
-    if (task.status === 'completed') div.style.opacity = '0.6';
+    if (task.status === 'completed' && !isFolder) div.style.opacity = '0.6';
+
+    if (isFolder && task.color) {
+        div.style.borderLeft = `5px solid ${task.color}`;
+        // Stronger gradient for visibility
+        div.style.background = `linear-gradient(90deg, ${task.color}20, var(--card-bg))`;
+    }
 
     let toggleHtml = '';
     if (hasSubtasks) {
@@ -1375,7 +1471,7 @@ function createTaskElement(task, hasSubtasks = false, isSubtask = false) {
         toggleHtml = `<span style="width:20px;display:inline-block;margin-right:5px;"></span>`;
     }
 
-    const iconHtml = task.icon ? `<i class="${task.icon}" style="margin-right:5px;"></i>` : '';
+    const iconHtml = task.icon ? `<i class="${task.icon}" style="margin-right:5px;"></i>` : (isFolder ? '<i class="fa-solid fa-folder" style="margin-right:5px;"></i>' : '');
     let categoryHtml = '';
     if (task.category) {
         const tags = task.category.split(',').map(t => t.trim()).filter(t => t);
@@ -1383,7 +1479,7 @@ function createTaskElement(task, hasSubtasks = false, isSubtask = false) {
     }
 
     let recurrenceText = '';
-    if (task.recurrence && task.recurrence !== 'none') {
+    if (!isFolder && task.recurrence && task.recurrence !== 'none') {
         let text = '';
         if (task.recurrence === 'daily') text = 'Se repite diariamente';
         else if (task.recurrence === 'weekly') text = 'Se repite semanalmente';
@@ -1401,27 +1497,27 @@ function createTaskElement(task, hasSubtasks = false, isSubtask = false) {
 
     div.innerHTML = `
         <div style="display:flex;align-items:center;">
-             ${!isSubtask ? toggleHtml : ''}
-            <div class="task-check" onclick="toggleTaskStatus('${task.id}')">
-                ${task.status === 'completed' ? ICONS.check : '<div style="width:16px;height:16px;border:2px solid var(--text-secondary);border-radius:4px;"></div>'}
+             ${!isSubtask || hasSubtasks ? toggleHtml : '<span style="width:20px;display:inline-block;margin-right:5px;"></span>'}
+            <div class="task-check" onclick="${isFolder ? '' : `toggleTaskStatus('${task.id}')`}" style="${isFolder ? 'cursor:default; visibility:hidden;' : ''}">
+                ${!isFolder && task.status === 'completed' ? ICONS.check : '<div style="width:16px;height:16px;border:2px solid var(--text-secondary);border-radius:4px;"></div>'}
             </div>
         </div>
         <div class="task-content">
-            <div class="task-title" style="${task.status === 'completed' ? 'text-decoration:line-through' : ''}">
+            <div class="task-title" style="${!isFolder && task.status === 'completed' ? 'text-decoration:line-through' : ''}">
                 ${iconHtml}${task.title}${categoryHtml}
             </div>
             ${descriptionHtml}
             ${recurrenceText}
             <div class="task-meta">
-                <span><i class="fa-regular fa-calendar"></i> ${task.date || 'Sin fecha'}</span>
+                ${isFolder ? '' : `<span><i class="fa-regular fa-calendar"></i> ${task.date || 'Sin fecha'}</span>`}
                 ${task.pomodoros > 0 ? `<span><i class="fa-solid fa-fire"></i> ${task.pomodoros}</span>` : ''}
             </div>
         </div>
         <div class="task-actions">
-            <button class="action-btn" onclick="startPomodoroForTask('${task.id}')" title="Iniciar Pomodoro">${ICONS.play}</button>
+            ${isFolder ? '' : `<button class="action-btn" onclick="startPomodoroForTask('${task.id}')" title="Iniciar Pomodoro">${ICONS.play}</button>`}
             <button class="action-btn" onclick="openModal('${task.id}')" title="Editar">${ICONS.edit}</button>
             <button class="action-btn" onclick="deleteTask('${task.id}')" title="Eliminar">${ICONS.delete}</button>
-            ${!isSubtask ? `<button class="action-btn" onclick="addSubtask('${task.id}')" title="Añadir Subtarea">${ICONS.add}</button>` : ''}
+            <button class="action-btn" onclick="addSubtask('${task.id}')" title="Añadir Subtarea">${ICONS.add}</button>
         </div>
     `;
 
@@ -1856,15 +1952,23 @@ function renderListView(rangeType = 'month', startDate = null, endDate = null) {
     sortedDates.forEach(dateStr => {
         const dateObj = new Date(dateStr + 'T00:00:00');
         const tasksOnDay = tasks.filter(t => {
-            if (!isTaskOnDate(t, dateObj)) return false;
-            // Respect Status Filter
-            if (activeFilters.status === 'completed' && t.status !== 'completed') return false;
-            // Respect Active Tag Filter too
+            const isFolder = !!t.isFolder;
+
+            // Check Tag Filter for everything
             if (activeFilters.tags.size > 0) {
                 if (!t.category) return false;
                 const taskTags = t.category.split(',').map(tag => tag.trim());
                 if (![...activeFilters.tags].some(tag => taskTags.includes(tag))) return false;
             }
+
+            if (isFolder) return true; // Show folders on ALL days
+
+            // Standard Task Date Check
+            if (!isTaskOnDate(t, dateObj)) return false;
+
+            // Status Check (Folders have no status, ignored above)
+            if (activeFilters.status === 'completed' && t.status !== 'completed') return false;
+
             return true;
         });
 
