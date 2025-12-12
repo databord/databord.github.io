@@ -594,6 +594,22 @@ function setupEventListeners() {
     document.getElementById('cancel-task').addEventListener('click', closeModal);
     taskForm.addEventListener('submit', handleTaskSubmit);
 
+    // Mobile Widgets Toggle
+    const mobileToggle = document.getElementById('mobile-widgets-toggle');
+    const mobileContainer = document.getElementById('mobile-widgets-container');
+    if (mobileToggle && mobileContainer) {
+        mobileToggle.addEventListener('click', () => {
+            const isCollapsed = mobileContainer.classList.contains('collapsed');
+            if (isCollapsed) {
+                mobileContainer.classList.remove('collapsed');
+                mobileToggle.innerHTML = '<i class="fa-solid fa-chevron-up"></i>';
+            } else {
+                mobileContainer.classList.add('collapsed');
+                mobileToggle.innerHTML = '<i class="fa-solid fa-chevron-down"></i>';
+            }
+        });
+    }
+
     document.getElementById('prev-month').addEventListener('click', () => changeMonth(-1));
     document.getElementById('next-month').addEventListener('click', () => changeMonth(1));
 
@@ -1381,7 +1397,7 @@ function createTaskElement(task, hasSubtasks = false, isSubtask = false) {
     }
 
     // Description (Hidden unless .large mode)
-    const descriptionHtml = task.description ? `<div class="task-description">${task.description}</div>` : '';
+    const descriptionHtml = task.desc ? `<div class="task-description">${task.desc}</div>` : '';
 
     div.innerHTML = `
         <div style="display:flex;align-items:center;">

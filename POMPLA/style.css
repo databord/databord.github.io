@@ -1329,26 +1329,31 @@ body {
 @media (max-width: 768px) {
 
     /* Mobile Filters Display */
+    /* Reduce vertical space for Mobile Filters */
+    /* Reduce vertical space for Mobile Filters */
     .mobile-filters-section {
         display: flex !important;
         flex-wrap: wrap;
-        gap: 8px;
-        margin: 10px 15px;
+        gap: 4px;
+        margin: 2px 10px 4px 10px;
+        /* Minimal vertical margins */
         align-items: center;
         background: var(--card-bg);
-        padding: 10px;
+        padding: 4px 8px;
+        /* Compact padding */
         border-radius: 12px;
         border: 1px solid var(--glass-border);
     }
 
     .mobile-filters-section .filter-btn {
-        padding: 8px 12px;
-        font-size: 0.9rem;
+        padding: 4px 8px;
+        font-size: 0.8rem;
     }
 
     .mobile-filters-section .filter-select {
-        min-width: 120px;
-        padding: 8px;
+        padding: 4px;
+        font-size: 0.8rem;
+        min-width: 90px;
     }
 
     /* Hide Mini Widget on Mobile (User Request) */
@@ -1358,6 +1363,61 @@ body {
 
     #mobile-daily-goal {
         display: flex !important;
+        margin: 0 10px 2px 10px;
+        /* Minimal bottom margin */
+        padding: 4px 10px;
+        /* Compact padding */
+    }
+
+    /* Compact Progress Bar on Mobile */
+    #mobile-daily-goal .goal-progress-bar-bg {
+        height: 4px;
+        margin-top: 2px;
+    }
+
+    /* Compact Add Task Button Container */
+    .sidebar>div:has(#add-task-btn) {
+        margin-bottom: 5px !important;
+        padding: 0 10px;
+    }
+
+    #add-task-btn {
+        padding: 6px 12px;
+        font-size: 0.9rem;
+    }
+
+    /* Sidebar Gap Reduction */
+    .sidebar {
+        padding: 10px 0 !important;
+        gap: 5px !important;
+    }
+
+    /* Ensure Task List Container expands */
+    .task-list-container {
+        padding-bottom: 80px;
+        /* Just enough for nav bar */
+        height: auto;
+        flex-grow: 1;
+    }
+
+    /* COLLAPSIBLE WIDGETS LOGIC TOGGLE */
+    #mobile-widgets-toggle {
+        display: flex !important;
+        background: rgba(255, 255, 255, 0.05);
+        /* Slight visibility */
+        border: none;
+        color: var(--text-secondary);
+        border-radius: 0 0 12px 12px;
+        margin: 0 10px 5px 10px;
+    }
+
+    #mobile-widgets-container.collapsed {
+        display: none;
+    }
+
+    /* Hide desktop daily goal widget on mobile */
+    .daily-goal-widget:not(#mobile-widgets-container) {
+        display: none !important;
     }
 }
 
