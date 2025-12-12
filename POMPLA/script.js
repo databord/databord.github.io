@@ -83,6 +83,9 @@ function applyFilters() {
 
     // 3. Filter Tasks
     const filteredTasks = tasks.filter(task => {
+        // Exclude Timeline Comments from Main List
+        if (task.isTimelineComment || task.category === 'comment') return false;
+
         // Tag Filter (OR logic)
         if (activeFilters.tags.size > 0) {
             if (!task.category) return false;
@@ -1194,18 +1197,39 @@ function closeDayDetails() { document.getElementById('day-details-modal').classL
 function toggleTaskStatus(id) {
     const task = tasks.find(t => t.id === id);
     if (!task) return;
+
+    // Timeline: Close active session if completing
+    let updatedSessions = task.sessions ? [...task.sessions] : [];
+    if (task.status !== 'completed') { // Marking as complete
+        const activeIdx = updatedSessions.findIndex(s => !s.end);
+        if (activeIdx !== -1) {
+            updatedSessions[activeIdx].end = new Date().toISOString();
+        } else if (updatedSessions.length === 0) {
+            // Manual completion without timer: Add metadata entry
+            const now = new Date().toISOString();
+            updatedSessions.push({ start: now, end: now });
+        }
+    }
+
     if (task.status !== 'completed' && task.recurrence && task.recurrence !== 'none') {
-        const historyTask = { ...task, id: null, status: 'completed', recurrence: 'none', completedAt: new Date().toISOString() };
+        // Recurrence Case: Copy sessions to history, then reset for next occurrence
+        const historyTask = { ...task, id: null, status: 'completed', recurrence: 'none', completedAt: new Date().toISOString(), sessions: updatedSessions };
         delete historyTask.id;
         const nextDateStr = calculateNextOccurrence(task.date, task.recurrence, task.recurrenceDays);
         if (nextDateStr) {
             if (window.addTaskToFirebase) window.addTaskToFirebase(historyTask);
-            if (window.updateTaskInFirebase) window.updateTaskInFirebase(id, { date: nextDateStr, status: 'pending' });
+            // Reset sessions for the new instance of the recurring task
+            if (window.updateTaskInFirebase) window.updateTaskInFirebase(id, { date: nextDateStr, status: 'pending', sessions: [] });
         } else {
-            if (window.updateTaskInFirebase) window.updateTaskInFirebase(id, { status: 'completed' });
+            if (window.updateTaskInFirebase) window.updateTaskInFirebase(id, { status: 'completed', sessions: updatedSessions });
         }
     } else {
-        if (window.updateTaskInFirebase) window.updateTaskInFirebase(id, { status: task.status === 'completed' ? 'pending' : 'completed', completedAt: task.status !== 'completed' ? new Date().toISOString() : null });
+        // Standard Case
+        if (window.updateTaskInFirebase) window.updateTaskInFirebase(id, {
+            status: task.status === 'completed' ? 'pending' : 'completed',
+            completedAt: task.status !== 'completed' ? new Date().toISOString() : null,
+            sessions: updatedSessions
+        });
     }
     // Note: We rely on the firebase callback to update global state and UI, but if we want instant feedback logic should be here.
     // For now assuming firebase callback 'recibirTareasDeFirebase' handles the re-render.
@@ -2034,6 +2058,7 @@ function renderListView(rangeType = 'month', startDate = null, endDate = null) {
     sortedDates.forEach(dateStr => {
         const dateObj = new Date(dateStr + 'T00:00:00');
         const tasksOnDay = tasks.filter(t => {
+            if (t.isTimelineComment || t.category === 'comment') return false; // Exclude comments
             const isFolder = !!t.isFolder;
 
             // Check Tag Filter for everything
@@ -2156,25 +2181,39 @@ function renderTimeline(rangeType = 'today', startDate = null, endDate = null) {
     const timelineViewEl = document.getElementById('timeline-view');
     timelineViewEl.innerHTML = '';
 
-    // Determine loop range (Copy logic from renderListView)
+    // Date Range Setup
     let loopStart, loopEnd;
 
-    if (rangeType === 'month' && !startDate) {
-        const year = currentDate.getFullYear();
-        const month = currentDate.getMonth();
-        currentMonthYearEl.textContent = new Intl.DateTimeFormat('es-ES', { month: 'long', year: 'numeric' }).format(currentDate);
-        loopStart = new Date(year, month, 1);
-        loopEnd = new Date(year, month + 1, 0);
-    } else if (startDate && endDate) {
+    // 1. Explicit Dates provided
+    if (startDate && endDate) {
         loopStart = startDate;
         loopEnd = endDate;
-        // Simple Header Update Logic (Shared)
         if (rangeType === 'today') currentMonthYearEl.textContent = "Hoy";
         else if (rangeType === 'tomorrow') currentMonthYearEl.textContent = "Mañana";
         else if (rangeType === 'yesterday') currentMonthYearEl.textContent = "Ayer";
         else if (rangeType === 'week') currentMonthYearEl.textContent = "Esta Semana";
         else currentMonthYearEl.textContent = new Intl.DateTimeFormat('es-ES', { month: 'long', year: 'numeric' }).format(loopStart);
-    } else {
+    }
+    // 2. Range Type Logic (Implicit dates)
+    else if (rangeType === 'today') {
+        loopStart = new Date(currentDate); loopEnd = new Date(currentDate);
+        currentMonthYearEl.textContent = "Hoy";
+    } else if (rangeType === 'tomorrow') {
+        loopStart = new Date(currentDate); loopStart.setDate(loopStart.getDate() + 1);
+        loopEnd = new Date(loopStart);
+        currentMonthYearEl.textContent = "Mañana";
+    } else if (rangeType === 'yesterday') {
+        loopStart = new Date(currentDate); loopStart.setDate(loopStart.getDate() - 1);
+        loopEnd = new Date(loopStart);
+        currentMonthYearEl.textContent = "Ayer";
+    } else if (rangeType === 'week') {
+        const day = currentDate.getDay();
+        loopStart = new Date(currentDate); loopStart.setDate(currentDate.getDate() - day);
+        loopEnd = new Date(loopStart); loopEnd.setDate(loopEnd.getDate() + 6);
+        currentMonthYearEl.textContent = "Esta Semana";
+    }
+    // 3. Fallback / Month
+    else {
         const year = currentDate.getFullYear();
         const month = currentDate.getMonth();
         currentMonthYearEl.textContent = new Intl.DateTimeFormat('es-ES', { month: 'long', year: 'numeric' }).format(currentDate);
@@ -2186,162 +2225,202 @@ function renderTimeline(rangeType = 'today', startDate = null, endDate = null) {
     let d = new Date(loopStart);
     while (d <= loopEnd) { sortedDates.push(d.toISOString().split('T')[0]); d.setDate(d.getDate() + 1); }
 
+    let hasActivity = false;
+
     sortedDates.forEach(dateStr => {
         const dateObj = new Date(dateStr + 'T00:00:00');
-        const tasksOnDay = tasks.filter(t => {
-            if (!isTaskOnDate(t, dateObj)) return false;
-            if (activeFilters.status === 'completed' && t.status !== 'completed') return false;
-            if (activeFilters.tags.size > 0) {
-                if (!t.category) return false;
-                const taskTags = t.category.split(',').map(tag => tag.trim());
-                if (![...activeFilters.tags].some(tag => taskTags.includes(tag))) return false;
+
+        // Gather Sessions for this day
+        const dayEvents = [];
+
+        tasks.forEach(task => {
+            if (task.sessions && Array.isArray(task.sessions)) {
+                task.sessions.forEach((session, index) => { // Capture index
+                    if (!session.start) return;
+                    const start = new Date(session.start);
+                    // Local Date Check
+                    const sY = start.getFullYear();
+                    const sM = start.getMonth();
+                    const sD = start.getDate();
+
+                    if (sY === dateObj.getFullYear() && sM === dateObj.getMonth() && sD === dateObj.getDate()) {
+                        dayEvents.push({
+                            type: (task.isTimelineComment || task.category === 'comment') ? 'comment' : 'session',
+                            start: start,
+                            end: session.end ? new Date(session.end) : null,
+                            task: task,
+                            originalIndex: index // Store index
+                        });
+                    }
+                });
+            } else if (task.isTimelineComment && task.date === dateStr) {
+                // Handle Timeline Comments
+                const startStr = (task.sessions && task.sessions[0]) ? task.sessions[0].start : task.date + 'T12:00:00';
+                dayEvents.push({
+                    type: 'comment',
+                    start: new Date(startStr),
+                    end: null,
+                    task: task
+                });
             }
-            return true;
         });
 
-        // Skip empty days if strictly filtering? (matches ListView behavior to show them but maybe collapsed or empty msg)
-        // ListView shows them.
+        // Even if empty, if it's "today" or specific range, maybe show header? 
+        // For now, keep existing logic but allow header if we want to add comments to empty days?
+        // Converting to "always show header" so user can add comments
+        // Force header show if range is specific to allow adding comments?
+        // Let's stick to existing logic: if 0 events, return. But wait, if 0 events, user CANNOT add comment.
+        // User needs to be able to add comment even if empty.
+        // Let's remove "if (dayEvents.length === 0) return;" and instead handle empty container
+
+        hasActivity = true; // Always true to show dates? Or Check range.
+        // If we want to allow adding comments to any day in range, we must show the header.
+
+        // Sort chronological
+        dayEvents.sort((a, b) => a.start - b.start);
 
         const group = document.createElement('div');
         group.className = 'list-date-group';
 
         const header = document.createElement('div');
         header.className = 'list-date-header';
-        header.style.cursor = 'pointer'; header.style.userSelect = 'none'; header.style.display = 'flex'; header.style.alignItems = 'center';
+        header.style.display = 'flex'; header.style.justifyContent = 'space-between'; header.style.alignItems = 'center';
 
         const todayStr = new Date().toISOString().split('T')[0];
         let dateLabel = dateObj.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
         if (dateStr === todayStr) dateLabel = "Hoy - " + dateLabel;
 
-        const chevron = document.createElement('i');
-        chevron.className = 'fa-solid fa-chevron-down';
-        chevron.style.marginRight = '10px';
-        chevron.style.transition = 'transform 0.2s';
-        // Auto-expand Today
-        if (dateStr !== todayStr) chevron.style.transform = 'rotate(-90deg)';
-
-        const labelSpan = document.createElement('span');
-        labelSpan.textContent = dateLabel;
-        const countBadge = document.createElement('span');
-        countBadge.style.marginLeft = 'auto'; countBadge.style.fontSize = '0.8rem'; countBadge.style.color = 'var(--text-secondary)';
-        countBadge.textContent = tasksOnDay.length > 0 ? `${tasksOnDay.length} tareas` : '';
-
-        header.appendChild(chevron); header.appendChild(labelSpan); header.appendChild(countBadge);
+        header.innerHTML = `<span>${dateLabel}</span> 
+            <button class="btn-icon-sm" onclick="openCommentModal('${dateStr}')" title="Agregar Comentario"><i class="fa-solid fa-comment-dots"></i></button>`;
         group.appendChild(header);
 
-        const content = document.createElement('div');
-        content.className = 'list-date-content';
-        if (dateStr !== todayStr) content.style.display = 'none';
+        const container = document.createElement('div');
+        container.className = 'timeline-container';
 
-        header.onclick = () => {
-            if (content.style.display === 'none') {
-                content.style.display = 'block'; chevron.style.transform = 'rotate(0deg)';
-            } else {
-                content.style.display = 'none'; chevron.style.transform = 'rotate(-90deg)';
-            }
-        };
-
-        if (tasksOnDay.length === 0) {
-            content.innerHTML = '<div style="padding:10px; color:var(--glass-border); font-style:italic; font-size:0.9rem;">Sin tareas</div>';
-        } else {
-            // TIMELINE GENERATION
-            const timelineContainer = document.createElement('div');
-            timelineContainer.className = 'timeline-container';
-
-            // Partition Tasks
-            const completed = tasksOnDay.filter(t => t.status === 'completed').sort((a, b) => {
-                // Ascending time
-                return new Date(a.completedAt || 0) - new Date(b.completedAt || 0);
-            });
-            const pending = tasksOnDay.filter(t => t.status !== 'completed');
-            // Sort pending by Priority? or Order?
-            pending.sort((a, b) => {
-                const pMap = { high: 3, medium: 2, low: 1 };
-                return pMap[b.priority] - pMap[a.priority];
-            });
-
-            // 1. Pending Items (Top of Timeline)
-            pending.forEach(task => {
-                const item = document.createElement('div');
-                item.className = 'timeline-item';
-
-                const marker = document.createElement('div');
-                marker.className = 'timeline-marker';
-                if (task.priority === 'high') marker.style.borderColor = 'var(--danger-color)';
-                else if (task.priority === 'medium') marker.style.borderColor = 'var(--warning-color)';
-                else marker.style.borderColor = 'var(--success-color)';
-
-                // Allow check to complete from timeline
-                marker.style.cursor = 'pointer';
-                marker.title = "Click para completar";
-                marker.onclick = () => { toggleTaskStatus(task.id); };
-
-                const info = document.createElement('div');
-                info.className = 'timeline-content';
-
-                const timeDiv = document.createElement('div');
-                timeDiv.className = 'timeline-time';
-                timeDiv.textContent = 'Pendiente';
-
-                const titleDiv = document.createElement('div');
-                titleDiv.className = 'timeline-title';
-                titleDiv.textContent = task.title;
-
-                info.appendChild(timeDiv);
-                info.appendChild(titleDiv);
-
-                // Category tag
-                if (task.category) {
-                    const tag = document.createElement('span');
-                    tag.style.fontSize = '0.75rem'; tag.style.color = 'var(--accent-color)';
-                    tag.textContent = task.category;
-                    info.appendChild(tag);
-                }
-
-                item.appendChild(marker);
-                item.appendChild(info);
-                timelineContainer.appendChild(item);
-            });
-
-            // 2. Completed Items
-            completed.forEach(task => {
-                const item = document.createElement('div');
-                item.className = 'timeline-item';
-
-                const marker = document.createElement('div');
-                marker.className = 'timeline-marker task-complete';
-                // Click to undo?
-                marker.style.cursor = 'pointer';
-                marker.onclick = () => { toggleTaskStatus(task.id); };
-
-                const info = document.createElement('div');
-                info.className = 'timeline-content';
-                info.style.opacity = '0.7';
-
-                const timeDiv = document.createElement('div');
-                timeDiv.className = 'timeline-time';
-                const dateC = new Date(task.completedAt);
-                const timeStr = !isNaN(dateC.getTime()) ? dateC.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Completada';
-                timeDiv.textContent = timeStr;
-
-                const titleDiv = document.createElement('div');
-                titleDiv.className = 'timeline-title';
-                titleDiv.style.textDecoration = 'line-through';
-                titleDiv.textContent = task.title;
-
-                info.appendChild(timeDiv);
-                info.appendChild(titleDiv);
-                item.appendChild(marker);
-                item.appendChild(info);
-                timelineContainer.appendChild(item);
-            });
-
-            content.appendChild(timelineContainer);
+        if (dayEvents.length === 0) {
+            container.innerHTML = '<div style="opacity:0.5; font-size:0.8rem; padding:10px;">Sin actividad.</div>';
         }
 
-        group.appendChild(content);
+        dayEvents.forEach(event => {
+            const item = document.createElement('div');
+            item.className = 'timeline-event';
+            if (event.type === 'comment') item.classList.add('timeline-comment');
+
+            // Time
+            const timeCol = document.createElement('div');
+            timeCol.className = 'timeline-time-col';
+            const startStr = event.start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+            let timeHtml = `<div>${startStr}</div>`;
+            if (event.type === 'session') {
+                if (event.end) {
+                    const endStr = event.end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    timeHtml += `<div class="time-end-wrapper"><div class="time-end-dot"></div> <span>${endStr}</span></div>`;
+                } else {
+                    timeHtml += `<div class="time-end-wrapper" style="opacity:0.5"><div class="time-end-dot" style="background:var(--text-secondary)"></div> <span>...</span></div>`;
+                }
+            }
+            timeCol.innerHTML = timeHtml;
+
+            // Visuals
+            const dotCol = document.createElement('div');
+            dotCol.className = 'timeline-dot-col';
+            const dot = document.createElement('div');
+            dot.className = 'timeline-dot';
+
+            if (event.type === 'comment') {
+                // Comment Styles: Standard gray dot as requested
+                dot.style.borderColor = 'var(--text-secondary)';
+                dot.style.background = 'transparent';
+                dot.innerHTML = '';
+            } else {
+                if (event.task.color) dot.style.borderColor = event.task.color;
+                else {
+                    const pColor = event.task.priority === 'high' ? 'var(--danger-color)' : (event.task.priority === 'medium' ? 'var(--warning-color)' : 'var(--success-color)');
+                    dot.style.borderColor = pColor;
+                }
+            }
+            dotCol.appendChild(dot);
+
+            // Content
+            const contentCol = document.createElement('div');
+            contentCol.className = 'timeline-content-col';
+
+            if (event.type === 'comment') {
+                const typeLabels = { interruption: 'Interrupción', annotation: 'Anotación', comment: 'Comentario', other: 'Otro' };
+
+                const metaHeader = document.createElement('div');
+                metaHeader.style.display = 'flex'; metaHeader.style.justifyContent = 'space-between'; metaHeader.style.alignItems = 'flex-start';
+
+                const title = document.createElement('div');
+                title.className = 'timeline-event-title';
+                title.textContent = event.task.title;
+
+                const controls = document.createElement('div');
+                controls.className = 'timeline-controls';
+                controls.innerHTML = `
+                    <button class="timeline-btn" onclick="openCommentEditModal('${event.task.id}')" title="Editar">${ICONS.edit}</button>
+                    <button class="timeline-btn delete" onclick="deleteSession('${event.task.id}', 0)" title="Eliminar">${ICONS.delete}</button>
+                `;
+
+                metaHeader.appendChild(title);
+                metaHeader.appendChild(controls);
+                contentCol.appendChild(metaHeader);
+
+                const meta = document.createElement('div');
+                meta.className = 'timeline-event-meta';
+                meta.style.fontSize = '0.75rem'; meta.style.opacity = '0.7'; meta.style.marginTop = '2px';
+                meta.textContent = typeLabels[event.task.commentType] || 'Comentario';
+                contentCol.appendChild(meta);
+            } else {
+                // Session Content
+                const metaHeader = document.createElement('div');
+                metaHeader.style.display = 'flex'; metaHeader.style.justifyContent = 'space-between'; metaHeader.style.alignItems = 'flex-start';
+
+                const title = document.createElement('div');
+                title.className = 'timeline-event-title';
+                title.textContent = event.task.title;
+
+                const controls = document.createElement('div');
+                controls.className = 'timeline-controls';
+                controls.innerHTML = `
+                    <button class="timeline-btn" onclick="openSessionEditModal('${event.task.id}', ${event.originalIndex})" title="Editar hora">${ICONS.edit}</button>
+                    <button class="timeline-btn delete" onclick="deleteSession('${event.task.id}', ${event.originalIndex})" title="Eliminar">${ICONS.delete}</button>
+                `;
+
+                metaHeader.appendChild(title);
+                metaHeader.appendChild(controls);
+                contentCol.appendChild(metaHeader);
+
+                const meta = document.createElement('div');
+                meta.className = 'timeline-event-meta';
+
+                if (event.end) {
+                    const diffMs = event.end - event.start;
+                    const diffMins = Math.max(1, Math.round(diffMs / 60000));
+                    meta.textContent = `Duración: ${diffMins} min`;
+                } else {
+                    meta.textContent = 'En curso...';
+                    meta.style.color = 'var(--accent-color)';
+                    meta.style.fontWeight = '600';
+                }
+                contentCol.appendChild(meta);
+            }
+
+            item.appendChild(timeCol);
+            item.appendChild(dotCol);
+            item.appendChild(contentCol);
+
+            container.appendChild(item);
+        });
+
+        group.appendChild(container);
         timelineViewEl.appendChild(group);
     });
+
+    if (!hasActivity) {
+        timelineViewEl.innerHTML = '<div class="empty-state" style="text-align:center; padding:40px; color:var(--text-secondary);">No hay actividad registrada en este periodo</div>';
+    }
 }
 
 function updateTimerDisplay() {
@@ -2380,6 +2459,19 @@ function adjustTimer(minutes) { timeLeft += minutes * 60; if (timeLeft < 0) time
 function startPomodoroForTask(id) {
     activeTaskId = id;
     const task = tasks.find(t => t.id === id);
+
+    // Session Logging (Timeline)
+    if (!task.sessions) task.sessions = [];
+
+    // Prevent duplicates: Only start new session if last one is closed
+    const lastSession = task.sessions.length > 0 ? task.sessions[task.sessions.length - 1] : null;
+    if (!lastSession || lastSession.end) {
+        task.sessions.push({ start: new Date().toISOString(), end: null });
+        if (window.updateTaskInFirebase) {
+            window.updateTaskInFirebase(id, { sessions: task.sessions });
+        }
+    }
+
     document.getElementById('active-task-name').textContent = task.title;
     const miniDesktop = document.getElementById('mini-task-name-desktop');
     if (miniDesktop) { miniDesktop.textContent = task.title; miniDesktop.style.display = 'inline-block'; }
@@ -2421,3 +2513,348 @@ function completeCycle() {
     } else { pomodoroState.isBreak = true; timeLeft = pomodoroState.breakTime * 60; alert('¡Hora de un descanso!'); }
     updateTimerDisplay();
 }
+
+// --- TIMELINE EDITING ---
+// --- TIMELINE EDITING ---
+function deleteSession(taskId, sessionIndex) {
+    if (!confirm('¿Eliminar esta sesión de la línea de tiempo?')) return;
+    const task = tasks.find(t => t.id == taskId);
+
+    // IF COMMENT -> Delete Task entirely
+    if (task && (task.isTimelineComment || task.category === 'comment')) {
+        if (window.deleteTaskFromFirebase) {
+            window.deleteTaskFromFirebase(task.id);
+            // Remove locally for immediate feedback
+            const idx = tasks.findIndex(t => t.id == taskId);
+            if (idx > -1) tasks.splice(idx, 1);
+        }
+        applyFilters();
+        return;
+    }
+
+    if (task && task.sessions) {
+        task.sessions.splice(sessionIndex, 1);
+        if (window.updateTaskInFirebase) {
+            window.updateTaskInFirebase(task.id, { sessions: task.sessions });
+        }
+        applyFilters();
+    }
+}
+
+function openSessionEditModal(taskId, sessionIndex) {
+    const task = tasks.find(t => t.id == taskId);
+    if (!task || !task.sessions[sessionIndex]) return;
+
+    const session = task.sessions[sessionIndex];
+    document.getElementById('edit-session-task-id').value = task.id;
+    document.getElementById('edit-session-index').value = sessionIndex;
+
+    // Format for datetime-local: YYYY-MM-DDTHH:mm handling timezone offset
+    const toLocalISO = (isoStr) => {
+        if (!isoStr) return '';
+        const d = new Date(isoStr);
+        const offset = d.getTimezoneOffset() * 60000;
+        const localISOTime = (new Date(d - offset)).toISOString().slice(0, 16);
+        return localISOTime;
+    };
+
+    document.getElementById('edit-session-start').value = toLocalISO(session.start);
+    document.getElementById('edit-session-end').value = session.end ? toLocalISO(session.end) : '';
+
+    document.getElementById('session-edit-modal').classList.add('active');
+}
+
+function closeSessionEditModal() {
+    document.getElementById('session-edit-modal').classList.remove('active');
+}
+
+function saveSessionEdit() {
+    const taskId = document.getElementById('edit-session-task-id').value;
+    const idx = parseInt(document.getElementById('edit-session-index').value);
+    const startVal = document.getElementById('edit-session-start').value;
+    const endVal = document.getElementById('edit-session-end').value;
+
+    const task = tasks.find(t => t.id == taskId);
+    if (task && task.sessions && task.sessions[idx]) {
+        if (startVal) task.sessions[idx].start = new Date(startVal).toISOString();
+        if (endVal) task.sessions[idx].end = new Date(endVal).toISOString();
+        else task.sessions[idx].end = null;
+
+        if (window.updateTaskInFirebase) {
+            window.updateTaskInFirebase(task.id, { sessions: task.sessions });
+        }
+        closeSessionEditModal();
+        applyFilters();
+    }
+}
+
+// --- TIMELINE COMMENTS ---
+function openCommentModal(dateStr) {
+    document.getElementById('comment-date-ref').value = dateStr;
+    document.getElementById('comment-edit-id').value = ''; // Ensure new
+
+    const now = new Date();
+    const todayStr = now.toISOString().split('T')[0];
+    let defaultTime;
+    if (dateStr === todayStr) {
+        const offset = now.getTimezoneOffset() * 60000;
+        defaultTime = (new Date(now - offset)).toISOString().slice(0, 16);
+    } else {
+        defaultTime = dateStr + 'T09:00';
+    }
+
+    document.getElementById('comment-time').value = defaultTime;
+    document.getElementById('comment-text').value = '';
+    document.getElementById('comment-modal').classList.add('active');
+
+    document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
+    document.querySelector('.type-btn[data-type="comment"]').classList.add('active');
+    document.getElementById('comment-type').value = 'comment';
+}
+
+function openCommentEditModal(taskId) {
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) return;
+
+    document.getElementById('comment-edit-id').value = task.id;
+    document.getElementById('comment-text').value = task.title;
+    document.getElementById('comment-type').value = task.commentType || 'comment';
+
+    document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
+    let type = task.commentType || 'comment';
+    const btn = document.querySelector(`.type-btn[data-type="${type}"]`);
+    if (btn) btn.classList.add('active');
+
+    let timeVal = '';
+    if (task.sessions && task.sessions.length > 0) {
+        const d = new Date(task.sessions[0].start);
+        const offset = d.getTimezoneOffset() * 60000;
+        timeVal = (new Date(d - offset)).toISOString().slice(0, 16);
+    }
+    document.getElementById('comment-time').value = timeVal;
+    document.getElementById('comment-modal').classList.add('active');
+}
+
+function closeCommentModal() {
+    document.getElementById('comment-modal').classList.remove('active');
+}
+
+function selectCommentType(btn, type) {
+    document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('comment-type').value = type;
+}
+
+function saveComment() {
+    const text = document.getElementById('comment-text').value;
+    const type = document.getElementById('comment-type').value;
+    const timeVal = document.getElementById('comment-time').value;
+    const editId = document.getElementById('comment-edit-id').value;
+
+    if (!text) return alert('Escribe un comentario');
+    if (!timeVal) return alert('Selecciona una hora');
+
+    const datePart = timeVal.split('T')[0];
+
+    if (editId) {
+        // UPDATE
+        const updateData = {
+            title: text,
+            commentType: type,
+            date: datePart,
+            sessions: [{ start: new Date(timeVal).toISOString(), end: null }]
+        };
+        if (window.updateTaskInFirebase) {
+            window.updateTaskInFirebase(editId, updateData);
+        }
+    } else {
+        // CREATE
+        const newComment = {
+            title: text,
+            category: 'comment',
+            commentType: type,
+            isTimelineComment: true,
+            date: datePart,
+            status: 'completed',
+            sessions: [{ start: new Date(timeVal).toISOString(), end: null }],
+            createdAt: new Date().toISOString()
+        };
+
+        if (window.addTaskToFirebase) {
+            window.addTaskToFirebase(newComment);
+        }
+    }
+    closeCommentModal();
+    // Refresh with full state
+    setTimeout(() => applyFilters(), 500);
+}
+
+// Expose
+window.deleteSession = deleteSession;
+window.openSessionEditModal = openSessionEditModal;
+window.closeSessionEditModal = closeSessionEditModal;
+window.saveSessionEdit = saveSessionEdit;
+window.openCommentModal = openCommentModal;
+window.openCommentEditModal = openCommentEditModal;
+window.closeCommentModal = closeCommentModal;
+window.selectCommentType = selectCommentType;
+window.saveComment = saveComment;
+
+function openSessionEditModal(taskId, sessionIndex) {
+    const task = tasks.find(t => t.id == taskId);
+    if (!task || !task.sessions[sessionIndex]) return;
+
+    const session = task.sessions[sessionIndex];
+    document.getElementById('edit-session-task-id').value = task.id;
+    document.getElementById('edit-session-index').value = sessionIndex;
+
+    // Format for datetime-local: YYYY-MM-DDTHH:mm handling timezone offset
+    const toLocalISO = (isoStr) => {
+        if (!isoStr) return '';
+        const d = new Date(isoStr);
+        const offset = d.getTimezoneOffset() * 60000;
+        const localISOTime = (new Date(d - offset)).toISOString().slice(0, 16);
+        return localISOTime;
+    };
+
+    document.getElementById('edit-session-start').value = toLocalISO(session.start);
+    document.getElementById('edit-session-end').value = session.end ? toLocalISO(session.end) : '';
+
+    document.getElementById('session-edit-modal').classList.add('active');
+}
+
+function closeSessionEditModal() {
+    document.getElementById('session-edit-modal').classList.remove('active');
+}
+
+function saveSessionEdit() {
+    const taskId = document.getElementById('edit-session-task-id').value;
+    const idx = parseInt(document.getElementById('edit-session-index').value);
+    const startVal = document.getElementById('edit-session-start').value;
+    const endVal = document.getElementById('edit-session-end').value;
+
+    const task = tasks.find(t => t.id == taskId);
+    if (task && task.sessions && task.sessions[idx]) {
+        if (startVal) task.sessions[idx].start = new Date(startVal).toISOString();
+        if (endVal) task.sessions[idx].end = new Date(endVal).toISOString();
+        else task.sessions[idx].end = null;
+
+        if (window.updateTaskInFirebase) {
+            window.updateTaskInFirebase(task.id, { sessions: task.sessions });
+        }
+        closeSessionEditModal();
+        if (currentView === 'timeline') renderTimeline(activeFilters.dateRange);
+    }
+}
+
+// --- TIMELINE COMMENTS ---
+function openCommentModal(dateStr) {
+    document.getElementById('comment-date-ref').value = dateStr;
+    document.getElementById('comment-edit-id').value = ''; // Ensure new
+
+    const now = new Date();
+    const todayStr = now.toISOString().split('T')[0];
+    let defaultTime;
+    if (dateStr === todayStr) {
+        const offset = now.getTimezoneOffset() * 60000;
+        defaultTime = (new Date(now - offset)).toISOString().slice(0, 16);
+    } else {
+        defaultTime = dateStr + 'T09:00';
+    }
+
+    document.getElementById('comment-time').value = defaultTime;
+    document.getElementById('comment-text').value = '';
+    document.getElementById('comment-modal').classList.add('active');
+
+    document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
+    document.querySelector('.type-btn[data-type="comment"]').classList.add('active');
+    document.getElementById('comment-type').value = 'comment';
+}
+
+function openCommentEditModal(taskId) {
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) return;
+
+    document.getElementById('comment-edit-id').value = task.id;
+    document.getElementById('comment-text').value = task.title;
+    document.getElementById('comment-type').value = task.commentType || 'comment';
+
+    document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
+    let type = task.commentType || 'comment';
+    const btn = document.querySelector(`.type-btn[data-type="${type}"]`);
+    if (btn) btn.classList.add('active');
+
+    let timeVal = '';
+    if (task.sessions && task.sessions.length > 0) {
+        const d = new Date(task.sessions[0].start);
+        const offset = d.getTimezoneOffset() * 60000;
+        timeVal = (new Date(d - offset)).toISOString().slice(0, 16);
+    }
+    document.getElementById('comment-time').value = timeVal;
+    document.getElementById('comment-modal').classList.add('active');
+}
+
+function closeCommentModal() {
+    document.getElementById('comment-modal').classList.remove('active');
+}
+
+function selectCommentType(btn, type) {
+    document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('comment-type').value = type;
+}
+
+function saveComment() {
+    const text = document.getElementById('comment-text').value;
+    const type = document.getElementById('comment-type').value;
+    const timeVal = document.getElementById('comment-time').value;
+    const editId = document.getElementById('comment-edit-id').value;
+
+    if (!text) return alert('Escribe un comentario');
+    if (!timeVal) return alert('Selecciona una hora');
+
+    const datePart = timeVal.split('T')[0];
+
+    if (editId) {
+        // UPDATE
+        const updateData = {
+            title: text,
+            commentType: type,
+            date: datePart,
+            sessions: [{ start: new Date(timeVal).toISOString(), end: null }]
+        };
+        if (window.updateTaskInFirebase) {
+            window.updateTaskInFirebase(editId, updateData);
+        }
+    } else {
+        // CREATE
+        const newComment = {
+            title: text,
+            category: 'comment',
+            commentType: type,
+            isTimelineComment: true,
+            date: datePart,
+            status: 'completed',
+            sessions: [{ start: new Date(timeVal).toISOString(), end: null }],
+            createdAt: new Date().toISOString()
+        };
+
+        if (window.addTaskToFirebase) {
+            window.addTaskToFirebase(newComment);
+        }
+    }
+    closeCommentModal();
+    // Force immediate update 
+    if (currentView === 'timeline') setTimeout(() => renderTimeline(activeFilters.dateRange), 500);
+}
+
+// Expose
+window.deleteSession = deleteSession;
+window.openSessionEditModal = openSessionEditModal;
+window.closeSessionEditModal = closeSessionEditModal;
+window.saveSessionEdit = saveSessionEdit;
+window.openCommentModal = openCommentModal;
+window.openCommentEditModal = openCommentEditModal;
+window.closeCommentModal = closeCommentModal;
+window.selectCommentType = selectCommentType;
+window.saveComment = saveComment;

@@ -16,7 +16,7 @@
     <script src="frases.js"></script>
 
     <!-- FIREBASE LOGIC (Módulo) -->
-    <script type="module" src="firebase-logic.js"></script>
+    <script type="module" src="firebase-logic.js?v=2"></script>
 </head>
 
 <body>
@@ -433,6 +433,79 @@
                 <button class="btn-primary" id="btn-add-task-on-day" style="width:100%; justify-content:center;">
                     <i class="fa-solid fa-plus"></i> Agregar Tarea
                 </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for Session Editing -->
+    <div class="modal-overlay" id="session-edit-modal" style="z-index: 1600;">
+        <div class="modal-content" style="max-width: 350px;">
+            <div class="modal-header">
+                <h3>Editar Sesión</h3>
+                <button onclick="closeSessionEditModal()" class="icon-btn"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="edit-session-task-id">
+                <input type="hidden" id="edit-session-index">
+                <div class="form-group">
+                    <label>Hora Inicio</label>
+                    <input type="datetime-local" id="edit-session-start" style="width:100%; padding:8px;">
+                </div>
+                <div class="form-group">
+                    <label>Hora Fin</label>
+                    <input type="datetime-local" id="edit-session-end" style="width:100%; padding:8px;">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="closeSessionEditModal()">Cancelar</button>
+                <button class="btn-primary" onclick="saveSessionEdit()">Guardar Cambios</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for Timeline Comments -->
+    <div class="modal-overlay" id="comment-modal" style="z-index: 1600;">
+        <div class="modal-content" style="max-width: 400px;">
+            <div class="modal-header">
+                <h3>Agregar Comentario</h3>
+                <button onclick="closeCommentModal()" class="icon-btn"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="comment-date-ref">
+                <input type="hidden" id="comment-edit-id">
+                <div class="form-group">
+                    <label>Tipo</label>
+                    <div class="comment-type-selector"
+                        style="display:flex; gap:5px; margin-bottom:10px; flex-wrap:wrap;">
+                        <button type="button" class="type-btn active" data-type="comment"
+                            onclick="selectCommentType(this, 'comment')"
+                            style="flex:1; padding:6px; background:var(--card-bg); border:1px solid var(--glass-border); color:var(--text-secondary); border-radius:4px; cursor:pointer;">Comentario</button>
+                        <button type="button" class="type-btn" data-type="interruption"
+                            onclick="selectCommentType(this, 'interruption')"
+                            style="flex:1; padding:6px; background:var(--card-bg); border:1px solid var(--glass-border); color:var(--text-secondary); border-radius:4px; cursor:pointer;">Interrupción</button>
+                        <button type="button" class="type-btn" data-type="annotation"
+                            onclick="selectCommentType(this, 'annotation')"
+                            style="flex:1; padding:6px; background:var(--card-bg); border:1px solid var(--glass-border); color:var(--text-secondary); border-radius:4px; cursor:pointer;">Anotación</button>
+                        <button type="button" class="type-btn" data-type="other"
+                            onclick="selectCommentType(this, 'other')"
+                            style="flex:1; padding:6px; background:var(--card-bg); border:1px solid var(--glass-border); color:var(--text-secondary); border-radius:4px; cursor:pointer;">Otro</button>
+                    </div>
+                    <input type="hidden" id="comment-type" value="comment">
+                </div>
+                <div class="form-group">
+                    <label>Hora</label>
+                    <input type="datetime-local" id="comment-time"
+                        style="width:100%; padding:8px; border-radius:4px; border:1px solid var(--glass-border); background:var(--card-bg); color:var(--text-primary);">
+                </div>
+                <div class="form-group">
+                    <label>Texto</label>
+                    <textarea id="comment-text" rows="3"
+                        style="width:100%; padding:8px; border-radius:4px; border:1px solid var(--glass-border); background:var(--card-bg); color:var(--text-primary);"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="closeCommentModal()">Cancelar</button>
+                <button class="btn-primary" onclick="saveComment()">Guardar</button>
             </div>
         </div>
     </div>

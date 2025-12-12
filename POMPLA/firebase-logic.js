@@ -138,6 +138,9 @@ window.addTaskToFirebase = async (taskObj) => {
             pomodoros: taskObj.pomodoros || 0,
             completed: taskObj.status === 'completed',
             order: taskObj.order || Date.now(), // Default order to end
+            sessions: taskObj.sessions || [],
+            isTimelineComment: !!taskObj.isTimelineComment,
+            commentType: taskObj.commentType || "",
             createdAt: new Date().toISOString()
         };
         await addDoc(collection(db, TASK_COLLECTION), dataToSave);

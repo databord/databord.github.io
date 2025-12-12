@@ -1604,3 +1604,113 @@ body {
 .calendar-day {
     position: relative;
 }
+
+/* TIMELINE VIEW REIMAGINED */
+.timeline-container {
+    padding: 20px 0;
+    position: relative;
+}
+
+.timeline-container::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 80px;
+    /* Position of the line */
+    width: 2px;
+    background: var(--glass-border);
+    opacity: 0.5;
+}
+
+.timeline-event {
+    display: flex;
+    align-items: flex-start;
+    margin-bottom: 25px;
+    position: relative;
+    animation: fadeIn 0.3s ease;
+}
+
+.timeline-time-col {
+    width: 65px;
+    text-align: right;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    padding-top: 2px;
+    font-weight: 600;
+}
+
+.timeline-dot-col {
+    width: 30px;
+    /* Space for line and dot */
+    display: flex;
+    justify-content: center;
+    padding-top: 5px;
+    z-index: 1;
+    /* Above line */
+}
+
+.timeline-dot {
+    width: 12px;
+    height: 12px;
+    background: var(--card-bg);
+    border: 3px solid var(--accent-color);
+    border-radius: 50%;
+    box-shadow: 0 0 0 2px var(--bg-primary);
+    /* whitespace halo */
+}
+
+.timeline-content-col {
+    flex: 1;
+    background: var(--card-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    padding: 12px;
+    margin-left: 10px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+}
+
+.timeline-event-title {
+    font-weight: 700;
+    font-size: 1rem;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+}
+
+.timeline-event-meta {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+.timeline-controls {
+    display: flex;
+    gap: 5px;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.timeline-content-col:hover .timeline-controls,
+.timeline-event:hover .timeline-controls {
+    opacity: 1;
+}
+
+.timeline-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 0.9rem;
+    padding: 2px 5px;
+    border-radius: 4px;
+    transition: all 0.2s;
+}
+
+.timeline-btn:hover {
+    background: rgba(0, 0, 0, 0.05);
+    color: var(--text-primary);
+}
+
+.timeline-btn.delete:hover {
+    color: var(--danger-color);
+    background: rgba(239, 68, 68, 0.1);
+}
