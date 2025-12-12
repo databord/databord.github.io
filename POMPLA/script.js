@@ -1994,7 +1994,7 @@ function renderCalendar() {
             if (categories.size > 0) {
                 const catContainer = document.createElement('div');
                 catContainer.className = 'day-categories';
-                
+
                 const catArray = Array.from(categories);
                 const displayLimit = 5;
                 const visibleCats = catArray.slice(0, displayLimit);
@@ -2517,17 +2517,209 @@ function changeCycle(direction) {
 function completeCycle() {
     clearInterval(timerInterval); isTimerRunning = false;
     timerSound.play().catch(e => console.log('Audio play failed', e));
-    if (Notification.permission === 'granted') { new Notification('Pomodoro Planner', { body: pomodoroState.isBreak ? '¡Descanso terminado!' : '¡Ciclo completado!', icon: 'favicon.ico' }); }
     if (pomodoroState.isBreak) {
         pomodoroState.isBreak = false; pomodoroState.cycle++;
         if (pomodoroState.cycle > pomodoroState.totalCycles) {
-            alert('¡Todos los ciclos completados!');
+            // alert('¡Todos los ciclos completados!'); -- Replaced by logic below
             if (activeTaskId && window.updateTaskInFirebase) { const task = tasks.find(t => t.id === activeTaskId); if (task) window.updateTaskInFirebase(task.id, { pomodoros: (task.pomodoros || 0) + pomodoroState.totalCycles }); }
-            resetTimer(); return;
-        } else { timeLeft = pomodoroState.workTime * 60; alert(`Ciclo ${pomodoroState.cycle} de ${pomodoroState.totalCycles}: ¡A trabajar!`); }
-    } else { pomodoroState.isBreak = true; timeLeft = pomodoroState.breakTime * 60; alert('¡Hora de un descanso!'); }
+            resetTimer();
+            notifyCompletion("¡Todos los ciclos completados!");
+            return;
+        } else {
+            timeLeft = pomodoroState.workTime * 60;
+            // alert(`Ciclo ${pomodoroState.cycle} de ${pomodoroState.totalCycles}: ¡A trabajar!`);
+            notifyCompletion(`¡A trabajar! Ciclo ${pomodoroState.cycle}/${pomodoroState.totalCycles}`);
+        }
+    } else {
+        pomodoroState.isBreak = true;
+        timeLeft = pomodoroState.breakTime * 60;
+        // alert('¡Hora de un descanso!');
+        notifyCompletion("¡Hora de un descanso!");
+    }
     updateTimerDisplay();
 }
+
+// --- NOTIFICATIONS & PIP ---
+let titleFlashInterval = null;
+let originalTitle = document.title;
+
+function notifyCompletion(message) {
+    // 1. Browser Notification
+    if (Notification.permission === 'granted') {
+        new Notification('Pomodoro Planner', { body: message, icon: 'favicon.ico' });
+    } else if (Notification.permission !== 'denied') {
+        Notification.requestPermission();
+    }
+
+    // 2. Sound
+    timerSound.play().catch(e => console.log('Audio play failed', e));
+
+    // 3. Background Check for Flashing & Persistent Sound
+    if (document.hidden) {
+        startTitleFlash(message);
+    } else {
+        alert(message); // Maintain alert if foreground? Or just toast? User used alert before.
+    }
+}
+
+function startTitleFlash(message) {
+    if (titleFlashInterval) clearInterval(titleFlashInterval);
+    let flash = false;
+    titleFlashInterval = setInterval(() => {
+        document.title = flash ? message : "¡TIEMPO!";
+        flash = !flash;
+    }, 1000);
+}
+
+function stopTitleFlash() {
+    if (titleFlashInterval) {
+        clearInterval(titleFlashInterval);
+        titleFlashInterval = null;
+        document.title = originalTitle;
+    }
+}
+
+document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) {
+        stopTitleFlash();
+    }
+});
+
+// --- PiP Implementation ---
+let pipVideo = document.createElement('video');
+let pipCanvas = document.createElement('canvas');
+let pipCtx = pipCanvas.getContext('2d');
+let pipStream = null;
+let isPipActive = false;
+
+// Initialize PiP elements
+pipCanvas.width = 300;
+pipCanvas.height = 300;
+pipVideo.muted = true; // Required for auto-play
+pipVideo.style.position = 'fixed';
+pipVideo.style.opacity = '0';
+pipVideo.style.pointerEvents = 'none';
+pipVideo.style.height = '0';
+pipVideo.style.width = '0';
+document.body.appendChild(pipVideo); // Required for Firefox
+
+function togglePiP() {
+    if (document.pictureInPictureElement) {
+        document.exitPictureInPicture();
+    } else {
+        enterPiP();
+    }
+}
+
+async function enterPiP() {
+    try {
+        drawPiP(); // Ensure canvas has content before streaming
+        if (!pipStream) {
+            pipStream = pipCanvas.captureStream(30); // 30 FPS
+            pipVideo.srcObject = pipStream;
+        }
+
+        // Wait for metadata to load if not ready
+        if (pipVideo.readyState === 0) {
+            await new Promise(resolve => {
+                pipVideo.onloadedmetadata = () => {
+                    resolve();
+                };
+            });
+        }
+
+        await pipVideo.play();
+
+        if (document.pictureInPictureEnabled && typeof pipVideo.requestPictureInPicture === 'function') {
+            await pipVideo.requestPictureInPicture();
+            isPipActive = true;
+        } else {
+            throw new Error("PiP API not available");
+        }
+    } catch (error) {
+        console.error("PiP failed, trying fallback:", error);
+        enableManualPiP();
+    }
+}
+
+function enableManualPiP() {
+    alert("Tu navegador (Firefox) requiere activación manual. Usa el botón 'Picture-in-Picture' que aparecerá sobre el video abajo.");
+
+    // Move video to visible area in panel
+    const container = document.querySelector('.pomodoro-panel');
+    if (container) {
+        // Reset styles for visibility
+        pipVideo.style.position = 'static';
+        pipVideo.style.opacity = '1';
+        pipVideo.style.pointerEvents = 'all';
+        pipVideo.style.height = '150px'; // Reasonable preview size
+        pipVideo.style.width = '100%';
+        pipVideo.style.marginTop = '10px';
+        pipVideo.style.border = '1px solid var(--glass-border)';
+        pipVideo.style.borderRadius = '8px';
+        pipVideo.controls = true; // Helps show native controls
+
+        // Insert after timer controls
+        const controls = container.querySelector('.timer-controls');
+        if (controls) {
+            controls.parentNode.insertBefore(pipVideo, controls.nextSibling);
+        } else {
+            container.appendChild(pipVideo);
+        }
+
+        isPipActive = true; // Enable drawing so video has content
+        drawPiP();
+    }
+}
+
+pipVideo.addEventListener('leavepictureinpicture', () => {
+    isPipActive = false;
+    // Hide video again if it was in manual mode? 
+    // Maybe keep it if user wants to toggle back. 
+    // For now, let's leave it visible if manual mode was triggered.
+});
+
+function drawPiP() {
+
+    // Background
+    pipCtx.fillStyle = '#18181b'; // Dark BG
+    pipCtx.fillRect(0, 0, pipCanvas.width, pipCanvas.height);
+
+    // Text - Time
+    const minutes = Math.floor(timeLeft / 60);
+    const seconds = timeLeft % 60;
+    const timeStr = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+
+    pipCtx.fillStyle = '#f4f4f5';
+    pipCtx.font = 'bold 80px sans-serif';
+    pipCtx.textAlign = 'center';
+    pipCtx.textBaseline = 'middle';
+    pipCtx.fillText(timeStr, 150, 120);
+
+    // Text - Phase
+    pipCtx.font = '30px sans-serif';
+    pipCtx.fillStyle = pomodoroState.isBreak ? '#22c55e' : '#a1a1aa'; // Green for break, gray for work
+    const phaseText = pomodoroState.isBreak ? "Descanso" : "Trabajo";
+    pipCtx.fillText(phaseText, 150, 200);
+
+    // Cycle
+    pipCtx.font = '20px sans-serif';
+    pipCtx.fillStyle = '#71717a';
+    pipCtx.fillText(`Ciclo ${pomodoroState.cycle}/${pomodoroState.totalCycles}`, 150, 240);
+}
+
+// Hook into updateTimerDisplay to update PiP
+const originalUpdateTimer = updateTimerDisplay;
+updateTimerDisplay = function () {
+    originalUpdateTimer();
+    if (isPipActive) drawPiP();
+};
+
+// Bind PiP Button
+document.addEventListener('DOMContentLoaded', () => {
+    const pipBtn = document.getElementById('pip-pomodoro');
+    if (pipBtn) pipBtn.addEventListener('click', togglePiP);
+});
 
 // --- TIMELINE EDITING ---
 // --- TIMELINE EDITING ---
