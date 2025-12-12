@@ -1927,18 +1927,60 @@ function renderCalendar() {
         dayEl.innerHTML = `<div class="day-number">${i}</div>`;
         dayEl.addEventListener('click', () => { openDayDetails(currentDayDateStr); });
 
-        tasks.forEach(task => {
-            if (isTaskOnDate(task, currentDayDate)) {
-                const dot = document.createElement('div');
-                dot.className = 'day-task-dot';
-                dot.title = task.title;
-                if (task.recurrence && task.recurrence !== 'none') { dot.style.borderRadius = '2px'; }
-                if (task.priority === 'high') dot.style.backgroundColor = 'var(--danger-color)';
-                else if (task.priority === 'medium') dot.style.backgroundColor = 'var(--warning-color)';
-                else dot.style.backgroundColor = 'var(--success-color)';
-                dayEl.appendChild(dot);
+        // Aggregation for Priority Bar & Count
+        const dayTasks = tasks.filter(t => isTaskOnDate(t, currentDayDate));
+
+        if (dayTasks.length > 0) {
+            let high = 0, medium = 0, low = 0;
+            dayTasks.forEach(t => {
+                if (t.priority === 'high') high++;
+                else if (t.priority === 'medium') medium++;
+                else low++;
+            });
+            const total = dayTasks.length;
+
+            // Calculate Risk Score (0 to 1) for Color Interpolation
+            // High contributes 1.0, Medium 0.5, Low 0.0
+            const riskPoints = (high * 1.0) + (medium * 0.5);
+            const riskScore = total > 0 ? (riskPoints / total) : 0;
+
+            // Map Score 0->1 to Hue 120(Green)->0(Red)
+            const hue = Math.max(0, Math.min(120, 120 * (1 - riskScore)));
+
+            // Wrapper for Count & Categories
+            const wrapper = document.createElement('div');
+            wrapper.className = 'day-content-wrapper';
+
+            // Task Count Element
+            const countEl = document.createElement('div');
+            countEl.className = 'day-task-count';
+            countEl.textContent = total;
+            countEl.style.color = `hsl(${hue}, 85%, 45%)`;
+
+            wrapper.appendChild(countEl);
+
+            // Categories
+            const categories = new Set();
+            dayTasks.forEach(t => {
+                if (t.category) {
+                    t.category.split(',').forEach(c => categories.add(c.trim()));
+                }
+            });
+
+            if (categories.size > 0) {
+                const catContainer = document.createElement('div');
+                catContainer.className = 'day-categories';
+                categories.forEach(cat => {
+                    const tag = document.createElement('span');
+                    tag.className = 'calendar-category-tag';
+                    tag.textContent = cat;
+                    catContainer.appendChild(tag);
+                });
+                wrapper.appendChild(catContainer);
             }
-        });
+
+            dayEl.appendChild(wrapper);
+        }
         calendarGridEl.appendChild(dayEl);
     }
 }

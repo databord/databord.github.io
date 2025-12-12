@@ -1554,6 +1554,53 @@ body {
 }
 
 .task-description {
-    display: none;
     /* Hidden by default in Normal/Compact */
+}
+
+/* Calendar Centered Count & Categories */
+.day-content-wrapper {
+    position: absolute;
+    top: 55%;
+    /* Slightly below center to account for day number */
+    left: 50%;
+    transform: translate(-50%, -50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 90%;
+    pointer-events: none;
+}
+
+.day-task-count {
+    font-size: 2.0rem;
+    font-weight: 800;
+    line-height: 1;
+    margin-bottom: 2px;
+    text-shadow: 0 0 15px rgba(0, 0, 0, 0.3);
+}
+
+.day-categories {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 3px;
+    max-width: 100%;
+}
+
+.calendar-category-tag {
+    font-size: 0.6rem;
+    padding: 1px 4px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 60px;
+}
+
+.calendar-day {
+    position: relative;
 }
