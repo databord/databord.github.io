@@ -1308,51 +1308,79 @@ function handleDragOver(e) {
     if (!draggable) return;
 
     const dragType = draggable.dataset.dragType; // 'parent' or 'subtask'
-    const afterElement = getDragAfterElement(taskListEl, e.clientY);
-    const containerRect = taskListEl.getBoundingClientRect();
+
+    // We need to identify WHERE we are dragging over.
+    const closestSubContainer = e.target.closest('.subtask-container');
+    const closestTaskWrapper = e.target.closest('.task-wrapper');
 
     // Clear previous nest targets
     document.querySelectorAll('.drop-target-nest').forEach(el => el.classList.remove('drop-target-nest'));
 
-    // Check for nesting target
-    // We can nest a 'parent' (becoming subtask) into another 'parent'.
-    // We can nest a 'subtask' into another 'parent'.
-    // We CANNOT nest into a Subtask (1 level max).
+    // --- CASE 1: Reordering Subtasks WITHIN a specific parent ---
+    if (dragType === 'subtask' && closestSubContainer) {
+        // We are dragging a subtask INSIDE a subtask container
+        // Allow reordering within this container
+        const afterElement = getDragAfterElement(closestSubContainer, e.clientY);
+        if (afterElement == null) {
+            closestSubContainer.appendChild(draggable);
+        } else {
+            closestSubContainer.insertBefore(draggable, afterElement);
+        }
+        e.dataTransfer.dropEffect = 'move';
+        return;
+    }
 
-    const mouseY = e.clientY;
+    // --- CASE 2: Nesting a Parent into another Parent (Parent -> Subtask) --- 
+    // OR Nesting a Subtask into a DIFFERENT Parent
+
+    // Logic: If hovering over a Task Wrapper (that isn't self), potentially nest.
+    // However, if we are just sorting in the main list, we might hover a wrapper too.
+    // We use a "zone" check (middle of the element) to trigger nesting.
+
     const elements = [...taskListEl.querySelectorAll('.task-wrapper:not(.dragging)')];
-
     let nestingTarget = null;
+    const mouseY = e.clientY;
 
     for (const wrapper of elements) {
         const rect = wrapper.getBoundingClientRect();
-        // Check if mouse is strictly INSIDE the vertical bounds of the item, 
-        // avoiding the very top and very bottom edges which are for reordering.
-        if (mouseY > rect.top + DRAG_THRESHOLD_Y && mouseY < rect.bottom - DRAG_THRESHOLD_Y) {
-            // It's in the middle zone -> Potential Nesting
-            // Ensure we are not dragging a parent onto itself (handled by :not(.dragging))
-            // Ensure target is a parent wrapper
+        // Check middle zone for nesting (20% to 80% of height) to avoid conflict with sorting
+        const threshold = rect.height * 0.25;
+        if (mouseY > rect.top + threshold && mouseY < rect.bottom - threshold) {
             nestingTarget = wrapper;
             break;
         }
     }
 
     if (nestingTarget) {
-        // Visual Feedback for Nesting
-        // We add the class to the wrapper or the task-item inside it.
-        // styling expects .task-wrapper.drop-target-nest > .task-item
+        // Can't nest into self or own parent?
+        if (nestingTarget.dataset.id === draggable.dataset.id) return;
+
+        // If it's a subtask, preventing nesting into OWN parent (unnecessary, just reorder)
+        if (dragType === 'subtask') {
+            // Find current parent id
+            // We can check the dataset of the dragging element if we stored it, or verify in drop
+            // Visual feedback is okay though.
+        }
+
+        // Visual Feedback
         nestingTarget.classList.add('drop-target-nest');
-        e.dataTransfer.dropEffect = 'copy'; // Changed icon behavior slightly
-        return; // Don't do reorder logic if we are consistently hovering for nest
+        e.dataTransfer.dropEffect = 'copy';
+        return;
     }
 
-    // Default Reorder Logic
-    e.dataTransfer.dropEffect = 'move';
+    // --- CASE 3: Reordering in Main List OR promoting Subtask to Main List ---
+
+    // If we are NOT in a subtask container (dragging out) and NOT nesting, 
+    // we treat it as a main list reorder/promotion.
+
+    const afterElement = getDragAfterElement(taskListEl, e.clientY);
+
     if (afterElement == null) {
         taskListEl.appendChild(draggable);
     } else {
         taskListEl.insertBefore(draggable, afterElement);
     }
+    e.dataTransfer.dropEffect = 'move';
 }
 
 function handleDrop(e) {
@@ -1363,60 +1391,73 @@ function handleDrop(e) {
     if (!draggable) return;
 
     const draggedId = draggable.dataset.id || draggable.querySelector('.task-item').dataset.id;
-    // Note: wrapper dataset.id vs task-item dataset.id. 
-    // Wrappers have dataset.id set in renderTasks. Subtasks (task-item) also have dataset.id.
+    const dragType = draggable.dataset.dragType;
 
-    // Check if we dropped on a nesting target
+    const task = tasks.find(t => t.id === draggedId);
+    if (!task) return;
+
+    // Detect where it ended up
+    const parentOfDraggable = draggable.parentElement;
+    const isNowInMainList = parentOfDraggable === taskListEl;
+    const isNowInSubContainer = parentOfDraggable.classList.contains('subtask-container');
     const nestingTarget = e.target.closest('.task-wrapper.drop-target-nest') ||
-        (e.target.classList && e.target.classList.contains('task-wrapper') && e.target.classList.contains('drop-target-nest') ? e.target : null);
+        (e.target.classList.contains('drop-target-nest') ? e.target : null);
 
+    // 1. Handled via Nesting Target (Explicit Drop ON TOP of a parent)
     if (nestingTarget) {
         const newParentId = nestingTarget.dataset.id;
+        if (newParentId === draggedId) return; // Self check
 
-        // Prevent nesting into self (should be impossible via UI but good safety)
-        if (newParentId === draggedId) return;
-
-        // Prevent nesting parent into its own child (circular) - requires check
-        // Since we only have 1 level, a 'parent' being dragged has no parent. 
-        // If it becomes a subtask, its previous children would become orphans 
-        // OR we don't allow nesting if it has children?
-        // Let's assume we can move it, and its children become orphans (common behavior) or they move with it (2-level).
-        // Current app structure flats everything to 1 level sort of.
-        // Let's perform the move.
-
-        const task = tasks.find(t => t.id === draggedId);
-        if (task) {
-            // Update Parent
+        if (task.parentId !== newParentId) {
             task.parentId = newParentId;
-
-            // If the moved task had children, they are now orphans (parentId points to a task that is now a subtask).
-            // Logic in `renderTasks` handles orphans (orphan-context).
-            // Ideally, we might want to update children recursively, but for now 1-level deep.
-            // If A has sub B. Drag A into C. A becomes sub of C. B stays sub of A?
-            // If B stays sub of A, but A is sub of C. 
-            // `renderTasks` logic:
-            // 1. Find Parents (no parentId). C is parent. A is NOT parent.
-            // 2. Orphans: orphans are tasks with parentId that isn't found in processed parents.
-            // A is child of C. C is processed. A is processed as child.
-            // B is child of A. A is NOT in 'parentsInList' (it is a child).
-            // So B becomes an orphan in render logic? 
-            // "orphans.forEach... parent = tasks.find... if (parent) ..." 
-            // A exists. So B renders as orphan attached to A. 
-            // Visual result: C -> A. And separate block: Subtarea de A -> B. 
-            // This is acceptable behavior for "1-level nesting enforcement" or "soft multilevel".
-
             if (window.updateTaskInFirebase) {
                 window.updateTaskInFirebase(draggedId, { parentId: newParentId });
             }
+            applyFilters(); // Re-render logic to ensure correct DOM structure
+        }
+        return;
+    }
 
-            // Force refresh to handle structure change AND KEEP PROPER VIEW
+    // 2. Handled via Position
+
+    // A) PROMOTION: Subtask -> Main List
+    if (dragType === 'subtask' && isNowInMainList) {
+        // It was dropped in the main list area
+        if (task.parentId) {
+            task.parentId = ""; // Remove parent
+            if (window.updateTaskInFirebase) {
+                window.updateTaskInFirebase(draggedId, { parentId: "" });
+            }
+
+            // Save the new order based on where the user dropped it
+            saveTaskOrder();
+
+            // We need to re-render because a subtask DOM element (.task-item) isn't the same as a root Wrapper
             applyFilters();
             return;
         }
     }
 
-    // If not nesting, it was a reorder. Current DOM position is already correct from DragOver.
-    // Just save order.
+    // B) SUBTASK REORDER or TRANSFER: Inside a subtask container
+    if (isNowInSubContainer) {
+        const newWrapper = parentOfDraggable.closest('.task-wrapper');
+        if (newWrapper) {
+            const newParentId = newWrapper.dataset.id;
+
+            // Did we change parent? (drag from one sublist to another)
+            if (task.parentId !== newParentId) {
+                task.parentId = newParentId;
+                if (window.updateTaskInFirebase) {
+                    window.updateTaskInFirebase(draggedId, { parentId: newParentId });
+                }
+            }
+            // Just reorder logic below will handle the index
+        }
+    }
+
+    // C) PARENT REORDER: Just sorting wrappers (handled by saveTaskOrder)
+
+    // Finally, save the visual order
     saveTaskOrder();
 }
 
