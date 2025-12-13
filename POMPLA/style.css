@@ -1,14 +1,27 @@
 :root {
+    --font-main: 'Outfit', sans-serif;
+    --base-size: 16px;
+
     --bg-color: #18181b;
     --sidebar-bg: #27272a;
     --card-bg: #3f3f46;
+
     --text-primary: #f4f4f5;
     --text-secondary: #a1a1aa;
+
     --accent-color: #71717a;
     --accent-hover: #52525b;
+    --highlight-color: var(--accent-color);
+
     --danger-color: #ef4444;
     --success-color: #22c55e;
     --warning-color: #eab308;
+
+    /* Priority Colors */
+    --priority-high: var(--danger-color);
+    --priority-medium: var(--warning-color);
+    --priority-low: var(--success-color);
+
     --glass-bg: rgba(39, 39, 42, 0.7);
     --glass-border: rgba(255, 255, 255, 0.08);
     --radius-lg: 16px;
@@ -20,7 +33,7 @@
     margin: 0;
     padding: 0;
     box-sizing: border-box;
-    font-family: 'Outfit', sans-serif;
+    font-family: var(--font-main);
 }
 
 body {
@@ -63,7 +76,7 @@ body {
 
 .btn-primary {
     background-color: var(--accent-color);
-    color: white;
+    color: var(--text-primary);
     border: none;
     padding: 8px 16px;
     border-radius: var(--radius-md);
@@ -201,7 +214,32 @@ body {
     display: block;
 }
 
-/* Task Item */
+.list-view .task-wrapper {
+    background-color: var(--sidebar-bg);
+    border-radius: var(--radius-md);
+    margin-bottom: 10px;
+}
+
+/* Ensure inner items are transparent to show wrapper background */
+/* Ensure inner items are transparent to show wrapper background */
+.list-view .task-wrapper .task-item {
+    background-color: transparent;
+    margin-bottom: 0;
+}
+
+/* Orphan subtasks should have explicit card background */
+.list-view .orphan-subtask {
+    background-color: var(--card-bg);
+    margin-top: 0 !important;
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+}
+
+/* Completed tasks should be darker (sidebar-bg) */
+.list-view .task-item.completed {
+    background-color: var(--bg-color) !important;
+}
+
 .task-item {
     background-color: var(--card-bg);
     padding: 12px;
@@ -224,15 +262,15 @@ body {
 }
 
 .task-item.priority-high {
-    border-left-color: var(--danger-color);
+    border-left-color: var(--priority-high);
 }
 
 .task-item.priority-medium {
-    border-left-color: var(--warning-color);
+    border-left-color: var(--priority-medium);
 }
 
 .task-item.priority-low {
-    border-left-color: var(--success-color);
+    border-left-color: var(--priority-low);
 }
 
 .task-content {
@@ -291,7 +329,7 @@ body {
 .task-item.drop-target-nest {
     outline: 2px dashed var(--accent-color);
     outline-offset: -2px;
-    background-color: rgba(255, 255, 255, 0.1);
+    background-color: var(--bg-primary);
     position: relative;
 }
 
@@ -319,7 +357,7 @@ body {
     display: flex;
     flex-direction: column;
     gap: 20px;
-    background: radial-gradient(circle at top right, #27272a 0%, #18181b 100%);
+    background-color: var(--bg-color);
     overflow: hidden;
 }
 
@@ -398,7 +436,7 @@ body {
 }
 
 .calendar-day {
-    background-color: rgba(255, 255, 255, 0.03);
+    background-color: var(--sidebar-bg);
     border-radius: var(--radius-md);
     padding: 10px;
     min-height: 100px;
@@ -410,12 +448,12 @@ body {
 }
 
 .calendar-day:hover {
-    background-color: rgba(255, 255, 255, 0.06);
+    background-color: var(--accent-hover);
 }
 
 .calendar-day.today {
     border: 1px solid var(--accent-color);
-    background-color: rgba(255, 255, 255, 0.1);
+    background-color: var(--accent-hover);
 }
 
 .day-number {
@@ -444,7 +482,7 @@ body {
 }
 
 .list-date-group {
-    background-color: rgba(255, 255, 255, 0.02);
+
     border-radius: var(--radius-md);
     padding: 15px;
 }
@@ -723,7 +761,7 @@ body {
 }
 
 .btn-secondary {
-    background: transparent;
+    background: var(--sidebar-bg);
     border: 1px solid var(--glass-border);
     color: var(--text-secondary);
     padding: 8px 16px;
@@ -732,7 +770,7 @@ body {
 }
 
 .btn-secondary:hover {
-    background-color: rgba(255, 255, 255, 0.05);
+    background-color: var(--accent-hover);
 }
 
 /* Category Badge */
@@ -793,7 +831,7 @@ body {
 }
 
 .btn-adjust {
-    background-color: rgba(255, 255, 255, 0.1);
+    background-color: var(--sidebar-bg);
     color: var(--text-primary);
     border: 1px solid var(--glass-border);
     padding: 4px 8px;
@@ -977,11 +1015,18 @@ body {
 
 /* Parent Indicator for Orphaned Subtasks in Filter */
 .parent-indicator {
+    background-color: var(--bg-color);
     font-size: 0.75rem;
     color: var(--text-secondary);
-    margin-bottom: 2px;
-    margin-left: 4px;
+    margin-bottom: 0;
+    /* Removed to avoid gap showing wrapper bg */
+    margin-left: 0;
     font-style: italic;
+    padding: 4px;
+    /* Optional: Add padding to make it look like a header bar if user wants it seamless? */
+    border-top-left-radius: var(--radius-md);
+    /* Add radius to match wrapper? */
+    border-top-right-radius: var(--radius-md);
 }
 
 /* Custom Recurrence Days Styles */
@@ -1329,7 +1374,7 @@ body {
 
 .orphan-subtask {
     /* Slightly distinct to show it is a subtask context */
-    background-color: rgba(255, 255, 255, 0.03);
+    background-color: var(--card-bg);
     border-left: 2px solid var(--accent-color);
 }
 
@@ -1347,13 +1392,14 @@ body {
     /* Reduce vertical space for Mobile Filters */
     /* Reduce vertical space for Mobile Filters */
     .mobile-filters-section {
+
         display: flex !important;
         flex-wrap: wrap;
         gap: 4px;
         margin: 2px 10px 4px 10px;
         /* Minimal vertical margins */
         align-items: center;
-        background: var(--card-bg);
+        background: var(--sidebar-bg);
         padding: 4px 8px;
         /* Compact padding */
         border-radius: 12px;
@@ -1437,8 +1483,13 @@ body {
 }
 
 /* --- DAILY GOAL WIDGET --- */
+#mobile-widgets-container {
+    background-color: var(--bg-color);
+    /* Override for mobile container */
+}
+
 .daily-goal-widget {
-    background-color: rgba(255, 255, 255, 0.03);
+    background-color: var(--sidebar-bg);
     border: 1px solid var(--glass-border);
     border-radius: var(--radius-md);
     padding: 12px;
@@ -1688,7 +1739,7 @@ body {
 
 .timeline-content-col {
     flex: 1;
-    background: var(--card-bg);
+    background: var(--sidebar-bg);
     border: 1px solid var(--glass-border);
     border-radius: 12px;
     padding: 12px;

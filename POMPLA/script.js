@@ -1557,8 +1557,10 @@ function createTaskElement(task, hasSubtasks = false, isSubtask = false) {
     const isFolder = !!task.isFolder || (!task.date && !!task.color);
     const div = document.createElement('div');
     // Use 'priority-none' for folders to avoid priority colors, add 'is-folder' class
-    div.className = `task-item ${isFolder ? 'priority-none is-folder' : 'priority-' + task.priority}`;
+    div.className = `task-item ${isFolder ? 'priority-none is-folder' : 'priority-' + task.priority} ${task.status === 'completed' && !isFolder ? 'completed' : ''}`;
     div.dataset.id = task.id;
+    // Opacity is redundant if we style via class, but keeps legacy support until CSS handles opacity too? 
+    // User requested BG change, maybe opacity can stay or be moved to CSS. Keeping it for now.
     if (task.status === 'completed' && !isFolder) div.style.opacity = '0.6';
 
     if (isFolder && task.color) {
@@ -2239,12 +2241,13 @@ function renderListView(rangeType = 'month', startDate = null, endDate = null) {
 
                 } else if (g.type === 'orphan-context') {
                     const parent = g.parent; const sub = g.subtask;
-                    const container = document.createElement('div'); container.style.marginBottom = '10px';
+                    const container = document.createElement('div');
+                    container.className = 'task-wrapper';
                     const parentLabel = document.createElement('div'); parentLabel.className = 'parent-indicator';
                     parentLabel.innerHTML = `<i class="fa-solid fa-turn-up" style="transform: rotate(90deg); margin-right:5px;"></i> Subtarea de: <strong>${parent.title}</strong>`;
                     container.appendChild(parentLabel);
                     const subEl = createTaskElement(sub, false, true); subEl.classList.add('orphan-subtask');
-                    const fakeContainer = document.createElement('div'); fakeContainer.className = 'subtask-container'; fakeContainer.style.marginLeft = '0'; fakeContainer.style.paddingLeft = '0'; fakeContainer.style.borderLeft = 'none';
+                    const fakeContainer = document.createElement('div'); fakeContainer.className = 'subtask-container'; fakeContainer.style.marginLeft = '0'; fakeContainer.style.paddingLeft = '0'; fakeContainer.style.borderLeft = 'none'; fakeContainer.style.marginTop = '0';
                     fakeContainer.appendChild(subEl);
                     container.appendChild(fakeContainer);
                     content.appendChild(container);
@@ -2499,7 +2502,7 @@ function updateTimerDisplay() {
     const offset = circumference - (timeLeft / totalTime) * circumference;
     circle.style.strokeDashoffset = offset;
     const cycleDisplay = document.getElementById('cycle-display');
-    if (cycleDisplay && pomodoroState) { cycleDisplay.textContent = `Ciclo ${pomodoroState.cycle}/${pomodoroState.totalCycles} (${pomodoroState.isBreak ? 'Descanso' : 'Trabajo'})`; }
+    if (cycleDisplay && pomodoroState) { cycleDisplay.textContent = `${pomodoroState.cycle}/${pomodoroState.totalCycles} - ${pomodoroState.isBreak ? 'Descanso' : 'Trabajo'}`; }
 }
 
 function toggleTimer() {

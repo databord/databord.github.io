@@ -115,14 +115,10 @@
             </div>
 
             <!-- MOBILE WIDGETS CONTAINER (Goal + Filters + Add Button) -->
-            <button id="mobile-widgets-toggle" class="btn-secondary"
-                style="display:none; width:100%; margin-bottom:5px; justify-content:center; padding: 4px;">
-                <i class="fa-solid fa-chevron-up"></i>
-            </button>
             <div id="mobile-widgets-container" class="daily-goal-widget collapsed-widget">
                 <!-- Mobile Goal Compact (Moved Here) -->
                 <div id="mobile-daily-goal"
-                    style="display:none; margin: 0 10px 5px 10px; background:var(--card-bg); padding:4px 10px; border-radius:12px; border:1px solid var(--glass-border); align-items:center; justify-content:space-between;">
+                    style="display:none; margin: 0 10px 5px 10px; background:var(--sidebar-bg); padding:4px 10px; border-radius:12px; border:1px solid var(--glass-border); align-items:center; justify-content:space-between;">
                     <span style="font-size:0.8rem; color:var(--text-secondary);">Objetivo: <span
                             id="mobile-goal-progress">0/5</span></span>
                     <div class="goal-progress-bar-bg" style="width:50px; height:4px;">
@@ -158,6 +154,13 @@
                     </button>
                 </div>
             </div>
+
+            <!-- Mobile Widgets Toggle Moved Below Container -->
+            <button id="mobile-widgets-toggle" class="btn-secondary"
+                style="display:none; width:100%; margin: -5px 10px 10px 10px; width: calc(100% - 20px); background:var(--sidebar-bg); justify-content:center; padding: 4px;">
+                <i class="fa-solid fa-chevron-up"></i>
+            </button>
+
 
             <div class="task-filters">
                 <button class="filter-btn" id="filter-completed" title="Ver tareas completadas"><i
@@ -264,7 +267,7 @@
                 </svg>
                 <span id="main-timer">25:00</span>
                 <div id="cycle-display"
-                    style="position: absolute; bottom: 25px; font-size: 0.75rem; color: var(--text-secondary);">Ciclo
+                    style="position: absolute; bottom: 30px; font-size: 0.7rem; color: var(--text-secondary);">Ciclo
                     1/1</div>
             </div>
             <div class="timer-controls" style="align-items: center;">
