@@ -1498,7 +1498,8 @@ body {
 /* Hide Meta Info in Compact */
 #task-list.compact .task-meta,
 #task-list.compact .task-recurrence-text,
-#task-list.compact .task-category-badge {
+#task-list.compact .task-category-badge,
+#task-list.compact .task-description {
     display: none !important;
 }
 
@@ -1607,6 +1608,16 @@ body {
 }
 
 /* TIMELINE VIEW REIMAGINED */
+.timeline-view {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    overflow-y: auto;
+    flex: 1;
+    min-height: 0;
+    padding-right: 5px;
+}
+
 .timeline-container {
     padding: 20px 0;
     position: relative;

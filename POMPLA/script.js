@@ -2667,6 +2667,32 @@ function enableManualPiP() {
             container.appendChild(pipVideo);
         }
 
+        // Add Hide Button if not exists
+        let hideBtn = document.getElementById('manual-pip-hide');
+        if (!hideBtn) {
+            hideBtn = document.createElement('button');
+            hideBtn.id = 'manual-pip-hide';
+            hideBtn.className = 'btn-secondary';
+            hideBtn.style.width = '100%';
+            hideBtn.style.marginTop = '5px';
+            hideBtn.style.fontSize = '0.8rem';
+            hideBtn.innerText = 'Ocultar Vista Previa';
+            hideBtn.onclick = () => {
+                // Hide video
+                pipVideo.style.position = 'fixed';
+                pipVideo.style.opacity = '0';
+                pipVideo.style.pointerEvents = 'none';
+                pipVideo.style.height = '0';
+                pipVideo.style.width = '0';
+                pipVideo.style.border = 'none';
+                pipVideo.style.marginTop = '0';
+                pipVideo.controls = false;
+                // Remove button
+                hideBtn.remove();
+            };
+            pipVideo.parentNode.insertBefore(hideBtn, pipVideo.nextSibling);
+        }
+
         isPipActive = true; // Enable drawing so video has content
         drawPiP();
     }
