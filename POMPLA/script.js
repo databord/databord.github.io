@@ -171,7 +171,7 @@ window.switchMobileTab = function (tab) {
     document.querySelectorAll('.nav-item').forEach(btn => {
         btn.classList.toggle('active', btn.dataset.tab === tab);
     });
-    document.body.classList.remove('tab-list', 'tab-calendar', 'tab-timer');
+    document.body.classList.remove('tab-list', 'tab-calendar', 'tab-timer', 'tab-timeline');
     document.body.classList.add(`tab-${tab}`);
 
     if (tab === 'list') { switchView('list'); checkMiniTimerVisibility(); }

@@ -1143,8 +1143,7 @@ body {
 
     /* In Timer Tab: Hide unnecessary sidebar elements */
     body.tab-timer .sidebar .sidebar-header,
-    body.tab-timer .sidebar .task-filters,
-    body.tab-timer .sidebar .tags-container {
+    body.tab-timer .sidebar .task-filters {
         display: none;
     }
 
