@@ -11,7 +11,7 @@ let dailyGoal = parseInt(localStorage.getItem('planner_daily_goal')) || 5;
 let confettiTriggeredToday = false;
 
 // Filtering State
-let activeFilters = { dateRange: 'today', tags: new Set(), status: 'all' }; // status: 'all' | 'completed'
+let activeFilters = { dateRange: 'today', tags: new Set(), status: 'all', folderId: null, mainTag: null }; // status: 'all' | 'completed'
 let mainViewRange = 'month'; // 'month', 'week', 'today' (Independent of sidebar)
 
 // DOM Elements & Icons
@@ -94,7 +94,9 @@ function applyFilters() {
             if (![...activeFilters.tags].some(tag => taskTags.includes(tag))) return false;
         }
 
-        // Folder Check: Always show folders (unless filtered by tags above)
+        // Folder Check: Always show folders (Unless filtered out by specific folder above)
+        // If we are filtering by a specific folder, we already handled the "Hide other folders" above.
+        // If we are NOT filtering by folder (folderId is null), we show clear folders.
         const isFolder = !!task.isFolder || (!task.date && !!task.color);
         if (isFolder) return true;
 
@@ -456,6 +458,8 @@ window.recibirTareasDeFirebase = (tareasDescargadas) => {
     renderCategoryTags();
     updateParentSelect();
     renderCategoryTags();
+    updateFolderFilterOptions(); // Update Folder Dropdown
+    updateMainTagFilterOptions(); // Update Main Tag Dropdown
     updateDailyGoalUI();
 };
 
@@ -524,6 +528,72 @@ function renderCategoryTags() {
 
     fillContainer(desktopContainer, false);
     fillContainer(mobileContainer, true);
+}
+
+function updateFolderFilterOptions() {
+    const select = document.getElementById('filter-folder');
+    if (!select) return;
+
+    const currentVal = select.value;
+    select.innerHTML = '<option value="">Todas las Carpetas</option>';
+
+    // Find all folders
+    const folders = tasks.filter(t => !!t.isFolder || (!t.date && !!t.color));
+
+    folders.forEach(f => {
+        const option = document.createElement('option');
+        option.value = f.id;
+        option.textContent = f.title;
+        select.appendChild(option);
+    });
+
+    // Restore value if still valid
+    if (activeFilters.folderId && folders.some(f => f.id === activeFilters.folderId)) {
+        select.value = activeFilters.folderId;
+    } else {
+        select.value = "";
+    }
+
+    // Listener (idempotent setup is tricky here, better to set once or remove old listener? 
+    // Actually, setting onchange property is safer than addEventListener for re-runs)
+    select.onchange = (e) => {
+        activeFilters.folderId = e.target.value || null;
+        applyFilters();
+    };
+}
+
+function updateMainTagFilterOptions() {
+    const select = document.getElementById('filter-tag-main');
+    if (!select) return;
+
+    select.innerHTML = '<option value="">Todas las Etiquetas</option>';
+
+    const tags = new Set();
+    tasks.forEach(task => {
+        if (task.category && task.category.trim() !== '') {
+            task.category.split(',').forEach(tag => {
+                if (tag.trim()) tags.add(tag.trim());
+            });
+        }
+    });
+
+    Array.from(tags).sort().forEach(tag => {
+        const option = document.createElement('option');
+        option.value = tag;
+        option.textContent = tag;
+        select.appendChild(option);
+    });
+
+    if (activeFilters.mainTag && tags.has(activeFilters.mainTag)) {
+        select.value = activeFilters.mainTag;
+    } else {
+        select.value = "";
+    }
+
+    select.onchange = (e) => {
+        activeFilters.mainTag = e.target.value || null;
+        applyFilters();
+    };
 }
 
 function setupAuthListeners() {
@@ -796,7 +866,9 @@ function setupEventListeners() {
     const resetBtn = document.getElementById('filter-reset');
     if (resetBtn) {
         resetBtn.addEventListener('click', () => {
-            activeFilters = { dateRange: 'today', tags: new Set(), status: 'all' };
+            activeFilters = { dateRange: 'today', tags: new Set(), status: 'all', folderId: null, mainTag: null };
+            document.getElementById('filter-folder').value = ''; // Reset UI
+            document.getElementById('filter-tag-main').value = ''; // Reset UI
             applyFilters();
         });
     }
@@ -805,7 +877,9 @@ function setupEventListeners() {
     const mobileResetBtn = document.getElementById('mobile-filter-reset');
     if (mobileResetBtn) {
         mobileResetBtn.addEventListener('click', () => {
-            activeFilters = { dateRange: 'today', tags: new Set(), status: 'all' };
+            activeFilters = { dateRange: 'today', tags: new Set(), status: 'all', folderId: null, mainTag: null };
+            document.getElementById('filter-folder').value = ''; // Reset UI check if mobile needs sync
+            document.getElementById('filter-tag-main').value = '';
             applyFilters();
         });
     }
@@ -1214,7 +1288,17 @@ function openDayDetails(date) {
     const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
     title.textContent = dateObj.toLocaleDateString('es-ES', options);
     body.innerHTML = '';
-    const dayTasks = tasks.filter(t => isTaskOnDate(t, dateObj));
+
+    let dayTasks = tasks.filter(t => isTaskOnDate(t, dateObj));
+    // Apply Folder Filter to Day Details
+    if (activeFilters.folderId) {
+        dayTasks = dayTasks.filter(t => t.parentId === activeFilters.folderId);
+    }
+
+    // Apply Main Tag Filter to Day Details
+    if (activeFilters.mainTag) {
+        dayTasks = dayTasks.filter(t => t.category && t.category.split(',').map(tag => tag.trim()).includes(activeFilters.mainTag));
+    }
 
     if (dayTasks.length === 0) {
         body.innerHTML = '<p style="text-align:center; color:var(--text-secondary); margin-top:20px;">No hay tareas para este día.</p>';
@@ -2009,7 +2093,17 @@ function renderCalendar() {
         dayEl.addEventListener('click', () => { openDayDetails(currentDayDateStr); });
 
         // Aggregation for Priority Bar & Count
-        const dayTasks = tasks.filter(t => isTaskOnDate(t, currentDayDate));
+        let dayTasks = tasks.filter(t => isTaskOnDate(t, currentDayDate));
+
+        // Apply Folder Filter to Calendar Counts
+        if (activeFilters.folderId) {
+            dayTasks = dayTasks.filter(t => t.parentId === activeFilters.folderId);
+        }
+
+        // Apply Main Tag Filter to Calendar Counts
+        if (activeFilters.mainTag) {
+            dayTasks = dayTasks.filter(t => t.category && t.category.split(',').map(tag => tag.trim()).includes(activeFilters.mainTag));
+        }
 
         if (dayTasks.length > 0) {
             let high = 0, medium = 0, low = 0;
@@ -2168,6 +2262,18 @@ function renderListView(rangeType = 'month', startDate = null, endDate = null) {
 
             // Removed isFolder check to prevent folders appearing on every day
             // Only show folders if they have a date matching the day
+
+            // Folder Filter (Main View)
+            if (activeFilters.folderId) {
+                if (t.id !== activeFilters.folderId && t.parentId !== activeFilters.folderId) return false;
+            }
+
+            // Tag Filter (Main View)
+            if (activeFilters.mainTag) {
+                if (!t.category) return false;
+                const match = t.category.split(',').map(tag => tag.trim()).includes(activeFilters.mainTag);
+                if (!match) return false;
+            }
 
             // Standard Task Date Check
             if (!isTaskOnDate(t, dateObj)) return false;

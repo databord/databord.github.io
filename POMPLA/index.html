@@ -169,6 +169,7 @@
                 <button class="filter-btn" id="btn-view-density" title="Cambiar Vista (Normal / Compacta / Amplia)"><i
                         class="fa-solid fa-bars"></i></button>
                 <button class="filter-btn" id="filter-reset" title="Resetear Filtros">Todos</button>
+
                 <select id="filter-date-range" class="filter-select">
                     <option value="today">Hoy</option>
                     <option value="yesterday">Ayer</option>
@@ -206,6 +207,22 @@
                         <button id="view-calendar" class="view-btn active"><i class="fa-solid fa-calendar"></i></button>
                         <button id="view-list" class="view-btn"><i class="fa-solid fa-list"></i></button>
                         <button id="view-timeline" class="view-btn"><i class="fa-solid fa-timeline"></i></button>
+                    </div>
+
+                    <!-- Folder Filter (Main View Only) -->
+                    <div style="margin-left: 10px;">
+                        <select id="filter-folder" class="filter-select" title="Filtrar por Carpeta"
+                            style="padding: 5px; border-radius: 6px; border: 1px solid var(--glass-border); background: var(--card-bg); color: var(--text-primary);">
+                            <option value="">Todas las Carpetas</option>
+                        </select>
+                    </div>
+
+                    <!-- Tag Filter (Main View Only) -->
+                    <div style="margin-left: 5px;">
+                        <select id="filter-tag-main" class="filter-select" title="Filtrar por Etiqueta"
+                            style="padding: 5px; border-radius: 6px; border: 1px solid var(--glass-border); background: var(--card-bg); color: var(--text-primary);">
+                            <option value="">Todas las Etiquetas</option>
+                        </select>
                     </div>
                     <div class="month-nav-controls">
                         <button id="prev-month" class="icon-btn"><i class="fa-solid fa-chevron-left"></i></i></button>
