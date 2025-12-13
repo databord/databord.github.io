@@ -406,6 +406,21 @@ document.addEventListener('DOMContentLoaded', () => {
     setupCustomSelect();
     setupAuthListeners();
 
+    // ResizeObserver for Ultra Compact Mode
+    const timerDisplay = document.querySelector('.timer-display');
+    if (timerDisplay) {
+        const resizeObserver = new ResizeObserver(entries => {
+            for (let entry of entries) {
+                if (entry.contentRect.height < 80) {
+                    timerDisplay.classList.add('ultra-compact');
+                } else {
+                    timerDisplay.classList.remove('ultra-compact');
+                }
+            }
+        });
+        resizeObserver.observe(timerDisplay);
+    }
+
     if (window.innerWidth <= 768) {
         window.switchMobileTab('list');
     } else {
