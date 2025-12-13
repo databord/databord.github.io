@@ -55,7 +55,9 @@ function applyFilters() {
 
     // 2. Determine Date Range
     let start = null, end = null;
-    const now = new Date();
+    // Use currentDate as the reference anchor (allows navigation)
+    // Strip time to ensure clean date comparison
+    const now = new Date(currentDate);
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
     if (activeFilters.dateRange === 'today') {
@@ -662,6 +664,8 @@ function setupEventListeners() {
             }
         });
     }
+
+
 
     document.getElementById('prev-month').addEventListener('click', () => changeMonth(-1));
     document.getElementById('next-month').addEventListener('click', () => changeMonth(1));
@@ -2025,14 +2029,20 @@ function renderCalendar() {
 }
 
 function changeMonth(delta) {
-    currentDate.setMonth(currentDate.getMonth() + delta);
-    if (currentView === 'calendar') renderCalendar();
-    else {
-        // Switch to Month view likely if navigating months?
-        // Or if in list view and range is 'today', does nav change TODAY? No.
-        // It should probably just render based on 'month' logic if the user navigates.
-        activeFilters.dateRange = 'month'; // Snap to month view logic
+    if (currentView === 'timeline') {
+        // Timeline: Navigate by Day
+        currentDate.setDate(currentDate.getDate() + delta);
         applyFilters();
+    } else {
+        currentDate.setMonth(currentDate.getMonth() + delta);
+        if (currentView === 'calendar') renderCalendar();
+        else {
+            // Switch to Month view likely if navigating months?
+            // Or if in list view and range is 'today', does nav change TODAY? No.
+            // It should probably just render based on 'month' logic if the user navigates.
+            activeFilters.dateRange = 'month'; // Snap to month view logic
+            applyFilters();
+        }
     }
 }
 
@@ -2051,13 +2061,13 @@ function renderListView(rangeType = 'month', startDate = null, endDate = null) {
     } else if (startDate && endDate) {
         loopStart = startDate;
         loopEnd = endDate;
-        if (rangeType === 'today') currentMonthYearEl.textContent = "Hoy";
-        else if (rangeType === 'tomorrow') currentMonthYearEl.textContent = "Mañana";
-        else if (rangeType === 'yesterday') currentMonthYearEl.textContent = "Ayer";
 
-        else if (rangeType === 'week') currentMonthYearEl.textContent = "Esta Semana";
-        else if (rangeType === 'last-month') currentMonthYearEl.textContent = new Intl.DateTimeFormat('es-ES', { month: 'long', year: 'numeric' }).format(loopStart);
-        else currentMonthYearEl.textContent = new Intl.DateTimeFormat('es-ES', { month: 'long', year: 'numeric' }).format(loopStart);
+        const systemToday = new Date();
+        const isSystemToday = loopStart.toDateString() === systemToday.toDateString();
+
+        // Only show "Hoy" if it is actually today
+        if (rangeType === 'today' && isSystemToday) currentMonthYearEl.textContent = "Hoy";
+        else currentMonthYearEl.textContent = new Intl.DateTimeFormat('es-ES', { month: 'long', year: 'numeric', day: 'numeric' }).format(loopStart);
     } else {
         const year = currentDate.getFullYear();
         const month = currentDate.getMonth();
@@ -2199,42 +2209,18 @@ function renderTimeline(rangeType = 'today', startDate = null, endDate = null) {
     // Date Range Setup
     let loopStart, loopEnd;
 
-    // 1. Explicit Dates provided
-    if (startDate && endDate) {
-        loopStart = startDate;
-        loopEnd = endDate;
-        if (rangeType === 'today') currentMonthYearEl.textContent = "Hoy";
-        else if (rangeType === 'tomorrow') currentMonthYearEl.textContent = "Mañana";
-        else if (rangeType === 'yesterday') currentMonthYearEl.textContent = "Ayer";
-        else if (rangeType === 'week') currentMonthYearEl.textContent = "Esta Semana";
-        else currentMonthYearEl.textContent = new Intl.DateTimeFormat('es-ES', { month: 'long', year: 'numeric' }).format(loopStart);
-    }
-    // 2. Range Type Logic (Implicit dates)
-    else if (rangeType === 'today') {
-        loopStart = new Date(currentDate); loopEnd = new Date(currentDate);
-        currentMonthYearEl.textContent = "Hoy";
-    } else if (rangeType === 'tomorrow') {
-        loopStart = new Date(currentDate); loopStart.setDate(loopStart.getDate() + 1);
-        loopEnd = new Date(loopStart);
-        currentMonthYearEl.textContent = "Mañana";
-    } else if (rangeType === 'yesterday') {
-        loopStart = new Date(currentDate); loopStart.setDate(loopStart.getDate() - 1);
-        loopEnd = new Date(loopStart);
-        currentMonthYearEl.textContent = "Ayer";
-    } else if (rangeType === 'week') {
-        const day = currentDate.getDay();
-        loopStart = new Date(currentDate); loopStart.setDate(currentDate.getDate() - day);
-        loopEnd = new Date(loopStart); loopEnd.setDate(loopEnd.getDate() + 6);
-        currentMonthYearEl.textContent = "Esta Semana";
-    }
-    // 3. Fallback / Month
-    else {
-        const year = currentDate.getFullYear();
-        const month = currentDate.getMonth();
-        currentMonthYearEl.textContent = new Intl.DateTimeFormat('es-ES', { month: 'long', year: 'numeric' }).format(currentDate);
-        loopStart = new Date(year, month, 1);
-        loopEnd = new Date(year, month + 1, 0);
-    }
+    // FORCE SINGLE DAY VIEW FOR TIMELINE based on currentDate
+    // regardless of what filter range is passed. User wants strict day view.
+    loopStart = new Date(currentDate);
+    loopEnd = new Date(currentDate);
+
+    // Update Header to reflect the specific day being viewed
+    // "Sábado 13 de Diciembre" format
+    const headerDateStr = new Intl.DateTimeFormat('es-ES', { weekday: 'long', day: 'numeric', month: 'long' }).format(loopStart);
+
+    // Capitalize first letter
+    const capitalizedHeader = headerDateStr.charAt(0).toUpperCase() + headerDateStr.slice(1);
+    currentMonthYearEl.textContent = capitalizedHeader;
 
     const sortedDates = [];
     let d = new Date(loopStart);
