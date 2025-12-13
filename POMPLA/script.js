@@ -12,6 +12,7 @@ let confettiTriggeredToday = false;
 
 // Filtering State
 let activeFilters = { dateRange: 'today', tags: new Set(), status: 'all' }; // status: 'all' | 'completed'
+let mainViewRange = 'month'; // 'month', 'week', 'today' (Independent of sidebar)
 
 // DOM Elements & Icons
 const taskListEl = document.getElementById('task-list');
@@ -53,11 +54,9 @@ function applyFilters() {
     // Status Button Sync
     updateFilterButtonIcon();
 
-    // 2. Determine Date Range
+    // 2. Determine Sidebar Date Range (Based on SYSTEM TIME, not Navigation)
     let start = null, end = null;
-    // Use currentDate as the reference anchor (allows navigation)
-    // Strip time to ensure clean date comparison
-    const now = new Date(currentDate);
+    const now = new Date(); // System Time
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
     if (activeFilters.dateRange === 'today') {
@@ -69,13 +68,13 @@ function applyFilters() {
         start = new Date(today); start.setDate(today.getDate() + 1);
         end = new Date(start);
     } else if (activeFilters.dateRange === 'week') {
-        // Current week (Sunday to Saturday)
+        // Current week (Sunday to Saturday) relative to SYSTEM TIME
         const day = today.getDay();
         start = new Date(today); start.setDate(today.getDate() - day);
         end = new Date(start); end.setDate(end.getDate() + 6);
     } else if (activeFilters.dateRange === 'month') {
-        // "Este Mes": From TODAY to End of Month (User Request)
-        start = new Date(today);
+        // "Este Mes" (System Month)
+        start = new Date(today.getFullYear(), today.getMonth(), 1);
         end = new Date(today.getFullYear(), today.getMonth() + 1, 0);
     } else if (activeFilters.dateRange === 'last-month') {
         start = new Date(today.getFullYear(), today.getMonth() - 1, 1);
@@ -83,7 +82,7 @@ function applyFilters() {
     }
     // 'all' leaves start/end as null
 
-    // 3. Filter Tasks
+    // 3. Filter Tasks (Sidebar Only)
     const filteredTasks = tasks.filter(task => {
         // Exclude Timeline Comments from Main List
         if (task.isTimelineComment || task.category === 'comment') return false;
@@ -100,13 +99,6 @@ function applyFilters() {
         if (isFolder) return true;
 
         // Status Filter
-        if (activeFilters.status === 'completed') {
-            if (task.status !== 'completed') return false;
-        } else if (activeFilters.status === 'pending') {
-            if (task.status === 'completed') return false;
-        }
-
-        // Date Filter
         if (activeFilters.status === 'completed') {
             if (task.status !== 'completed') return false;
         } else if (activeFilters.status === 'pending') {
@@ -131,8 +123,34 @@ function applyFilters() {
     });
 
     renderTasks(filteredTasks);
-    renderListView(activeFilters.dateRange, start, end);
-    if (currentView === 'timeline') renderTimeline(activeFilters.dateRange, start, end);
+    // Also refresh Main View ensuring it shows correct data, but INDEPENDENT of filters
+    refreshMainView();
+}
+
+function refreshMainView() {
+    // 2. Determine Main View Date Range (Based on NAVIGABLE currentDate)
+    let start = null, end = null;
+    const now = new Date(currentDate);
+    const todayNav = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    if (currentView === 'timeline') {
+        // Always single day based on proper currentDate
+        renderTimeline('today');
+    } else if (currentView === 'list') {
+        if (mainViewRange === 'week') {
+            const day = todayNav.getDay();
+            start = new Date(todayNav); start.setDate(todayNav.getDate() - day);
+            end = new Date(start); end.setDate(end.getDate() + 6);
+            renderListView('week', start, end);
+        } else {
+            // Default to month if not week? Or handle 'today'?
+            // Assuming List View supports 'week' (default) and maybe others if extended.
+            // For now, if range is not week, default to month logic handled by renderListView('month')
+            renderListView(mainViewRange);
+        }
+    } else if (currentView === 'calendar') {
+        renderCalendar();
+    }
 }
 
 // Helper: Update Status Button Icon & State
@@ -897,20 +915,22 @@ function switchView(view) {
         calendarGridEl.style.display = 'grid';
         listViewEl.style.display = 'none';
         document.getElementById('timeline-view').style.display = 'none';
-        renderCalendar();
+        mainViewRange = 'month';
+        refreshMainView();
     } else if (view === 'list') {
         calendarGridEl.style.display = 'none';
         listViewEl.style.display = 'flex';
         document.getElementById('timeline-view').style.display = 'none';
 
         // Force Week View defaults when switching to List
-        activeFilters.dateRange = 'week';
-        applyFilters();
+        mainViewRange = 'week';
+        refreshMainView();
     } else if (view === 'timeline') {
         calendarGridEl.style.display = 'none';
         listViewEl.style.display = 'none';
         document.getElementById('timeline-view').style.display = 'block';
-        applyFilters(); // Apply filters calls renderTimeline via activeFilters check or manual call
+        mainViewRange = 'today';
+        refreshMainView();
     }
 }
 
@@ -2048,22 +2068,19 @@ function changeMonth(delta) {
     if (currentView === 'timeline') {
         // Timeline: Navigate by Day
         currentDate.setDate(currentDate.getDate() + delta);
-        applyFilters();
     } else if (currentView === 'list') {
         // List: Navigate by Week
         currentDate.setDate(currentDate.getDate() + (delta * 7));
-        activeFilters.dateRange = 'week';
-        applyFilters();
+        mainViewRange = 'week';
     } else {
         // Calendar: Navigate by Month
         currentDate.setMonth(currentDate.getMonth() + delta);
-        if (currentView === 'calendar') renderCalendar();
-        else {
-            // Fallback for other potential views
-            activeFilters.dateRange = 'month';
-            applyFilters();
+        if (currentView !== 'calendar') {
+            // Fallback
+            mainViewRange = 'month';
         }
     }
+    refreshMainView();
 }
 
 function renderListView(rangeType = 'month', startDate = null, endDate = null) {
@@ -2128,20 +2145,15 @@ function renderListView(rangeType = 'month', startDate = null, endDate = null) {
             if (t.isTimelineComment || t.category === 'comment') return false; // Exclude comments
             const isFolder = !!t.isFolder;
 
-            // Check Tag Filter for everything
-            if (activeFilters.tags.size > 0) {
-                if (!t.category) return false;
-                const taskTags = t.category.split(',').map(tag => tag.trim());
-                if (![...activeFilters.tags].some(tag => taskTags.includes(tag))) return false;
-            }
+            // IGNORE SIDEBAR FILTERS (tags, status) for Main View
+            // Show all tasks (Pending & Completed) unless deleted/hidden logic?
+            // Assuming standard behavior: show everything on date.
 
-            if (isFolder) return true; // Show folders on ALL days
+            // Removed isFolder check to prevent folders appearing on every day
+            // Only show folders if they have a date matching the day
 
             // Standard Task Date Check
             if (!isTaskOnDate(t, dateObj)) return false;
-
-            // Status Check (Folders have no status, ignored above)
-            if (activeFilters.status === 'completed' && t.status !== 'completed') return false;
 
             return true;
         });
@@ -2151,7 +2163,8 @@ function renderListView(rangeType = 'month', startDate = null, endDate = null) {
         const visibleParents = tasksOnDay.filter(t => !t.parentId);
 
         visibleParents.forEach(p => {
-            const subs = tasks.filter(t => t.parentId === p.id);
+            // Only show subtasks that are EITHER undated (inherit parent context) OR match this date
+            const subs = tasks.filter(t => t.parentId === p.id && (!t.date || isTaskOnDate(t, dateObj)));
             groupsToRender.push({ type: 'wrapper', parent: p, children: subs });
             processedParents.add(p.id);
         });
