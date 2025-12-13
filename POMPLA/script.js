@@ -1455,9 +1455,22 @@ function saveTaskOrder() {
 }
 
 function toggleSubtasks(taskId, btn) {
-    if (expandedTasks.has(taskId)) { expandedTasks.delete(taskId); btn.classList.add('rotate'); } else { expandedTasks.add(taskId); btn.classList.remove('rotate'); }
-    const wrapper = btn.closest('.task-wrapper'); const container = wrapper.querySelector('.subtask-container');
-    if (container) container.classList.toggle('hidden');
+    if (expandedTasks.has(taskId)) {
+        expandedTasks.delete(taskId);
+        btn.classList.add('rotate');
+    } else {
+        expandedTasks.add(taskId);
+        btn.classList.remove('rotate');
+    }
+
+    // Correctly find the container associated with THIS task
+    const taskItem = btn.closest('.task-item');
+    if (taskItem) {
+        const container = taskItem.nextElementSibling;
+        if (container && container.classList.contains('subtask-container')) {
+            container.classList.toggle('hidden');
+        }
+    }
 }
 
 // View Density State
