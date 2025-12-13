@@ -1148,6 +1148,21 @@ body {
         display: none;
     }
 
+    /* Hide Desktop View Toggles on Mobile */
+    .view-toggles {
+        display: none !important;
+    }
+
+    /* Timeline View Visibility Logic */
+    body.tab-timeline .main-content {
+        display: flex;
+        flex-direction: column;
+    }
+
+    body.tab-timeline .sidebar {
+        display: none !important;
+    }
+
     /* 2. BOTTOM NAVIGATION */
     .mobile-bottom-nav {
         display: flex;
