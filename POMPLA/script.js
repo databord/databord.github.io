@@ -902,6 +902,9 @@ function switchView(view) {
         calendarGridEl.style.display = 'none';
         listViewEl.style.display = 'flex';
         document.getElementById('timeline-view').style.display = 'none';
+
+        // Force Week View defaults when switching to List
+        activeFilters.dateRange = 'week';
         applyFilters();
     } else if (view === 'timeline') {
         calendarGridEl.style.display = 'none';
@@ -2033,14 +2036,18 @@ function changeMonth(delta) {
         // Timeline: Navigate by Day
         currentDate.setDate(currentDate.getDate() + delta);
         applyFilters();
+    } else if (currentView === 'list') {
+        // List: Navigate by Week
+        currentDate.setDate(currentDate.getDate() + (delta * 7));
+        activeFilters.dateRange = 'week';
+        applyFilters();
     } else {
+        // Calendar: Navigate by Month
         currentDate.setMonth(currentDate.getMonth() + delta);
         if (currentView === 'calendar') renderCalendar();
         else {
-            // Switch to Month view likely if navigating months?
-            // Or if in list view and range is 'today', does nav change TODAY? No.
-            // It should probably just render based on 'month' logic if the user navigates.
-            activeFilters.dateRange = 'month'; // Snap to month view logic
+            // Fallback for other potential views
+            activeFilters.dateRange = 'month';
             applyFilters();
         }
     }
@@ -2065,8 +2072,30 @@ function renderListView(rangeType = 'month', startDate = null, endDate = null) {
         const systemToday = new Date();
         const isSystemToday = loopStart.toDateString() === systemToday.toDateString();
 
-        // Only show "Hoy" if it is actually today
+        // Helper for formatting DD/MM/YY
+        const fmt = (d) => {
+            const day = d.getDate().toString().padStart(2, '0');
+            const mo = (d.getMonth() + 1).toString().padStart(2, '0');
+            const yy = d.getFullYear().toString().slice(-2);
+            return `${day}/${mo}/${yy}`;
+        };
+
+        // Helper for Week Number (ISO 8601ish)
+        const getWeek = (d) => {
+            const date = new Date(d.getTime());
+            date.setHours(0, 0, 0, 0);
+            // Thursday in current week decides the year.
+            date.setDate(date.getDate() + 3 - (date.getDay() + 6) % 7);
+            const week1 = new Date(date.getFullYear(), 0, 4);
+            return 1 + Math.round(((date.getTime() - week1.getTime()) / 86400000 - 3 + (week1.getDay() + 6) % 7) / 7);
+        };
+
         if (rangeType === 'today' && isSystemToday) currentMonthYearEl.textContent = "Hoy";
+        else if (rangeType === 'week') {
+            // "Semana 1 (del DD/MM/YY al DD/MM/YY)"
+            const curWeek = getWeek(loopStart);
+            currentMonthYearEl.textContent = `Semana ${curWeek} (del ${fmt(loopStart)} al ${fmt(loopEnd)})`;
+        }
         else currentMonthYearEl.textContent = new Intl.DateTimeFormat('es-ES', { month: 'long', year: 'numeric', day: 'numeric' }).format(loopStart);
     } else {
         const year = currentDate.getFullYear();
