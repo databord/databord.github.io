@@ -97,7 +97,7 @@ body {
     align-items: center;
     /* Center items vertically */
     gap: 12px;
-    padding: 10px 5px 15px 5px;
+    padding: 0 5px 15px 5px;
     /* Added side padding for scroll safety */
     border-bottom: 1px solid var(--glass-border);
     overflow-x: auto;
@@ -1447,6 +1447,10 @@ body {
         font-size: 0.9rem;
     }
 
+    #mobile-widgets-container {
+        display: block;
+    }
+
     /* Sidebar Gap Reduction */
     .sidebar {
         padding: 10px 0 !important;
@@ -1486,6 +1490,22 @@ body {
 #mobile-widgets-container {
     background-color: var(--bg-color);
     /* Override for mobile container */
+}
+
+#add-task-container {
+    margin-bottom: 5px;
+    /* Default for mobile */
+}
+
+@media (min-width: 769px) {
+    #mobile-widgets-container {
+        display: none;
+    }
+
+    #add-task-container {
+        margin-bottom: -15px;
+        /* Pull filters closer on desktop (counteract 20px gap) */
+    }
 }
 
 .daily-goal-widget {
