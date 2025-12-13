@@ -141,8 +141,30 @@
                         <option value="month">Este Mes</option>
                         <option value="last-month">Mes Pasado</option>
                         <option value="all">Siempre</option>
+                        <option value="custom">Personalizado</option>
                     </select>
                     <button class="filter-btn" id="mobile-btn-tags-filter"><i class="fa-solid fa-tags"></i></button>
+                </div>
+
+                <!-- Custom Date Picker Mobile (Hidden by default) -->
+                <div id="mobile-custom-date-picker"
+                    style="display: none; background: var(--sidebar-bg); border: 1px solid var(--glass-border); padding: 10px; border-radius: 8px; margin: 0 10px 10px 10px; flex-direction: column; gap: 5px;">
+                    <div style="display: flex; gap: 5px; align-items: center;">
+                        <span style="font-size: 0.8rem; color: var(--text-secondary); width: 40px;">Desde:</span>
+                        <input type="date" id="mobile-custom-date-start"
+                            style="background: var(--bg-dark); border: 1px solid var(--glass-border); color: var(--text-primary); border-radius: 4px; padding: 2px; flex: 1;">
+                    </div>
+                    <div style="display: flex; gap: 5px; align-items: center;">
+                        <span style="font-size: 0.8rem; color: var(--text-secondary); width: 40px;">Hasta:</span>
+                        <input type="date" id="mobile-custom-date-end"
+                            style="background: var(--bg-dark); border: 1px solid var(--glass-border); color: var(--text-primary); border-radius: 4px; padding: 2px; flex: 1;">
+                    </div>
+                    <div style="display: flex; gap: 5px; justify-content: flex-end; margin-top: 5px;">
+                        <button id="mobile-btn-cancel-custom-date"
+                            style="padding: 2px 8px; font-size: 0.8rem; border-radius: 4px; border: 1px solid var(--glass-border); background: transparent; color: var(--text-secondary); cursor: pointer;">Cancelar</button>
+                        <button id="mobile-btn-apply-custom-date"
+                            style="padding: 2px 8px; font-size: 0.8rem; border-radius: 4px; border: none; background: var(--accent-color); color: white; cursor: pointer;">Aplicar</button>
+                    </div>
                 </div>
 
                 <div id="mobile-category-tags-container" class="tags-container hidden" style="margin-bottom: 10px;">
@@ -178,8 +200,31 @@
                     <option value="month">Este Mes</option>
                     <option value="last-month">Mes Pasado</option>
                     <option value="all">Siempre</option>
+                    <option value="custom">Personalizado</option>
                 </select>
+
                 <button class="filter-btn" id="btn-tags-filter">Etiquetas</button>
+            </div>
+
+            <!-- Custom Date Picker (Hidden by default) -->
+            <div id="custom-date-picker"
+                style="display: none; background: var(--card-bg); border: 1px solid var(--glass-border); padding: 10px; border-radius: 8px; margin-top: 5px; flex-direction: column; gap: 5px;">
+                <div style="display: flex; gap: 5px; align-items: center;">
+                    <span style="font-size: 0.8rem; color: var(--text-secondary);">Desde:</span>
+                    <input type="date" id="custom-date-start"
+                        style="background: var(--bg-dark); border: 1px solid var(--glass-border); color: var(--text-primary); border-radius: 4px; padding: 2px;">
+                </div>
+                <div style="display: flex; gap: 5px; align-items: center;">
+                    <span style="font-size: 0.8rem; color: var(--text-secondary);">Hasta:</span>
+                    <input type="date" id="custom-date-end"
+                        style="background: var(--bg-dark); border: 1px solid var(--glass-border); color: var(--text-primary); border-radius: 4px; padding: 2px;">
+                </div>
+                <div style="display: flex; gap: 5px; justify-content: flex-end; margin-top: 5px;">
+                    <button id="btn-cancel-custom-date"
+                        style="padding: 2px 8px; font-size: 0.8rem; border-radius: 4px; border: 1px solid var(--glass-border); background: transparent; color: var(--text-secondary); cursor: pointer;">Cancelar</button>
+                    <button id="btn-apply-custom-date"
+                        style="padding: 2px 8px; font-size: 0.8rem; border-radius: 4px; border: none; background: var(--accent-color); color: white; cursor: pointer;">Aplicar</button>
+                </div>
             </div>
 
             <div id="category-tags-container" class="tags-container hidden">
@@ -218,11 +263,16 @@
                     </div>
 
                     <!-- Tag Filter (Main View Only) -->
-                    <div style="margin-left: 5px;">
-                        <select id="filter-tag-main" class="filter-select" title="Filtrar por Etiqueta"
-                            style="padding: 5px; border-radius: 6px; border: 1px solid var(--glass-border); background: var(--card-bg); color: var(--text-primary);">
-                            <option value="">Todas las Etiquetas</option>
-                        </select>
+                    <div style="margin-left: 5px; position: relative;">
+                        <button id="filter-tag-main-btn" class="filter-select" title="Filtrar por Etiqueta"
+                            style="padding: 5px; border-radius: 6px; border: 1px solid var(--glass-border); background: var(--card-bg); color: var(--text-primary); cursor: pointer; display: flex; align-items: center; justify-content: space-between; min-width: 140px;">
+                            <span id="filter-tag-main-text">Todas las Etiquetas</span>
+                            <i class="fa-solid fa-chevron-down" style="font-size: 0.8rem; margin-left: 5px;"></i>
+                        </button>
+                        <div id="filter-tag-main-dropdown"
+                            style="display: none; position: absolute; top: 100%; left: 0; background: var(--card-bg); border: 1px solid var(--glass-border); border-radius: 6px; padding: 5px; z-index: 100; min-width: 200px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); max-height: 300px; overflow-y: auto;">
+                            <!-- Options injected by JS -->
+                        </div>
                     </div>
                     <div class="month-nav-controls">
                         <button id="prev-month" class="icon-btn"><i class="fa-solid fa-chevron-left"></i></i></button>
