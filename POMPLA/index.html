@@ -107,32 +107,130 @@
 
             <div class="daily-goal-widget">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
-                    <span style="font-size:0.9rem; font-weight:600; color:var(--text-primary);">Objetivo
-                        Diario</span>
+                    <div style="display:flex; align-items:center; gap:5px;">
+                        <span style="font-size:0.9rem; font-weight:600; color:var(--text-primary);">Objetivo
+                            Diario</span>
+                    </div>
                     <div style="display:flex; align-items:center; gap:5px;">
                         <input type="number" id="daily-goal-input" value="5" min="1"
                             style="width:40px; background:transparent; border:1px solid var(--glass-border); border-radius:4px; color:var(--text-primary); text-align:center; padding:2px; font-size:0.8rem;">
+                        <button onclick="toggleDailyGoalWidget()" class="icon-btn"
+                            style="padding: 2px 5px; font-size: 0.8rem;">
+                            <i id="daily-goal-chevron" class="fa-solid fa-chevron-down"
+                                style="transition: transform 0.3s;"></i>
+                        </button>
                     </div>
                 </div>
-                <div class="goal-progress-bar-bg">
-                    <div id="goal-progress-bar" class="goal-progress-bar-fill" style="width: 0%;"></div>
-                </div>
-                <div
-                    style="display:flex; justify-content:space-between; font-size:0.75rem; color:var(--text-secondary); margin-top:5px;">
-                    <span id="goal-progress-text">0/5 completadas</span>
-                    <span id="today-total-text">0 total hoy</span>
+
+                <div id="daily-goal-content" style="display: block; transition: all 0.3s ease;">
+                    <div class="goal-progress-bar-bg">
+                        <div id="goal-progress-bar" class="goal-progress-bar-fill" style="width: 0%;">
+                        </div>
+                    </div>
+                    <div
+                        style="display:flex; justify-content:space-between; font-size:0.75rem; color:var(--text-secondary); margin-top:5px;">
+                        <span id="goal-progress-text">0/5 completadas</span>
+                        <span id="today-total-text">0 total hoy</span>
+                    </div>
+                    <div style="font-size:0.75rem; color:var(--accent-color); margin-top:2px; text-align: right;">
+                        <span id="pending-tasks-count">0 pendientes</span>
+                    </div>
+
+                    <!-- Daily Stats Integration -->
+                    <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--glass-border);">
+
+                        <!-- Priority Breakdown -->
+                        <div
+                            style="display: flex; justify-content: space-around; font-size: 0.75rem; margin-bottom: 8px; color: var(--text-secondary);">
+                            <div style="text-align: center;">
+                                <div style="color: var(--priority-high); font-weight: bold;" id="stats-high">0%</div>
+                                <div>Alta</div>
+                            </div>
+                            <div style="text-align: center;">
+                                <div style="color: var(--priority-medium); font-weight: bold;" id="stats-medium">0%
+                                </div>
+                                <div>Media</div>
+                            </div>
+                            <div style="text-align: center;">
+                                <div style="color: var(--priority-low); font-weight: bold;" id="stats-low">0%</div>
+                                <div>Baja</div>
+                            </div>
+                        </div>
+
+                        <!-- Completion & Quote -->
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <div style="font-size: 1.2rem; font-weight: 800; color: var(--accent-color); width: 50px; text-align: center;"
+                                id="stats-completed-percent">0%</div>
+                            <div style="font-size: 0.7rem; font-style: italic; color: var(--text-secondary); border-left: 2px solid var(--glass-border); padding-left: 8px; flex: 1;"
+                                id="stats-quote">
+                                "Haz que hoy cuente."
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
             <!-- MOBILE WIDGETS CONTAINER (Goal + Filters + Add Button) -->
             <div id="mobile-widgets-container" class="daily-goal-widget collapsed-widget">
                 <!-- Mobile Goal Compact (Moved Here) -->
+                <!-- Mobile Goal Collapsible -->
                 <div id="mobile-daily-goal"
-                    style="display:none; margin: 0 10px 5px 10px; background:var(--sidebar-bg); padding:4px 10px; border-radius:12px; border:1px solid var(--glass-border); align-items:center; justify-content:space-between;">
-                    <span style="font-size:0.8rem; color:var(--text-secondary);">Objetivo: <span
-                            id="mobile-goal-progress">0/5</span></span>
-                    <div class="goal-progress-bar-bg" style="width:50px; height:4px;">
-                        <div id="mobile-goal-bar" class="goal-progress-bar-fill" style="width: 0%;"></div>
+                    style="display:none; margin: 0 10px 5px 10px; background:var(--card-bg); border-radius:12px; border:1px solid var(--glass-border); flex-direction: column;">
+
+                    <!-- Mobile Header -->
+                    <div style="display:flex; justify-content:space-between; align-items:center; padding: 10px;">
+                        <span style="font-size:0.9rem; font-weight:600; color:var(--text-primary);">Objetivo
+                            Diario</span>
+                        <div style="display:flex; align-items:center; gap:5px;">
+                            <span id="mobile-goal-progress"
+                                style="font-size:0.8rem; color:var(--text-secondary); margin-right: 5px;">0/5</span>
+                            <button onclick="toggleMobileDailyGoalWidget()" class="icon-btn"
+                                style="padding: 2px 5px; font-size: 0.8rem;">
+                                <i id="mobile-daily-goal-chevron" class="fa-solid fa-chevron-down"
+                                    style="transition: transform 0.3s;"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Mobile Content -->
+                    <div id="mobile-daily-goal-content"
+                        style="display: none; padding: 0 10px 10px 10px; border-top: 1px solid var(--glass-border);">
+                        <div class="goal-progress-bar-bg" style="margin-top: 10px;">
+                            <div id="mobile-goal-bar" class="goal-progress-bar-fill" style="width: 0%;"></div>
+                        </div>
+                        <div style="font-size:0.75rem; color:var(--accent-color); margin-top:5px; text-align: right;">
+                            <span id="mobile-pending-tasks-count">0 pendientes</span>
+                        </div>
+
+                        <!-- Mobile Stats -->
+                        <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--glass-border);">
+                            <div
+                                style="display: flex; justify-content: space-around; font-size: 0.75rem; margin-bottom: 8px; color: var(--text-secondary);">
+                                <div style="text-align: center;">
+                                    <div style="color: var(--priority-high); font-weight: bold;" id="mobile-stats-high">
+                                        0%</div>
+                                    <div>Alta</div>
+                                </div>
+                                <div style="text-align: center;">
+                                    <div style="color: var(--priority-medium); font-weight: bold;"
+                                        id="mobile-stats-medium">0%</div>
+                                    <div>Media</div>
+                                </div>
+                                <div style="text-align: center;">
+                                    <div style="color: var(--priority-low); font-weight: bold;" id="mobile-stats-low">0%
+                                    </div>
+                                    <div>Baja</div>
+                                </div>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <div style="font-size: 1.2rem; font-weight: 800; color: var(--accent-color); width: 50px; text-align: center;"
+                                    id="mobile-stats-completed-percent">0%</div>
+                                <div style="font-size: 0.7rem; font-style: italic; color: var(--text-secondary); border-left: 2px solid var(--glass-border); padding-left: 8px; flex: 1;"
+                                    id="mobile-stats-quote">
+                                    "Haz que hoy cuente."
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -337,7 +435,33 @@
 
             <div class="calendar-grid" id="calendar-grid"></div>
             <div class="list-view" id="list-view" style="display: none;"></div>
-            <div class="timeline-view" id="timeline-view" style="display: none;"></div>
+            <div class="timeline-view" id="timeline-view" style="display: none;">
+                <!-- Notes Section -->
+                <div id="timeline-notes-section" style="margin-bottom: 20px;">
+                    <div
+                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <h3 style="margin: 0; color: var(--text-primary);">Notas</h3>
+                    </div>
+
+                    <!-- Add Note Form -->
+                    <div class="add-note-form" style="display: flex; gap: 10px; margin-bottom: 15px;">
+                        <button onclick="openNoteModal()" class="btn-primary"
+                            style="width: 100%; justify-content: center;">
+                            <i class="fa-solid fa-plus"></i> Nueva Nota
+                        </button>
+                    </div>
+
+                    <!-- Notes List -->
+                    <div id="timeline-notes-list" style="display: flex; flex-direction: column; gap: 10px;">
+                        <!-- Notes injected here -->
+                    </div>
+                </div>
+
+                <div id="list-date-header" class="list-header" style="margin-bottom: 15px; text-align: center;"></div>
+                <div id="timeline-container" class="timeline-container">
+                    <!-- Timeline items injected here -->
+                </div>
+            </div>
         </main>
 
         <audio id="timer-sound" src="data/rec/ring.ogg"></audio>
@@ -650,6 +774,42 @@
 
     </div>
 
+    <!-- Modal for Notes -->
+    <div class="modal-overlay" id="note-modal" style="z-index: 1600;">
+        <div class="modal-content" style="max-width: 400px;">
+            <div class="modal-header">
+                <h3>Nueva Nota</h3>
+                <button onclick="closeNoteModal()" class="icon-btn"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="note-edit-id">
+                <div class="form-group">
+                    <label for="note-title">Título</label>
+                    <input type="text" id="note-title" placeholder="Título de la nota"
+                        style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--glass-border); background: var(--bg-dark); color: var(--text-primary);">
+                </div>
+                <div class="form-group">
+                    <label for="note-date">Fecha</label>
+                    <input type="date" id="note-date"
+                        style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--glass-border); background: var(--bg-dark); color: var(--text-primary);">
+                    <div style="display: flex; align-items: center; gap: 5px; margin-top: 5px;">
+                        <input type="checkbox" id="note-no-date">
+                        <label for="note-no-date" style="margin: 0; font-size: 0.9rem;">Sin fecha</label>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="note-content">Contenido</label>
+                    <textarea id="note-content" rows="4" placeholder="Escribe tu nota aquí..."
+                        style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--glass-border); background: var(--bg-dark); color: var(--text-primary);"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="closeNoteModal()">Cancelar</button>
+                <button class="btn-primary" onclick="saveNoteFromModal()">Guardar</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Modal for Settings -->
     <div class="modal-overlay" id="settings-modal" style="z-index: 1700;">
         <div class="modal-content" style="max-width: 500px; height: 80vh; display: flex; flex-direction: column;">
@@ -714,6 +874,7 @@
     </nav>
 
     <canvas id="confetti-canvas"></canvas>
+    <script src="frases.js"></script>
     <script src="script.js"></script>
 </body>
 
