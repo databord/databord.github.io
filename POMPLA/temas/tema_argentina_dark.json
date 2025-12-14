@@ -1,0 +1,11 @@
+{
+    "--bg-color": "#1a1a1a",
+    "--sidebar-bg": "#1e1e1e",
+    "--card-bg": "#2c3e50",
+    "--text-primary": "#ffffff",
+    "--text-secondary": "#75aadb",
+    "--accent-color": "#fcbf49",
+    "--accent-hover": "#74ACDF",
+    "--glass-bg": "rgba(0, 0, 0, 0.8)",
+    "--glass-border": "rgba(117, 170, 219, 0.3)"
+}
