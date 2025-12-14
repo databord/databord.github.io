@@ -806,9 +806,18 @@ body {
 }
 
 /* Fix for standard select options visibility - Dropdown menu colors */
+/* Fix for standard select options visibility - Dropdown menu colors */
 .form-group select option {
-    background-color: #27272a;
-    /* Hardcoded dark gray to prevent white backgrounds */
+    background-color: var(--bg-color);
+    color: var(--text-primary);
+}
+
+.form-group select option:hover,
+.form-group select option:focus,
+.form-group select option:active,
+.form-group select option:checked {
+    background-color: var(--accent-hover);
+    color: white;
 }
 
 /* Settings Tabs */
@@ -859,9 +868,7 @@ body {
     }
 }
 
-color: #f4f4f5;
-padding: 10px;
-}
+
 
 /* Hover state match for Inputs */
 .form-group input:hover,
@@ -1598,9 +1605,23 @@ padding: 10px;
     }
 
     /* Sidebar Gap Reduction */
+    /* Sidebar Gap Reduction */
     .sidebar {
         padding: 10px 0 !important;
         gap: 5px !important;
+        /* Ensure header is visible */
+        display: flex;
+        flex-direction: column;
+    }
+
+    .sidebar .sidebar-header {
+        display: flex !important;
+        padding: 0 10px;
+    }
+
+    /* Hide collapse button on mobile, keep settings/logout */
+    #sidebar-collapse-btn {
+        display: none !important;
     }
 
     /* Ensure Task List Container expands */
@@ -1791,9 +1812,7 @@ padding: 10px;
     display: none;
 }
 
-.task-description {
-    /* Hidden by default in Normal/Compact */
-}
+
 
 /* Calendar Centered Count & Categories */
 .day-content-wrapper {

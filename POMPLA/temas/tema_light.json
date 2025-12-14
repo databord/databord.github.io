@@ -1,11 +1,11 @@
 {
-    "--bg-color": "#f3f4f6",
-    "--sidebar-bg": "#ffffff",
+    "--bg-color": "#E2E0CB  ",
+    "--sidebar-bg": "#EDEBD7",
     "--card-bg": "#e5e7eb",
     "--text-primary": "#1f2937",
     "--text-secondary": "#6b7280",
-    "--accent-color": "#3b82f6",
-    "--accent-hover": "#2563eb",
+    "--accent-color": "#78A6F0",
+    "--accent-hover": "#8198CA",
     "--glass-bg": "rgba(255, 255, 255, 0.7)",
     "--glass-border": "rgba(0, 0, 0, 0.08)"
 }

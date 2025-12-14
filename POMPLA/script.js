@@ -132,6 +132,27 @@ function applyFilters() {
     // Also refresh Main View ensuring it shows correct data, but INDEPENDENT of filters
     refreshMainView();
     renderCategoryTags(); // Update sidebar tags with new counts
+
+    // Update Reset Button Visibility
+    const isDefault = activeFilters.dateRange === 'today' &&
+        activeFilters.tags.size === 0 &&
+        activeFilters.status === 'all' &&
+        !activeFilters.folderId &&
+        activeFilters.mainTags.size === 0 &&
+        !activeFilters.customStart;
+
+    const resetBtn = document.getElementById('filter-reset');
+    const mobileResetBtn = document.getElementById('mobile-filter-reset');
+
+    if (resetBtn) {
+        if (isDefault) resetBtn.classList.add('hidden');
+        else resetBtn.classList.remove('hidden');
+    }
+
+    if (mobileResetBtn) {
+        if (isDefault) mobileResetBtn.classList.add('hidden');
+        else mobileResetBtn.classList.remove('hidden');
+    }
 }
 
 function refreshMainView() {
@@ -1177,9 +1198,11 @@ function setupEventListeners() {
     const mobileResetBtn = document.getElementById('mobile-filter-reset');
     if (mobileResetBtn) {
         mobileResetBtn.addEventListener('click', () => {
-            activeFilters = { dateRange: 'today', tags: new Set(), status: 'all', folderId: null, mainTag: null };
-            document.getElementById('filter-folder').value = ''; // Reset UI check if mobile needs sync
-            document.getElementById('filter-tag-main').value = '';
+            activeFilters = { dateRange: 'today', tags: new Set(), status: 'all', folderId: null, mainTags: new Set(), customStart: null, customEnd: null };
+
+            const mobileDateRange = document.getElementById('mobile-filter-date-range');
+            if (mobileDateRange) mobileDateRange.value = 'today';
+
             applyFilters();
         });
     }
@@ -3223,9 +3246,15 @@ pipVideo.addEventListener('leavepictureinpicture', () => {
 });
 
 function drawPiP() {
+    // Get current theme colors
+    const styles = getComputedStyle(document.documentElement);
+    const bgColor = styles.getPropertyValue('--card-bg').trim() || '#18181b';
+    const textColor = styles.getPropertyValue('--text-primary').trim() || '#f4f4f5';
+    const secondaryColor = styles.getPropertyValue('--text-secondary').trim() || '#a1a1aa';
+    const successColor = styles.getPropertyValue('--success-color').trim() || '#22c55e';
 
     // Background
-    pipCtx.fillStyle = '#18181b'; // Dark BG
+    pipCtx.fillStyle = bgColor;
     pipCtx.fillRect(0, 0, pipCanvas.width, pipCanvas.height);
 
     // Text - Time
@@ -3233,7 +3262,7 @@ function drawPiP() {
     const seconds = timeLeft % 60;
     const timeStr = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 
-    pipCtx.fillStyle = '#f4f4f5';
+    pipCtx.fillStyle = textColor;
     pipCtx.font = 'bold 80px sans-serif';
     pipCtx.textAlign = 'center';
     pipCtx.textBaseline = 'middle';
@@ -3241,13 +3270,13 @@ function drawPiP() {
 
     // Text - Phase
     pipCtx.font = '30px sans-serif';
-    pipCtx.fillStyle = pomodoroState.isBreak ? '#22c55e' : '#a1a1aa'; // Green for break, gray for work
+    pipCtx.fillStyle = pomodoroState.isBreak ? successColor : secondaryColor;
     const phaseText = pomodoroState.isBreak ? "Descanso" : "Trabajo";
     pipCtx.fillText(phaseText, 150, 200);
 
     // Cycle
     pipCtx.font = '20px sans-serif';
-    pipCtx.fillStyle = '#71717a';
+    pipCtx.fillStyle = secondaryColor;
     pipCtx.fillText(`Ciclo ${pomodoroState.cycle}/${pomodoroState.totalCycles}`, 150, 240);
 }
 
