@@ -3363,11 +3363,35 @@ function updateTimerDisplay() {
 
 function toggleTimer() {
     if (Notification.permission === 'default') Notification.requestPermission();
-    if (isTimerRunning) { clearInterval(timerInterval); timerInterval = null; isTimerRunning = false; document.getElementById('pomodoro-start').innerHTML = ICONS.play; document.getElementById('mini-play-btn').innerHTML = ICONS.play; }
-    else { isTimerRunning = true; document.getElementById('pomodoro-start').innerHTML = '<i class="fa-solid fa-pause"></i>'; document.getElementById('mini-play-btn').innerHTML = '<i class="fa-solid fa-pause"></i>'; timerInterval = setInterval(() => { if (timeLeft > 0) { timeLeft--; updateTimerDisplay(); } else completeCycle(); }, 1000); }
+    if (isTimerRunning) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+        isTimerRunning = false;
+        document.getElementById('pomodoro-start').innerHTML = ICONS.play;
+        document.getElementById('mini-play-btn').innerHTML = ICONS.play;
+        const mobileToggle = document.getElementById('mini-timer-toggle');
+        if (mobileToggle) mobileToggle.innerHTML = '<i class="fa-solid fa-play"></i>';
+    } else {
+        isTimerRunning = true;
+        document.getElementById('pomodoro-start').innerHTML = '<i class="fa-solid fa-pause"></i>';
+        document.getElementById('mini-play-btn').innerHTML = '<i class="fa-solid fa-pause"></i>';
+        const mobileToggle = document.getElementById('mini-timer-toggle');
+        if (mobileToggle) mobileToggle.innerHTML = '<i class="fa-solid fa-pause"></i>';
+        timerInterval = setInterval(() => { if (timeLeft > 0) { timeLeft--; updateTimerDisplay(); } else completeCycle(); }, 1000);
+    }
 }
 
-function resetTimer() { clearInterval(timerInterval); timerInterval = null; isTimerRunning = false; timeLeft = (pomodoroState.isBreak ? pomodoroState.breakTime : pomodoroState.workTime) * 60; updateTimerDisplay(); document.getElementById('pomodoro-start').innerHTML = ICONS.play; document.getElementById('mini-play-btn').innerHTML = ICONS.play; }
+function resetTimer() {
+    clearInterval(timerInterval);
+    timerInterval = null;
+    isTimerRunning = false;
+    timeLeft = (pomodoroState.isBreak ? pomodoroState.breakTime : pomodoroState.workTime) * 60;
+    updateTimerDisplay();
+    document.getElementById('pomodoro-start').innerHTML = ICONS.play;
+    document.getElementById('mini-play-btn').innerHTML = ICONS.play;
+    const mobileToggle = document.getElementById('mini-timer-toggle');
+    if (mobileToggle) mobileToggle.innerHTML = '<i class="fa-solid fa-play"></i>';
+}
 
 function adjustTimer(minutes) { timeLeft += minutes * 60; if (timeLeft < 0) timeLeft = 0; updateTimerDisplay(); }
 
