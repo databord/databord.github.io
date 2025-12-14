@@ -93,6 +93,9 @@
                     <h1 style="color: #E95354; font-weight: bolder;">Ceibo</h1>
                 </div>
                 <div style="display:flex; gap:5px;">
+                    <button id="settings-btn" class="icon-btn" title="Configuración" style="font-size: 1rem;">
+                        <i class="fa-solid fa-gear"></i>
+                    </button>
                     <button id="logout-btn" class="icon-btn" title="Cerrar Sesión" style="font-size: 1rem;">
                         <i class="fa-solid fa-right-from-bracket"></i>
                     </button>
@@ -603,6 +606,44 @@
             <div class="modal-footer">
                 <button class="btn-secondary" onclick="closeCommentModal()">Cancelar</button>
                 <button class="btn-primary" onclick="saveComment()">Guardar</button>
+            </div>
+        </div>
+    </div>
+
+    </div>
+
+    <!-- Modal for Settings -->
+    <div class="modal-overlay" id="settings-modal" style="z-index: 1700;">
+        <div class="modal-content" style="max-width: 500px; height: 80vh; display: flex; flex-direction: column;">
+            <div class="modal-header">
+                <h3>Configuración</h3>
+                <button id="close-settings" class="icon-btn"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="settings-tabs-container">
+                <button class="tab-btn active" data-tab="personalization">Personalización</button>
+                <button class="tab-btn" data-tab="data">Datos</button>
+                <button class="tab-btn" data-tab="security">Seguridad</button>
+            </div>
+            <div class="modal-body" style="flex: 1; overflow-y: auto;">
+                <div id="tab-personalization" class="settings-tab-content active">
+                    <!-- Personalization Settings -->
+                    <div class="form-group">
+                        <label for="theme-select">Tema</label>
+                        <select id="theme-select" class="filter-select" style="width: 100%;">
+                            <option value="default">Default (Dark)</option>
+                            <option value="light">Claro</option>
+                            <option value="ocean">Océano</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="tab-data" class="settings-tab-content" style="display: none;">
+                    <!-- Data Settings -->
+                    <p style="color: var(--text-secondary);">Opciones de datos...</p>
+                </div>
+                <div id="tab-security" class="settings-tab-content" style="display: none;">
+                    <!-- Security Settings -->
+                    <p style="color: var(--text-secondary);">Opciones de seguridad...</p>
+                </div>
             </div>
         </div>
     </div>

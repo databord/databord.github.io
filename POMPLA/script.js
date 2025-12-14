@@ -3664,4 +3664,78 @@ function setupSidebar() {
         sidebar.style.display = 'flex';
         expandBtn.style.display = 'none';
     });
+    // --- Settings Modal Logic ---
+    const settingsBtn = document.getElementById('settings-btn');
+    const settingsModal = document.getElementById('settings-modal');
+    const closeSettingsBtn = document.getElementById('close-settings');
+    const settingsTabBtns = document.querySelectorAll('.settings-tabs-container .tab-btn');
+    const settingsTabContents = document.querySelectorAll('.settings-tab-content');
+
+    if (settingsBtn && settingsModal && closeSettingsBtn) {
+        settingsBtn.addEventListener('click', () => {
+            settingsModal.classList.add('active');
+        });
+
+        closeSettingsBtn.addEventListener('click', () => {
+            settingsModal.classList.remove('active');
+        });
+
+        // Close on outside click
+        settingsModal.addEventListener('click', (e) => {
+            if (e.target === settingsModal) {
+                settingsModal.classList.remove('active');
+            }
+        });
+
+        // Tab Switching
+        settingsTabBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                // Remove active class from all buttons and contents
+                settingsTabBtns.forEach(b => b.classList.remove('active'));
+                settingsTabContents.forEach(c => {
+                    c.style.display = 'none';
+                    c.classList.remove('active');
+                });
+
+                // Activate clicked button and corresponding content
+                btn.classList.add('active');
+                const tabId = btn.getAttribute('data-tab');
+                const content = document.getElementById(`tab-${tabId}`);
+                if (content) {
+                    content.style.display = 'block';
+                    content.classList.add('active');
+                }
+            });
+        });
+
+        // Theme Selector Logic
+        const themeSelect = document.getElementById('theme-select');
+        if (themeSelect) {
+            // Load saved theme
+            const savedTheme = localStorage.getItem('pompla_theme') || 'default';
+            themeSelect.value = savedTheme;
+            loadTheme(savedTheme);
+
+            themeSelect.addEventListener('change', (e) => {
+                const theme = e.target.value;
+                loadTheme(theme);
+                localStorage.setItem('pompla_theme', theme);
+            });
+        }
+    }
+
+} // End of Main Wrapper
+
+async function loadTheme(themeName) {
+    try {
+        const response = await fetch(`temas/tema_${themeName}.json`);
+        if (!response.ok) throw new Error('Theme not found');
+        const themeData = await response.json();
+
+        for (const [key, value] of Object.entries(themeData)) {
+            document.documentElement.style.setProperty(key, value);
+        }
+    } catch (error) {
+        console.error('Error loading theme:', error);
+    }
 }
