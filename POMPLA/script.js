@@ -272,12 +272,18 @@ function updateDailyGoalUI() {
     const totalText = document.getElementById('today-total-text');
     if (totalText) totalText.textContent = `${totalToday} total hoy`;
 
+    const pendingText = document.getElementById('pending-tasks-count');
+    if (pendingText) pendingText.textContent = `${pendingTodayCount} pendientes`;
+
     // Update Mobile Widget
     const mobileProgress = document.getElementById('mobile-goal-progress');
     if (mobileProgress) mobileProgress.textContent = `${completedTodayCount}/${dailyGoal}`;
 
     const mobileBar = document.getElementById('mobile-goal-bar');
     if (mobileBar) mobileBar.style.width = `${percentage}%`;
+
+    const mobilePending = document.getElementById('mobile-pending-tasks-count');
+    if (mobilePending) mobilePending.textContent = `${pendingTodayCount} pendientes`;
 
     // Confetti Check
     if (completedTodayCount >= dailyGoal && !confettiTriggeredToday && completedTodayCount > 0) {
@@ -328,9 +334,21 @@ function updateDailyStatsUI(totalToday, pendingTodayCount, todayRef) {
     const elCompleted = document.getElementById('stats-completed-percent');
     if (elCompleted) elCompleted.textContent = `${completedPct}%`;
 
-    // Mobile Elements
-    const mTotal = document.getElementById('mobile-stats-total-today');
-    if (mTotal) mTotal.textContent = totalPending + completedCount;
+    // Only set quote if empty/loading (for desktop)
+    const elQuote = document.getElementById('stats-quote');
+    if (elQuote) {
+        if (typeof FRASES_MOTIVACIONALES !== 'undefined' && FRASES_MOTIVACIONALES.length > 0) {
+            const randomQuote = FRASES_MOTIVACIONALES[Math.floor(Math.random() * FRASES_MOTIVACIONALES.length)];
+            elQuote.textContent = `"${randomQuote}"`;
+            // Sync mobile quote too
+            const mQuote = document.getElementById('mobile-stats-quote');
+            if (mQuote) mQuote.textContent = `"${randomQuote}"`;
+        } else {
+            elQuote.textContent = "Haz que hoy cuente.";
+        }
+    }
+
+    // --- Update Mobile Stats ---
     const mHigh = document.getElementById('mobile-stats-high');
     if (mHigh) mHigh.textContent = `${highPct}%`;
     const mMedium = document.getElementById('mobile-stats-medium');
@@ -339,17 +357,6 @@ function updateDailyStatsUI(totalToday, pendingTodayCount, todayRef) {
     if (mLow) mLow.textContent = `${lowPct}%`;
     const mCompleted = document.getElementById('mobile-stats-completed-percent');
     if (mCompleted) mCompleted.textContent = `${completedPct}%`;
-
-    // Only set quote if empty/loading
-    const elQuote = document.getElementById('stats-quote');
-    if (elQuote && elQuote.textContent.includes("Cargando")) {
-        if (typeof FRASES_MOTIVACIONALES !== 'undefined' && FRASES_MOTIVACIONALES.length > 0) {
-            const randomQuote = FRASES_MOTIVACIONALES[Math.floor(Math.random() * FRASES_MOTIVACIONALES.length)];
-            elQuote.textContent = `"${randomQuote}"`;
-        } else {
-            elQuote.textContent = "Haz que hoy cuente.";
-        }
-    }
 }
 
 function triggerConfetti() {
@@ -467,6 +474,13 @@ document.addEventListener('DOMContentLoaded', () => {
         window.switchMobileTab('list');
     } else {
         document.body.classList.add('tab-list');
+    }
+
+    // Request Notification Permission
+    if ("Notification" in window) {
+        if (Notification.permission !== "granted" && Notification.permission !== "denied") {
+            Notification.requestPermission();
+        }
     }
 
     // Initial Filter Apply
@@ -1593,6 +1607,34 @@ function openModal(editId = null) {
         iconSelect.dispatchEvent(new Event('change'));
         delete taskForm.dataset.editId;
     }
+    // Reminder Populating
+    const reminderActive = document.getElementById('task-reminder-active');
+    const reminderTime = document.getElementById('task-reminder-time');
+
+    if (editId) {
+        const t = tasks.find(t => t.id === editId);
+        if (t) {
+            // ... existing population ... 
+            reminderActive.checked = !!t.reminderActive;
+            reminderTime.value = t.reminderTime || '';
+            reminderTime.style.display = t.reminderActive ? 'block' : 'none';
+        }
+    } else {
+        reminderActive.checked = false;
+        reminderTime.value = '';
+        reminderTime.style.display = 'none';
+    }
+
+    // Toggle Time Input Visibility
+    reminderActive.onclick = () => {
+        if (reminderActive.checked) {
+            reminderTime.style.display = 'block';
+            reminderTime.disabled = false;
+        } else {
+            reminderTime.style.display = 'none';
+        }
+    };
+
     updateParentSelect();
 }
 
@@ -1678,6 +1720,9 @@ function handleTaskSubmit(e) {
     const editId = taskForm.dataset.editId;
 
     // Include color and isFolder in the payload
+    const reminderActive = document.getElementById('task-reminder-active').checked;
+    const reminderTime = document.getElementById('task-reminder-time').value;
+
     const taskData = {
         title,
         desc,
@@ -1691,7 +1736,9 @@ function handleTaskSubmit(e) {
         icon,
         pomodoroSettings,
         color: isFolder ? color : null,
-        isFolder: isFolder
+        isFolder: isFolder,
+        reminderActive: isFolder ? false : reminderActive,
+        reminderTime: isFolder ? null : reminderTime
     };
 
     if (editId) { if (window.updateTaskInFirebase) window.updateTaskInFirebase(editId, taskData); }
@@ -1702,6 +1749,108 @@ function handleTaskSubmit(e) {
     setTimeout(updateDailyGoalUI, 500); // Small delay to allow Firebase callback
     closeModal();
 }
+
+function checkReminders() {
+    // Permission check for notifications (only stops browser notification, not modal)
+    const canNotify = "Notification" in window && Notification.permission === "granted";
+
+    const now = new Date();
+    const currentHours = String(now.getHours()).padStart(2, '0');
+    const currentMinutes = String(now.getMinutes()).padStart(2, '0');
+    const currentTime = `${currentHours}:${currentMinutes}`;
+
+    if (!window.notifiedTasks) window.notifiedTasks = new Set();
+
+    tasks.forEach(task => {
+        if (!task.reminderActive || !task.reminderTime || task.status === 'completed') return;
+
+        // Check if task is active today
+        // Note: isTaskOnDate uses activeFilters logic implicitly if recursive? No, it's generic.
+        // But let's verify if isTaskOnDate works correctly with `now`.
+        if (isTaskOnDate(task, now)) {
+            if (task.reminderTime === currentTime) {
+                const uniqueKey = `${task.id}_${now.toDateString()}_${currentTime}`;
+
+                if (!window.notifiedTasks.has(uniqueKey)) {
+                    // 1. Show Modal
+                    const reminderModal = document.getElementById('reminder-modal');
+                    const reminderText = document.getElementById('reminder-text');
+                    const btnStartPomo = document.getElementById('btn-reminder-start-pomo');
+
+                    if (reminderModal && reminderText) {
+                        reminderText.textContent = `Recordatorio: ${task.title}`;
+                        reminderModal.dataset.taskId = task.id; // Store ID for snooze
+
+                        if (btnStartPomo) {
+                            btnStartPomo.onclick = () => {
+                                startPomodoroForTask(task.id);
+                                reminderModal.classList.remove('active');
+                            };
+                        }
+
+                        reminderModal.classList.add('active');
+                    }
+
+                    // 2. Trigger Browser Notification
+                    if (canNotify) {
+                        new Notification("Recordatorio: " + task.title, {
+                            body: "Es hora de tu tarea.",
+                            icon: 'https://i.imgur.com/wMx638E.png'
+                        });
+                    }
+
+                    // 3. Play Sound (if available)
+                    if (timerSound) {
+                        timerSound.play().catch(e => console.log("Audio play error", e));
+                    }
+
+                    window.notifiedTasks.add(uniqueKey);
+                }
+            }
+        }
+    });
+}
+
+function snoozeReminder(minutes) {
+    const modal = document.getElementById('reminder-modal');
+    const taskId = modal.dataset.taskId;
+
+    if (!taskId) {
+        modal.classList.remove('active');
+        return;
+    }
+
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) {
+        modal.classList.remove('active');
+        return;
+    }
+
+    // Calculate new time
+    const now = new Date();
+    // Add minutes to current time (or should it be added to the ORIGINAL reminder time? 
+    // Usability wise, adding to "Now" makes more sense if I saw the notification late.)
+    now.setMinutes(now.getMinutes() + minutes);
+
+    const newHours = String(now.getHours()).padStart(2, '0');
+    const newMinutes = String(now.getMinutes()).padStart(2, '0');
+    const newTime = `${newHours}:${newMinutes}`;
+
+    // Update Task
+    if (window.updateTaskInFirebase) {
+        window.updateTaskInFirebase(taskId, {
+            reminderTime: newTime,
+            reminderActive: true // Ensure it stays active
+        });
+    }
+
+    // Feedback? 
+    // console.log(`Snoozed ${minutes}m. New time: ${newTime}`);
+
+    modal.classList.remove('active');
+}
+// Run check every 30 seconds
+setInterval(checkReminders, 30000);
 
 function deleteTask(id) {
     if (confirm('¿Estás seguro de eliminar esta tarea?')) {
@@ -2535,6 +2684,205 @@ function getDragAfterElement(container, y) {
     }, { offset: Number.NEGATIVE_INFINITY }).element;
 }
 
+// --- TIMELINE NOTES LOGIC ---
+
+// --- TIMELINE NOTES LOGIC ---
+
+// --- NEW NOTE MODAL LOGIC ---
+function openNoteModal() {
+    document.getElementById('note-modal').classList.add('active');
+    // Set date to current visual date if exists, or today
+    const dateInput = document.getElementById('note-date');
+    if (currentDate) {
+        dateInput.value = currentDate.toISOString().split('T')[0];
+    } else {
+        dateInput.value = new Date().toISOString().split('T')[0];
+    }
+
+    // Reset other fields
+    document.getElementById('note-title').value = '';
+    document.getElementById('note-content').value = '';
+    document.getElementById('note-no-date').checked = false;
+    document.getElementById('note-edit-id').value = ''; // Clear edit ID
+    document.querySelector('#note-modal h3').textContent = 'Nueva Nota';
+    dateInput.disabled = false;
+}
+
+function editNote(id) {
+    const note = tasks.find(t => t.id === id);
+    if (!note) return;
+
+    document.getElementById('note-modal').classList.add('active');
+    document.getElementById('note-title').value = note.title;
+    document.getElementById('note-content').value = note.desc || '';
+    document.getElementById('note-edit-id').value = note.id;
+    document.querySelector('#note-modal h3').textContent = 'Editar Nota';
+
+    const dateInput = document.getElementById('note-date');
+    const noDateCheck = document.getElementById('note-no-date');
+
+    if (note.isPermanent || !note.date) {
+        noDateCheck.checked = true;
+        dateInput.disabled = true;
+        if (currentDate) dateInput.value = currentDate.toISOString().split('T')[0];
+    } else {
+        noDateCheck.checked = false;
+        dateInput.disabled = false;
+        dateInput.value = note.date;
+    }
+}
+window.editNote = editNote;
+
+function closeNoteModal() {
+    document.getElementById('note-modal').classList.remove('active');
+}
+
+function saveNoteFromModal() {
+    const titleVal = document.getElementById('note-title').value.trim();
+    const contentVal = document.getElementById('note-content').value.trim();
+    const dateVal = document.getElementById('note-date').value;
+    const noDate = document.getElementById('note-no-date').checked;
+    const editId = document.getElementById('note-edit-id').value;
+
+    if (!titleVal && !contentVal) {
+        alert("Por favor escribe un título o contenido.");
+        return;
+    }
+
+    let noteData = {
+        title: titleVal || 'Nota sin título',
+        desc: contentVal,
+        isTimelineNote: true,
+        category: 'note',
+        status: 'pending',
+        createdAt: new Date().toISOString()
+    };
+
+    if (noDate) {
+        noteData.date = null;
+        noteData.startDate = null;
+        noteData.endDate = null;
+        noteData.isPermanent = true;
+    } else {
+        noteData.date = dateVal;
+        noteData.startDate = dateVal;
+        noteData.endDate = dateVal;
+        noteData.isPermanent = false;
+    }
+
+    if (editId) {
+        if (window.updateTaskInFirebase) {
+            window.updateTaskInFirebase(editId, noteData);
+        }
+    } else {
+        if (window.addTaskToFirebase) {
+            window.addTaskToFirebase(noteData);
+        }
+    }
+
+    closeNoteModal();
+
+    // Refresh view
+    setTimeout(() => {
+        if (typeof renderNotes === 'function') {
+            renderNotes(currentDate);
+        } else if (typeof renderTimeline === 'function') {
+            renderTimeline();
+        }
+    }, 500);
+}
+
+// Event Listener for "No Date" checkbox
+document.getElementById('note-no-date').addEventListener('change', function (e) {
+    document.getElementById('note-date').disabled = e.target.checked;
+});
+
+// Old addTimelineNote removed or kept as reference if needed, but logic is now here.
+// function addTimelineNote() { ... } replaced.
+
+function deleteNote(id) {
+    if (confirm('¿Eliminar esta nota?')) {
+        if (window.deleteTaskFromFirebase) {
+            window.deleteTaskFromFirebase(id);
+        }
+        setTimeout(() => {
+            renderNotes(currentDate);
+        }, 500);
+    }
+}
+
+function renderNotes(dateObj) {
+    const container = document.getElementById('timeline-notes-list');
+    if (!container) return;
+
+    container.innerHTML = '';
+
+    const viewDateStr = dateObj.toISOString().split('T')[0];
+
+    const notes = tasks.filter(t => {
+        if (!t.isTimelineNote && t.category !== 'note') return false;
+
+        // 1. Permanent Notes OR No Date (Always Visible)
+        if (t.isPermanent || (!t.date && !t.startDate)) return true;
+
+        // 2. Date Range
+        if (t.startDate) {
+            const start = t.startDate;
+            const end = t.endDate || t.startDate;
+            return viewDateStr >= start && viewDateStr <= end;
+        }
+
+        // 3. Simple Legacy Date
+        if (t.date && !t.startDate) {
+            return t.date === viewDateStr;
+        }
+
+        return false;
+    });
+
+    if (notes.length === 0) {
+        container.innerHTML = '<div style="font-size: 0.9rem; color: var(--text-secondary); font-style: italic;">No hay notas para este día.</div>';
+        return;
+    }
+
+    notes.forEach(note => {
+        const div = document.createElement('div');
+        div.style.background = 'var(--card-bg)';
+        div.style.border = '1px solid var(--glass-border)';
+        div.style.borderRadius = '8px';
+        div.style.padding = '10px';
+        div.style.position = 'relative';
+
+        // Badge
+        let dateBadge = '';
+        if (note.isPermanent || (!note.date && !note.startDate)) {
+            dateBadge = '<span style="font-size: 0.7rem; background: var(--accent-color); color: white; padding: 2px 5px; border-radius: 4px; margin-bottom: 5px; display: inline-block;">Siempre visible</span>';
+        } else if (note.startDate) {
+            if (note.startDate !== note.endDate) {
+                dateBadge = `<span style="font-size: 0.7rem; background: var(--bg-dark); border: 1px solid var(--glass-border); color: var(--text-secondary); padding: 2px 5px; border-radius: 4px; margin-bottom: 5px; display: inline-block;">${note.startDate} - ${note.endDate}</span>`;
+            }
+        }
+
+        div.innerHTML = `
+            <div style="padding-right: 30px;">
+                ${dateBadge}
+                <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 5px;">${note.title}</div>
+                <div style="font-size: 0.9rem; color: var(--text-secondary); white-space: pre-wrap;">${note.desc || ''}</div>
+            </div>
+            <button onclick="editNote('${note.id}')" 
+                style="position: absolute; top: 10px; right: 35px; background: transparent; border: none; color: var(--text-secondary); cursor: pointer;">
+                <i class="fa-solid fa-pen"></i>
+            </button>
+            <button onclick="deleteNote('${note.id}')" 
+                style="position: absolute; top: 10px; right: 10px; background: transparent; border: none; color: var(--text-secondary); cursor: pointer;">
+                <i class="fa-solid fa-trash"></i>
+            </button>
+        `;
+        container.appendChild(div);
+    });
+}
+
+
 function renderCalendar() {
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
@@ -2871,20 +3219,43 @@ function renderTimeline(rangeType = 'today', startDate = null, endDate = null) {
     const timelineViewEl = document.getElementById('timeline-view');
     timelineViewEl.innerHTML = '';
 
+    // Create Layout Structure (Notes + Header + Container)
+    timelineViewEl.innerHTML = `
+        <div id="timeline-notes-section" style="margin-bottom: 20px;">
+            <div onclick="toggleNotesSection()" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; cursor: pointer;">
+                <h3 style="margin: 0; color: var(--text-primary);">Notas</h3>
+                <i id="notes-chevron" class="fa-solid fa-chevron-down" style="transition: transform 0.3s;"></i>
+            </div>
+            
+            <div id="notes-collapsible-content" style="display: block;">
+                <div class="add-note-form" style="display: flex; gap: 10px; margin-bottom: 15px;">
+                    <button onclick="openNoteModal()" class="btn-primary" style="width: 100%; justify-content: center;">
+                        <i class="fa-solid fa-plus"></i> Nueva Nota
+                    </button>
+                </div>
+
+                <div id="timeline-notes-list" style="display: flex; flex-direction: column; gap: 10px;">
+                    <!-- Notes injected here -->
+                </div>
+            </div>
+        </div>
+        <div id="list-date-header" class="list-header" style="margin-bottom: 15px; text-align: center;"></div>
+        <div id="timeline-container" class="timeline-container"></div>
+    `;
+
     // Date Range Setup
     let loopStart, loopEnd;
 
     // FORCE SINGLE DAY VIEW FOR TIMELINE based on currentDate
-    // regardless of what filter range is passed. User wants strict day view.
     loopStart = new Date(currentDate);
     loopStart.setHours(0, 0, 0, 0);
     loopEnd = new Date(loopStart);
 
-    // Update Header to reflect the specific day being viewed
-    // "Sábado 13 de Diciembre" format
-    const headerDateStr = new Intl.DateTimeFormat('es-ES', { weekday: 'long', day: 'numeric', month: 'long' }).format(loopStart);
+    // Render Notes using the current day
+    renderNotes(loopStart);
 
-    // Capitalize first letter
+    // Update Header
+    const headerDateStr = new Intl.DateTimeFormat('es-ES', { weekday: 'long', day: 'numeric', month: 'long' }).format(loopStart);
     const capitalizedHeader = headerDateStr.charAt(0).toUpperCase() + headerDateStr.slice(1);
     currentMonthYearEl.textContent = capitalizedHeader;
 
@@ -3115,11 +3486,35 @@ function updateTimerDisplay() {
 
 function toggleTimer() {
     if (Notification.permission === 'default') Notification.requestPermission();
-    if (isTimerRunning) { clearInterval(timerInterval); timerInterval = null; isTimerRunning = false; document.getElementById('pomodoro-start').innerHTML = ICONS.play; document.getElementById('mini-play-btn').innerHTML = ICONS.play; }
-    else { isTimerRunning = true; document.getElementById('pomodoro-start').innerHTML = '<i class="fa-solid fa-pause"></i>'; document.getElementById('mini-play-btn').innerHTML = '<i class="fa-solid fa-pause"></i>'; timerInterval = setInterval(() => { if (timeLeft > 0) { timeLeft--; updateTimerDisplay(); } else completeCycle(); }, 1000); }
+    if (isTimerRunning) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+        isTimerRunning = false;
+        document.getElementById('pomodoro-start').innerHTML = ICONS.play;
+        document.getElementById('mini-play-btn').innerHTML = ICONS.play;
+        const mobileToggle = document.getElementById('mini-timer-toggle');
+        if (mobileToggle) mobileToggle.innerHTML = '<i class="fa-solid fa-play"></i>';
+    } else {
+        isTimerRunning = true;
+        document.getElementById('pomodoro-start').innerHTML = '<i class="fa-solid fa-pause"></i>';
+        document.getElementById('mini-play-btn').innerHTML = '<i class="fa-solid fa-pause"></i>';
+        const mobileToggle = document.getElementById('mini-timer-toggle');
+        if (mobileToggle) mobileToggle.innerHTML = '<i class="fa-solid fa-pause"></i>';
+        timerInterval = setInterval(() => { if (timeLeft > 0) { timeLeft--; updateTimerDisplay(); } else completeCycle(); }, 1000);
+    }
 }
 
-function resetTimer() { clearInterval(timerInterval); timerInterval = null; isTimerRunning = false; timeLeft = (pomodoroState.isBreak ? pomodoroState.breakTime : pomodoroState.workTime) * 60; updateTimerDisplay(); document.getElementById('pomodoro-start').innerHTML = ICONS.play; document.getElementById('mini-play-btn').innerHTML = ICONS.play; }
+function resetTimer() {
+    clearInterval(timerInterval);
+    timerInterval = null;
+    isTimerRunning = false;
+    timeLeft = (pomodoroState.isBreak ? pomodoroState.breakTime : pomodoroState.workTime) * 60;
+    updateTimerDisplay();
+    document.getElementById('pomodoro-start').innerHTML = ICONS.play;
+    document.getElementById('mini-play-btn').innerHTML = ICONS.play;
+    const mobileToggle = document.getElementById('mini-timer-toggle');
+    if (mobileToggle) mobileToggle.innerHTML = '<i class="fa-solid fa-play"></i>';
+}
 
 function adjustTimer(minutes) { timeLeft += minutes * 60; if (timeLeft < 0) timeLeft = 0; updateTimerDisplay(); }
 
@@ -3903,3 +4298,52 @@ async function loadTheme(themeName) {
         console.error('Error loading theme:', error);
     }
 }
+
+function toggleNotesSection() {
+    const content = document.getElementById('notes-collapsible-content');
+    const chevron = document.getElementById('notes-chevron');
+    const container = document.getElementById('timeline-container'); // Notes container
+
+    if (!content || !chevron) return;
+
+    if (content.style.display === 'none') {
+        content.style.display = 'block';
+        if (container) container.style.display = 'block';
+        chevron.style.transform = 'rotate(0deg)';
+    } else {
+        content.style.display = 'none';
+        if (container) container.style.display = 'none';
+        chevron.style.transform = 'rotate(-90deg)';
+    }
+}
+window.toggleNotesSection = toggleNotesSection;
+
+function toggleDailyGoalWidget() {
+    const content = document.getElementById('daily-goal-content');
+    const chevron = document.getElementById('daily-goal-chevron');
+    if (!content || !chevron) return;
+
+    if (content.style.display === 'none') {
+        content.style.display = 'block';
+        chevron.style.transform = 'rotate(0deg)';
+    } else {
+        content.style.display = 'none';
+        chevron.style.transform = 'rotate(-90deg)';
+    }
+}
+window.toggleDailyGoalWidget = toggleDailyGoalWidget;
+
+function toggleMobileDailyGoalWidget() {
+    const content = document.getElementById('mobile-daily-goal-content');
+    const chevron = document.getElementById('mobile-daily-goal-chevron');
+    if (!content || !chevron) return;
+
+    if (content.style.display === 'none') {
+        content.style.display = 'block';
+        chevron.style.transform = 'rotate(0deg)';
+    } else {
+        content.style.display = 'none';
+        chevron.style.transform = 'rotate(-90deg)';
+    }
+}
+window.toggleMobileDailyGoalWidget = toggleMobileDailyGoalWidget;
