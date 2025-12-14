@@ -1633,9 +1633,19 @@ function checkReminders() {
                     // 1. Show Modal
                     const reminderModal = document.getElementById('reminder-modal');
                     const reminderText = document.getElementById('reminder-text');
+                    const btnStartPomo = document.getElementById('btn-reminder-start-pomo');
+
                     if (reminderModal && reminderText) {
                         reminderText.textContent = `Recordatorio: ${task.title}`;
                         reminderModal.dataset.taskId = task.id; // Store ID for snooze
+
+                        if (btnStartPomo) {
+                            btnStartPomo.onclick = () => {
+                                startPomodoroForTask(task.id);
+                                reminderModal.classList.remove('active');
+                            };
+                        }
+
                         reminderModal.classList.add('active');
                     }
 
