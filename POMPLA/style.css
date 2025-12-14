@@ -53,6 +53,8 @@ body {
 .sidebar {
     background-color: var(--sidebar-bg);
     padding: 20px;
+    padding-right: 15px;
+    /* Adjust for resizer */
     border-right: 1px solid var(--glass-border);
     display: flex;
     flex-direction: column;
@@ -61,7 +63,64 @@ body {
     /* Ensure full height usage */
     overflow: hidden;
     /* Prevent sidebar itself from scrolling */
+    position: relative;
+    /* For toggle button context */
+    min-width: 0;
+    /* Allow grid collapse */
 }
+
+/* Resizer Handle */
+.sidebar-resizer {
+    width: 5px;
+    background: transparent;
+    cursor: col-resize;
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 100;
+    transition: background 0.2s;
+}
+
+.sidebar-resizer:hover,
+.sidebar-resizer.resizing {
+    background: var(--accent-color);
+    opacity: 0.5;
+}
+
+/* Sidebar Toggle Button */
+.sidebar-collapse-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 1rem;
+    padding: 5px;
+    border-radius: 4px;
+}
+
+.sidebar-collapse-btn:hover {
+    color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.1);
+}
+
+/* Expand Button (in main content) */
+.sidebar-expand-btn {
+    background: var(--sidebar-bg);
+    border: 1px solid var(--glass-border);
+    color: var(--text-primary);
+    padding: 8px;
+    cursor: pointer;
+    border-radius: 0 8px 8px 0;
+    position: absolute;
+    top: 20px;
+    left: 0;
+    z-index: 900;
+    display: none;
+    /* Hidden by default */
+    box-shadow: 2px 0 5px rgba(0, 0, 0, 0.2);
+}
+
 
 .sidebar-header {
     display: flex;
@@ -96,7 +155,8 @@ body {
     display: flex;
     align-items: center;
     /* Center items vertically */
-    gap: 12px;
+    gap: 6px;
+    /* Reduced gap */
     padding: 0 5px 15px 5px;
     /* Added side padding for scroll safety */
     border-bottom: 1px solid var(--glass-border);
@@ -117,12 +177,15 @@ body {
     background: transparent;
     border: 1px solid var(--glass-border);
     color: var(--text-secondary);
-    padding: 8px 16px;
+    padding: 4px 10px;
+    /* Reduced padding */
     border-radius: 20px;
     cursor: pointer;
-    font-size: 0.95rem;
+    font-size: 0.85rem;
+    /* Reduced font size */
     transition: all 0.3s;
-    min-height: 36px;
+    min-height: 28px;
+    /* Reduced height */
     display: flex;
     align-items: center;
     justify-content: center;
@@ -140,17 +203,20 @@ body {
     background: transparent;
     border: 1px solid var(--glass-border);
     color: var(--text-secondary);
-    padding: 8px 16px;
+    padding: 4px 10px;
+    /* Reduced padding */
     border-radius: 20px;
     cursor: pointer;
-    font-size: 0.95rem;
+    font-size: 0.85rem;
+    /* Reduced font size */
     transition: all 0.3s;
     outline: none;
     -webkit-appearance: none;
     -moz-appearance: none;
     appearance: none;
     text-align: center;
-    min-height: 36px;
+    min-height: 28px;
+    /* Reduced height */
 }
 
 .filter-select:hover,

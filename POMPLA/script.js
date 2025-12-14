@@ -451,6 +451,19 @@ document.addEventListener('DOMContentLoaded', () => {
             updateDailyGoalUI();
         });
     }
+
+    // Dynamic Header Font Size
+    const headerTitle = document.getElementById('current-month-year');
+    if (headerTitle) {
+        const observer = new MutationObserver(() => {
+            if (headerTitle.textContent.length > 20) {
+                headerTitle.style.fontSize = '1.1rem'; // Reduced size
+            } else {
+                headerTitle.style.fontSize = ''; // Reset
+            }
+        });
+        observer.observe(headerTitle, { childList: true, characterData: true, subtree: true });
+    }
 });
 
 window.recibirTareasDeFirebase = (tareasDescargadas) => {
@@ -614,36 +627,75 @@ function renderCategoryTags() {
     fillContainer(mobileContainer, true);
 }
 
-function updateFolderFilterOptions() {
-    const select = document.getElementById('filter-folder');
-    if (!select) return;
 
-    const currentVal = select.value;
-    select.innerHTML = '<option value="">Todas las Carpetas</option>';
+
+function updateFolderFilterOptions() {
+    const btn = document.getElementById('filter-folder-btn');
+    const dropdown = document.getElementById('filter-folder-dropdown');
+    const span = document.getElementById('filter-folder-text');
+
+    if (!btn || !dropdown) return;
+
+    // Toggle Dropdown (Simple handler, remove old one if exists or just overwrite property)
+    btn.onclick = (e) => {
+        e.stopPropagation();
+        const isVisible = dropdown.style.display === 'block';
+        dropdown.style.display = isVisible ? 'none' : 'block';
+    };
+
+    // Close on click outside
+    document.addEventListener('click', (e) => {
+        if (!btn.contains(e.target) && !dropdown.contains(e.target)) {
+            dropdown.style.display = 'none';
+        }
+    });
+
+    dropdown.innerHTML = '';
+
+    // "Todas" Option
+    const addOption = (id, text, isSelected) => {
+        const row = document.createElement('div');
+        row.style.padding = '5px';
+        row.style.cursor = 'pointer';
+        row.style.borderBottom = '1px solid var(--glass-border)';
+        row.style.fontSize = '0.9rem';
+        row.style.color = isSelected ? 'var(--accent-color)' : 'var(--text-primary)';
+        if (isSelected) row.style.fontWeight = '600';
+
+        row.textContent = text;
+
+        row.onmouseover = () => row.style.background = 'rgba(255,255,255,0.05)';
+        row.onmouseout = () => row.style.background = 'transparent';
+
+        row.onclick = () => {
+            activeFilters.folderId = id;
+            updateBtnText();
+            applyFilters();
+            dropdown.style.display = 'none';
+        };
+        dropdown.appendChild(row);
+    };
+
+    // Add "Todas"
+    addOption(null, 'Todas las Carpetas', !activeFilters.folderId);
 
     // Find all folders
     const folders = tasks.filter(t => !!t.isFolder || (!t.date && !!t.color));
 
     folders.forEach(f => {
-        const option = document.createElement('option');
-        option.value = f.id;
-        option.textContent = f.title;
-        select.appendChild(option);
+        addOption(f.id, f.title, activeFilters.folderId === f.id);
     });
 
-    // Restore value if still valid
-    if (activeFilters.folderId && folders.some(f => f.id === activeFilters.folderId)) {
-        select.value = activeFilters.folderId;
-    } else {
-        select.value = "";
+    function updateBtnText() {
+        if (!activeFilters.folderId) {
+            span.innerHTML = '<i class="fa-solid fa-folder-open"></i>';
+        } else {
+            const f = tasks.find(t => t.id === activeFilters.folderId);
+            span.textContent = f ? f.title : "Carpeta";
+        }
     }
 
-    // Listener (idempotent setup is tricky here, better to set once or remove old listener? 
-    // Actually, setting onchange property is safer than addEventListener for re-runs)
-    select.onchange = (e) => {
-        activeFilters.folderId = e.target.value || null;
-        applyFilters();
-    };
+    updateBtnText();
 }
 
 function updateMainTagFilterOptions() {
@@ -751,7 +803,7 @@ function updateMainTagFilterOptions() {
 
     function updateBtnText() {
         if (activeFilters.mainTags.size === 0) {
-            span.textContent = "Todas las Etiquetas";
+            span.innerHTML = '<i class="fa-solid fa-tag"></i>';
         } else if (activeFilters.mainTags.size === 1) {
             span.textContent = Array.from(activeFilters.mainTags)[0];
         } else {
@@ -1112,9 +1164,11 @@ function setupEventListeners() {
     const resetBtn = document.getElementById('filter-reset');
     if (resetBtn) {
         resetBtn.addEventListener('click', () => {
-            activeFilters = { dateRange: 'today', tags: new Set(), status: 'all', folderId: null, mainTag: null };
-            document.getElementById('filter-folder').value = ''; // Reset UI
-            document.getElementById('filter-tag-main').value = ''; // Reset UI
+            activeFilters = { dateRange: 'today', tags: new Set(), status: 'all', folderId: null, mainTags: new Set(), customStart: null, customEnd: null };
+            // Reset Folder UI: now handled by updateFolderFilterOptions state check, but we trigger it
+            updateFolderFilterOptions();
+            // Reset Main Tag UI
+            updateMainTagFilterOptions();
             applyFilters();
         });
     }
@@ -1239,6 +1293,9 @@ function setupEventListeners() {
             statsChevron.style.transform = 'rotate(180deg)';
         }
     }
+
+    // Initialize Sidebar
+    setupSidebar();
 }
 
 function switchView(view) {
@@ -1266,6 +1323,23 @@ function switchView(view) {
         document.getElementById('timeline-view').style.display = 'block';
         mainViewRange = 'today';
         refreshMainView();
+    }
+
+    // Filter Visibility Logic
+    const folderContainer = document.getElementById('filter-folder-container');
+    const tagContainer = document.getElementById('filter-tag-container');
+    if (folderContainer && tagContainer) {
+        if (view === 'timeline') {
+            folderContainer.style.display = 'none';
+            tagContainer.style.display = 'none';
+        } else {
+            folderContainer.style.display = 'block'; // Or revert to original logic references if needed, but 'block' works for divs
+            tagContainer.style.display = 'block';
+            // Specifically, inline styles might need 'margin-left' adjustment, but 'block' keeps them visible.
+            // Original inline style: style="margin-left: 10px;" was preserved in HTML
+            // Setting display='block' respects other inline styles usually unless display was inline.
+            // Div default is block.
+        }
     }
 }
 
@@ -2645,7 +2719,8 @@ function renderTimeline(rangeType = 'today', startDate = null, endDate = null) {
     // FORCE SINGLE DAY VIEW FOR TIMELINE based on currentDate
     // regardless of what filter range is passed. User wants strict day view.
     loopStart = new Date(currentDate);
-    loopEnd = new Date(currentDate);
+    loopStart.setHours(0, 0, 0, 0);
+    loopEnd = new Date(loopStart);
 
     // Update Header to reflect the specific day being viewed
     // "Sábado 13 de Diciembre" format
@@ -3510,3 +3585,60 @@ window.openCommentEditModal = openCommentEditModal;
 window.closeCommentModal = closeCommentModal;
 window.selectCommentType = selectCommentType;
 window.saveComment = saveComment;
+
+// Sidebar & Resizer Logic
+function setupSidebar() {
+    const appContainer = document.getElementById('app-container');
+    const sidebar = document.querySelector('.sidebar');
+    const resizer = document.getElementById('resizer');
+    const collapseBtn = document.getElementById('sidebar-collapse-btn');
+    const expandBtn = document.getElementById('sidebar-expand-btn');
+
+    if (!appContainer || !sidebar || !resizer || !collapseBtn || !expandBtn) return;
+
+    // --- Resizing ---
+    let isResizing = false;
+    let lastWidth = 350; // Default
+
+    resizer.addEventListener('mousedown', (e) => {
+        isResizing = true;
+        resizer.classList.add('resizing');
+        document.body.style.cursor = 'col-resize';
+        e.preventDefault(); // Prevent text selection
+    });
+
+    document.addEventListener('mousemove', (e) => {
+        if (!isResizing) return;
+
+        let newWidth = e.clientX;
+        // Limits
+        if (newWidth < 50) newWidth = 50;
+        if (newWidth > 600) newWidth = 600;
+
+        appContainer.style.gridTemplateColumns = `${newWidth}px 1fr`;
+        lastWidth = newWidth;
+    });
+
+    document.addEventListener('mouseup', () => {
+        if (isResizing) {
+            isResizing = false;
+            resizer.classList.remove('resizing');
+            document.body.style.cursor = '';
+        }
+    });
+
+    // --- Collapse/Expand ---
+    collapseBtn.addEventListener('click', () => {
+        // Collapse: Hide sidebar completely and make main content full width
+        appContainer.style.gridTemplateColumns = '1fr';
+        sidebar.style.display = 'none';
+        expandBtn.style.display = 'block';
+    });
+
+    expandBtn.addEventListener('click', () => {
+        // Expand: Restore grid and sidebar
+        appContainer.style.gridTemplateColumns = `${lastWidth}px 1fr`;
+        sidebar.style.display = 'flex';
+        expandBtn.style.display = 'none';
+    });
+}
