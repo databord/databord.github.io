@@ -163,10 +163,15 @@
             <div id="mobile-widgets-container" class="daily-goal-widget collapsed-widget">
                 <!-- Mobile Goal Compact (Moved Here) -->
                 <div id="mobile-daily-goal"
-                    style="display:none; margin: 0 10px 5px 10px; background:var(--sidebar-bg); padding:4px 10px; border-radius:12px; border:1px solid var(--glass-border); align-items:center; justify-content:space-between;">
-                    <span style="font-size:0.8rem; color:var(--text-secondary);">Objetivo: <span
-                            id="mobile-goal-progress">0/5</span></span>
-                    <div class="goal-progress-bar-bg" style="width:50px; height:4px;">
+                    style="display:none; margin: 0 10px 5px 10px; background:var(--sidebar-bg); padding:4px 10px; border-radius:12px; border:1px solid var(--glass-border); align-items:center; justify-content:space-between; cursor: pointer;">
+                    <div style="display:flex; align-items:center; gap:5px;">
+                        <span style="font-size:0.8rem; color:var(--text-secondary);">Objetivo:
+                            <span id="mobile-goal-progress">0/5</span>
+                        </span>
+                        <i id="mobile-stats-chevron" class="fa-solid fa-chevron-down"
+                            style="font-size:0.8rem; color:var(--text-secondary); transition:transform 0.3s;"></i>
+                    </div>
+                    <div class="goal-progress-bar-bg" id="mobile-goal-bar-container" style="width:50px; height:4px;">
                         <div id="mobile-goal-bar" class="goal-progress-bar-fill" style="width: 0%;"></div>
                     </div>
                 </div>

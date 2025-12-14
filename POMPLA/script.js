@@ -944,7 +944,110 @@ function setupEventListeners() {
     document.getElementById('task-date').addEventListener('change', updateParentSelect);
     document.getElementById('task-end-date').addEventListener('change', updateParentSelect);
 
-    // Mobile Widgets Toggle
+
+    // Correct Implementation of toggleUnifiedWidget
+    const setupUnifiedWidget = () => {
+        // Desktop
+        const dHeader = document.getElementById('stats-header');
+        const dBody = document.getElementById('stats-body');
+        const dChevron = document.getElementById('stats-chevron');
+        const dContainer = document.getElementById('desktop-unified-widget'); // Using ID from index check
+
+        if (dHeader && dContainer) {
+            dHeader.addEventListener('click', (e) => {
+                if (e.target.tagName === 'INPUT') return;
+
+                const isCollapsed = dContainer.classList.contains('widget-collapsed'); // Use specific class to avoid conflict
+
+                if (isCollapsed) {
+                    // EXPAND
+                    dContainer.classList.remove('widget-collapsed');
+                    if (dBody) dBody.style.display = 'block'; // Or flex/grid? usually block for stats body
+                    if (dChevron) dChevron.style.transform = 'rotate(0deg)';
+
+                    // Show Elements
+                    const els = ['goal-progress-text', 'today-total-text', 'daily-goal-input'];
+                    els.forEach(id => { const el = document.getElementById(id); if (el) el.style.display = ''; }); // Reset to default
+
+                    const bar = dHeader.querySelector('.goal-progress-bar-bg');
+                    if (bar) bar.style.display = '';
+
+                } else {
+                    // COLLAPSE
+                    dContainer.classList.add('widget-collapsed');
+                    if (dBody) dBody.style.display = 'none';
+                    if (dChevron) dChevron.style.transform = 'rotate(-90deg)';
+
+                    // Hide Elements
+                    const els = ['goal-progress-text', 'today-total-text', 'daily-goal-input'];
+                    // daily-goal-input logic: if we hide input, user can't change goal.
+                    // But user requested it. "daily-goal-input tambien deberían ocultarse".
+                    els.forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
+
+                    const bar = dHeader.querySelector('.goal-progress-bar-bg');
+                    if (bar) bar.style.display = 'none';
+                }
+            });
+        }
+
+        // Mobile
+        const mHeader = document.getElementById('mobile-daily-goal');
+        // Mobile container is tricky, stats are siblings inside #mobile-widgets-container?
+        // Index check:
+        // #mobile-widgets-container (daily-goal-widget collapsed-widget)
+        //    #mobile-daily-goal
+        //    #mobile-stats-body
+
+        const mContainer = document.getElementById('mobile-widgets-container');
+        const mBody = document.getElementById('mobile-stats-body');
+        const mChevron = document.getElementById('mobile-stats-chevron');
+
+        if (mHeader && mContainer) {
+            mHeader.addEventListener('click', (e) => {
+                const isCollapsed = mContainer.classList.contains('collapsed-widget'); // It has this class by default in HTML line 163
+
+                if (isCollapsed) {
+                    // EXPAND
+                    mContainer.classList.remove('collapsed-widget');
+                    if (mBody) mBody.style.display = 'block';
+                    if (mChevron) mChevron.style.transform = 'rotate(0deg)';
+
+                    // Show specific elements
+                    const mProgress = document.getElementById('mobile-goal-progress');
+                    if (mProgress) {
+                        // Logic: "Objetivo: 0/5". If we hide 0/5, we see "Objetivo: ".
+                        // User said "also hide ... goal-progress-text". 
+                        // Check structure: <span>Objetivo: <span id>...</span></span>.
+                        // Maybe hide parent span? But parent has no ID.
+                        // Let's hide the ID element for now as closest match, or closest span.
+                        mProgress.style.display = '';
+                    }
+                    const mBarContainer = document.getElementById('mobile-goal-bar-container'); // Added ID in previous step
+                    if (mBarContainer) mBarContainer.style.display = '';
+
+                } else {
+                    // COLLAPSE
+                    mContainer.classList.add('collapsed-widget');
+                    if (mBody) mBody.style.display = 'none';
+                    if (mChevron) mChevron.style.transform = 'rotate(-90deg)';
+
+                    // Hide specific elements
+                    const mProgress = document.getElementById('mobile-goal-progress');
+                    if (mProgress) mProgress.style.display = 'none';
+
+                    const mBarContainer = document.getElementById('mobile-goal-bar-container');
+                    if (mBarContainer) mBarContainer.style.display = 'none';
+                }
+            });
+        }
+    };
+    setupUnifiedWidget();
+
+    // Mobile Widgets Toggle (Existing logic - we might need to adjust or remove if it conflicts?
+    // The previous logic targeted #mobile-widgets-toggle button. 
+    // The unified widget is separate functionality.
+    // Ensure no conflict.
+
     const mobileToggle = document.getElementById('mobile-widgets-toggle');
     const mobileContainer = document.getElementById('mobile-widgets-container');
     if (mobileToggle && mobileContainer) {
