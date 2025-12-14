@@ -1579,6 +1579,11 @@ body {
     .daily-goal-widget:not(#mobile-widgets-container) {
         display: none !important;
     }
+
+    /* Hide category tags in calendar day on mobile */
+    .day-categories {
+        display: none !important;
+    }
 }
 
 /* --- DAILY GOAL WIDGET --- */

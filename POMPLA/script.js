@@ -2957,11 +2957,11 @@ function updateTimerDisplay() {
 
 function toggleTimer() {
     if (Notification.permission === 'default') Notification.requestPermission();
-    if (isTimerRunning) { clearInterval(timerInterval); isTimerRunning = false; document.getElementById('pomodoro-start').innerHTML = ICONS.play; document.getElementById('mini-play-btn').innerHTML = ICONS.play; }
+    if (isTimerRunning) { clearInterval(timerInterval); timerInterval = null; isTimerRunning = false; document.getElementById('pomodoro-start').innerHTML = ICONS.play; document.getElementById('mini-play-btn').innerHTML = ICONS.play; }
     else { isTimerRunning = true; document.getElementById('pomodoro-start').innerHTML = '<i class="fa-solid fa-pause"></i>'; document.getElementById('mini-play-btn').innerHTML = '<i class="fa-solid fa-pause"></i>'; timerInterval = setInterval(() => { if (timeLeft > 0) { timeLeft--; updateTimerDisplay(); } else completeCycle(); }, 1000); }
 }
 
-function resetTimer() { clearInterval(timerInterval); isTimerRunning = false; timeLeft = (pomodoroState.isBreak ? pomodoroState.breakTime : pomodoroState.workTime) * 60; updateTimerDisplay(); document.getElementById('pomodoro-start').innerHTML = ICONS.play; document.getElementById('mini-play-btn').innerHTML = ICONS.play; }
+function resetTimer() { clearInterval(timerInterval); timerInterval = null; isTimerRunning = false; timeLeft = (pomodoroState.isBreak ? pomodoroState.breakTime : pomodoroState.workTime) * 60; updateTimerDisplay(); document.getElementById('pomodoro-start').innerHTML = ICONS.play; document.getElementById('mini-play-btn').innerHTML = ICONS.play; }
 
 function adjustTimer(minutes) { timeLeft += minutes * 60; if (timeLeft < 0) timeLeft = 0; updateTimerDisplay(); }
 
@@ -3009,26 +3009,44 @@ function changeCycle(direction) {
 }
 
 function completeCycle() {
-    clearInterval(timerInterval); isTimerRunning = false;
+    // Only stop interval if we are completely stopping (End of all cycles)
+    // Otherwise we just update state and let the interval continue
+
     timerSound.play().catch(e => console.log('Audio play failed', e));
     if (pomodoroState.isBreak) {
         pomodoroState.isBreak = false; pomodoroState.cycle++;
         if (pomodoroState.cycle > pomodoroState.totalCycles) {
-            // alert('¡Todos los ciclos completados!'); -- Replaced by logic below
+            // STOP EVERYTHING
+            clearInterval(timerInterval);
+            timerInterval = null;
+            isTimerRunning = false;
+            document.getElementById('pomodoro-start').innerHTML = ICONS.play;
+            document.getElementById('mini-play-btn').innerHTML = ICONS.play;
+
             if (activeTaskId && window.updateTaskInFirebase) { const task = tasks.find(t => t.id === activeTaskId); if (task) window.updateTaskInFirebase(task.id, { pomodoros: (task.pomodoros || 0) + pomodoroState.totalCycles }); }
             resetTimer();
             notifyCompletion("¡Todos los ciclos completados!");
             return;
         } else {
+            // Auto-start Work Phase
             timeLeft = pomodoroState.workTime * 60;
-            // alert(`Ciclo ${pomodoroState.cycle} de ${pomodoroState.totalCycles}: ¡A trabajar!`);
-            notifyCompletion(`¡A trabajar! Ciclo ${pomodoroState.cycle}/${pomodoroState.totalCycles}`);
+            // Format time for message
+            const m = Math.floor(timeLeft / 60);
+            const s = timeLeft % 60;
+            const timeStr = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+            // Message: "XXXX terminado! A continuación 00:00 de XXXXX"
+            notifyCompletion(`¡Descanso terminado! A continuación ${timeStr} de Trabajo`);
         }
     } else {
+        // Auto-start Break Phase
         pomodoroState.isBreak = true;
         timeLeft = pomodoroState.breakTime * 60;
-        // alert('¡Hora de un descanso!');
-        notifyCompletion("¡Hora de un descanso!");
+        // Format time for message
+        const m = Math.floor(timeLeft / 60);
+        const s = timeLeft % 60;
+        const timeStr = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+        // Message
+        notifyCompletion(`¡Trabajo terminado! A continuación ${timeStr} de Descanso`);
     }
     updateTimerDisplay();
 }
@@ -3051,9 +3069,14 @@ function notifyCompletion(message) {
     // 3. Background Check for Flashing & Persistent Sound
     if (document.hidden) {
         startTitleFlash(message);
-    } else {
-        alert(message); // Maintain alert if foreground? Or just toast? User used alert before.
     }
+
+    // Blocking Alert (Requested by User)
+    // We use setTimeout to allow parsing/UI update to happen first if needed, 
+    // though alert halts JS execution, so we want the timer display to update BEFORE the alert blocks.
+    setTimeout(() => {
+        alert(message);
+    }, 50);
 }
 
 function startTitleFlash(message) {
