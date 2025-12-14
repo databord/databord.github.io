@@ -460,6 +460,13 @@ document.addEventListener('DOMContentLoaded', () => {
         document.body.classList.add('tab-list');
     }
 
+    // Request Notification Permission
+    if ("Notification" in window) {
+        if (Notification.permission !== "granted" && Notification.permission !== "denied") {
+            Notification.requestPermission();
+        }
+    }
+
     // Initial Filter Apply
     applyFilters();
 
@@ -1458,6 +1465,34 @@ function openModal(editId = null) {
         iconSelect.dispatchEvent(new Event('change'));
         delete taskForm.dataset.editId;
     }
+    // Reminder Populating
+    const reminderActive = document.getElementById('task-reminder-active');
+    const reminderTime = document.getElementById('task-reminder-time');
+
+    if (editId) {
+        const t = tasks.find(t => t.id === editId);
+        if (t) {
+            // ... existing population ... 
+            reminderActive.checked = !!t.reminderActive;
+            reminderTime.value = t.reminderTime || '';
+            reminderTime.style.display = t.reminderActive ? 'block' : 'none';
+        }
+    } else {
+        reminderActive.checked = false;
+        reminderTime.value = '';
+        reminderTime.style.display = 'none';
+    }
+
+    // Toggle Time Input Visibility
+    reminderActive.onclick = () => {
+        if (reminderActive.checked) {
+            reminderTime.style.display = 'block';
+            reminderTime.disabled = false;
+        } else {
+            reminderTime.style.display = 'none';
+        }
+    };
+
     updateParentSelect();
 }
 
@@ -1543,6 +1578,9 @@ function handleTaskSubmit(e) {
     const editId = taskForm.dataset.editId;
 
     // Include color and isFolder in the payload
+    const reminderActive = document.getElementById('task-reminder-active').checked;
+    const reminderTime = document.getElementById('task-reminder-time').value;
+
     const taskData = {
         title,
         desc,
@@ -1556,7 +1594,9 @@ function handleTaskSubmit(e) {
         icon,
         pomodoroSettings,
         color: isFolder ? color : null,
-        isFolder: isFolder
+        isFolder: isFolder,
+        reminderActive: isFolder ? false : reminderActive,
+        reminderTime: isFolder ? null : reminderTime
     };
 
     if (editId) { if (window.updateTaskInFirebase) window.updateTaskInFirebase(editId, taskData); }
@@ -1567,6 +1607,98 @@ function handleTaskSubmit(e) {
     setTimeout(updateDailyGoalUI, 500); // Small delay to allow Firebase callback
     closeModal();
 }
+
+function checkReminders() {
+    // Permission check for notifications (only stops browser notification, not modal)
+    const canNotify = "Notification" in window && Notification.permission === "granted";
+
+    const now = new Date();
+    const currentHours = String(now.getHours()).padStart(2, '0');
+    const currentMinutes = String(now.getMinutes()).padStart(2, '0');
+    const currentTime = `${currentHours}:${currentMinutes}`;
+
+    if (!window.notifiedTasks) window.notifiedTasks = new Set();
+
+    tasks.forEach(task => {
+        if (!task.reminderActive || !task.reminderTime || task.status === 'completed') return;
+
+        // Check if task is active today
+        // Note: isTaskOnDate uses activeFilters logic implicitly if recursive? No, it's generic.
+        // But let's verify if isTaskOnDate works correctly with `now`.
+        if (isTaskOnDate(task, now)) {
+            if (task.reminderTime === currentTime) {
+                const uniqueKey = `${task.id}_${now.toDateString()}_${currentTime}`;
+
+                if (!window.notifiedTasks.has(uniqueKey)) {
+                    // 1. Show Modal
+                    const reminderModal = document.getElementById('reminder-modal');
+                    const reminderText = document.getElementById('reminder-text');
+                    if (reminderModal && reminderText) {
+                        reminderText.textContent = `Recordatorio: ${task.title}`;
+                        reminderModal.dataset.taskId = task.id; // Store ID for snooze
+                        reminderModal.classList.add('active');
+                    }
+
+                    // 2. Trigger Browser Notification
+                    if (canNotify) {
+                        new Notification("Recordatorio: " + task.title, {
+                            body: "Es hora de tu tarea.",
+                            icon: 'https://i.imgur.com/wMx638E.png'
+                        });
+                    }
+
+                    // 3. Play Sound (if available)
+                    if (timerSound) {
+                        timerSound.play().catch(e => console.log("Audio play error", e));
+                    }
+
+                    window.notifiedTasks.add(uniqueKey);
+                }
+            }
+        }
+    });
+}
+
+function snoozeReminder(minutes) {
+    const modal = document.getElementById('reminder-modal');
+    const taskId = modal.dataset.taskId;
+
+    if (!taskId) {
+        modal.classList.remove('active');
+        return;
+    }
+
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) {
+        modal.classList.remove('active');
+        return;
+    }
+
+    // Calculate new time
+    const now = new Date();
+    // Add minutes to current time (or should it be added to the ORIGINAL reminder time? 
+    // Usability wise, adding to "Now" makes more sense if I saw the notification late.)
+    now.setMinutes(now.getMinutes() + minutes);
+
+    const newHours = String(now.getHours()).padStart(2, '0');
+    const newMinutes = String(now.getMinutes()).padStart(2, '0');
+    const newTime = `${newHours}:${newMinutes}`;
+
+    // Update Task
+    if (window.updateTaskInFirebase) {
+        window.updateTaskInFirebase(taskId, {
+            reminderTime: newTime,
+            reminderActive: true // Ensure it stays active
+        });
+    }
+
+    // Feedback? 
+    // console.log(`Snoozed ${minutes}m. New time: ${newTime}`);
+
+    modal.classList.remove('active');
+}
+// Run check every 30 seconds
+setInterval(checkReminders, 30000);
 
 function deleteTask(id) {
     if (confirm('¿Estás seguro de eliminar esta tarea?')) {
