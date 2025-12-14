@@ -99,22 +99,63 @@
                 </div>
             </div>
 
-            <div class="daily-goal-widget">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
-                    <span style="font-size:0.9rem; font-weight:600; color:var(--text-primary);">Objetivo
-                        Diario</span>
-                    <div style="display:flex; align-items:center; gap:5px;">
-                        <input type="number" id="daily-goal-input" value="5" min="1"
-                            style="width:40px; background:transparent; border:1px solid var(--glass-border); border-radius:4px; color:var(--text-primary); text-align:center; padding:2px; font-size:0.8rem;">
+            <div class="daily-goal-widget" id="desktop-unified-widget">
+                <!-- Header (Goal & Collapse Toggle) -->
+                <div id="stats-header"
+                    style="cursor:pointer; padding-bottom:5px; margin-bottom:5px; border-bottom:1px solid transparent; transition:border 0.3s;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
+                        <span style="font-size:0.9rem; font-weight:600; color:var(--text-primary);">Objetivo
+                            Diario</span>
+                        <div style="display:flex; align-items:center; gap:5px;">
+                            <input type="number" id="daily-goal-input" value="5" min="1"
+                                style="width:40px; background:transparent; border:1px solid var(--glass-border); border-radius:4px; color:var(--text-primary); text-align:center; padding:2px; font-size:0.8rem;"
+                                onclick="event.stopPropagation();"> <!-- Prevent collapse when clicking input -->
+                            <i id="stats-chevron" class="fa-solid fa-chevron-down"
+                                style="font-size:0.8rem; transition:transform 0.3s; color:var(--text-secondary);"></i>
+                        </div>
+                    </div>
+                    <div class="goal-progress-bar-bg">
+                        <div id="goal-progress-bar" class="goal-progress-bar-fill" style="width: 0%;"></div>
+                    </div>
+                    <div
+                        style="display:flex; justify-content:space-between; font-size:0.75rem; color:var(--text-secondary); margin-top:5px;">
+                        <span id="goal-progress-text">0/5 completadas</span>
+                        <span id="today-total-text">0 total hoy</span>
                     </div>
                 </div>
-                <div class="goal-progress-bar-bg">
-                    <div id="goal-progress-bar" class="goal-progress-bar-fill" style="width: 0%;"></div>
-                </div>
-                <div
-                    style="display:flex; justify-content:space-between; font-size:0.75rem; color:var(--text-secondary); margin-top:5px;">
-                    <span id="goal-progress-text">0/5 completadas</span>
-                    <span id="today-total-text">0 total hoy</span>
+
+                <!-- Body (Stats) -->
+                <div id="stats-body"
+                    style="display:none; margin-top:10px; padding-top:10px; border-top:1px solid var(--glass-border); font-size:0.75rem; color:var(--text-secondary);">
+                    <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+                        <span>Total Hoy (Pend + Comp):</span>
+                        <span id="stats-total-today" style="font-weight:600;">0</span>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+                        <span>Completadas:</span>
+                        <span id="stats-completed-percent" style="font-weight:600;">0%</span>
+                    </div>
+
+                    <div
+                        style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:4px; margin-bottom:8px; text-align:center;">
+                        <div style="background:rgba(239, 68, 68, 0.1); padding:2px; border-radius:4px;">
+                            <span style="display:block; font-size:0.65rem;">Alta</span>
+                            <span id="stats-high" style="color:var(--danger-color); font-weight:600;">0%</span>
+                        </div>
+                        <div style="background:rgba(245, 158, 11, 0.1); padding:2px; border-radius:4px;">
+                            <span style="display:block; font-size:0.65rem;">Media</span>
+                            <span id="stats-medium" style="color:var(--warning-color); font-weight:600;">0%</span>
+                        </div>
+                        <div style="background:rgba(16, 185, 129, 0.1); padding:2px; border-radius:4px;">
+                            <span style="display:block; font-size:0.65rem;">Baja</span>
+                            <span id="stats-low" style="color:var(--success-color); font-weight:600;">0%</span>
+                        </div>
+                    </div>
+
+                    <div id="stats-quote"
+                        style="font-style:italic; font-size:0.7rem; color:var(--text-secondary); opacity:0.8; text-align:center; margin-top:5px; border-top:1px dashed var(--glass-border); padding-top:5px; line-height:1.2;">
+                        Cargando frase...
+                    </div>
                 </div>
             </div>
 
@@ -127,6 +168,35 @@
                             id="mobile-goal-progress">0/5</span></span>
                     <div class="goal-progress-bar-bg" style="width:50px; height:4px;">
                         <div id="mobile-goal-bar" class="goal-progress-bar-fill" style="width: 0%;"></div>
+                    </div>
+                </div>
+
+                <!-- Mobile Stats Body (Hidden by default, toggles with container expansion?) 
+                     Actually mobile-widgets-container expands. We should put stats inside.
+                     We'll reuse similar IDs with 'mobile-' prefix or just use class logic.
+                     But IDs need to be unique. -->
+                <div id="mobile-stats-body"
+                    style="display:none; padding:10px; border-top:1px solid var(--glass-border); font-size:0.75rem; color:var(--text-secondary);">
+                    <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+                        <span>Total Hoy:</span>
+                        <span id="mobile-stats-total-today" style="font-weight:600;">0</span>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+                        <span>Completadas:</span>
+                        <span id="mobile-stats-completed-percent" style="font-weight:600;">0%</span>
+                    </div>
+                    <!-- Minimal breakdown for mobile to save space? Or same grid -->
+                    <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:4px; text-align:center;">
+                        <div style="background:rgba(239, 68, 68, 0.1); padding:2px; border-radius:4px;">
+                            <span id="mobile-stats-high" style="color:var(--danger-color); font-weight:600;">0%</span>
+                        </div>
+                        <div style="background:rgba(245, 158, 11, 0.1); padding:2px; border-radius:4px;">
+                            <span id="mobile-stats-medium"
+                                style="color:var(--warning-color); font-weight:600;">0%</span>
+                        </div>
+                        <div style="background:rgba(16, 185, 129, 0.1); padding:2px; border-radius:4px;">
+                            <span id="mobile-stats-low" style="color:var(--success-color); font-weight:600;">0%</span>
+                        </div>
                     </div>
                 </div>
 

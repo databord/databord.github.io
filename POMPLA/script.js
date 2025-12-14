@@ -222,14 +222,14 @@ function updateDailyGoalUI() {
     // Matches behavior of: activeFilters.dateRange === 'today'
     const isToday = (t) => isTaskOnDate(t, today);
 
-    // Completed Today (Filter: Status=Completed AND Date=Today)
+    // Completed Today (Filter: Status=Completed AND Date=Today AND Not Comment)
     const completedTodayCount = tasks.filter(t =>
-        t.status === 'completed' && isToday(t)
+        t.status === 'completed' && isToday(t) && !t.isTimelineComment && t.category !== 'comment'
     ).length;
 
-    // Pending Today (Filter: Status!=Completed AND Date=Today)
+    // Pending Today (Filter: Status!=Completed AND Date=Today AND Not Comment)
     const pendingTodayCount = tasks.filter(t =>
-        t.status !== 'completed' && isToday(t)
+        t.status !== 'completed' && isToday(t) && !t.isTimelineComment && t.category !== 'comment'
     ).length;
 
     // Total for Goal (Completed + Pending)
@@ -295,20 +295,29 @@ function updateDailyStatsUI(totalToday, pendingTodayCount, todayRef) {
     const completedPct = totalToday > 0 ? Math.round((completedCount / totalToday) * 100) : 0;
 
     // Update Elements
+    // Desktop Elements
     const elTotal = document.getElementById('stats-total-today');
-    if (elTotal) elTotal.textContent = totalPending;
-
+    if (elTotal) elTotal.textContent = totalPending + completedCount; // Total for day
     const elHigh = document.getElementById('stats-high');
     if (elHigh) elHigh.textContent = `${highPct}%`;
-
     const elMedium = document.getElementById('stats-medium');
     if (elMedium) elMedium.textContent = `${mediumPct}%`;
-
     const elLow = document.getElementById('stats-low');
     if (elLow) elLow.textContent = `${lowPct}%`;
-
     const elCompleted = document.getElementById('stats-completed-percent');
     if (elCompleted) elCompleted.textContent = `${completedPct}%`;
+
+    // Mobile Elements
+    const mTotal = document.getElementById('mobile-stats-total-today');
+    if (mTotal) mTotal.textContent = totalPending + completedCount;
+    const mHigh = document.getElementById('mobile-stats-high');
+    if (mHigh) mHigh.textContent = `${highPct}%`;
+    const mMedium = document.getElementById('mobile-stats-medium');
+    if (mMedium) mMedium.textContent = `${mediumPct}%`;
+    const mLow = document.getElementById('mobile-stats-low');
+    if (mLow) mLow.textContent = `${lowPct}%`;
+    const mCompleted = document.getElementById('mobile-stats-completed-percent');
+    if (mCompleted) mCompleted.textContent = `${completedPct}%`;
 
     // Only set quote if empty/loading
     const elQuote = document.getElementById('stats-quote');
@@ -1292,6 +1301,29 @@ function setupEventListeners() {
             statsBody.style.display = 'block';
             statsChevron.style.transform = 'rotate(180deg)';
         }
+    }
+
+    // Unify Mobile Toggle: One button toggles the whole "mobile-widgets-container"
+    // Inside it, "mobile-daily-goal" is the header. Let's make it toggle "mobile-stats-body" too?
+    // Or just make stats body show when container is filtered?
+    // User wants "Collapsible daily goal and stats". 
+    // Let's assume on Mobile, clicking the goal header toggles stats body also?
+    // Or simpler: Just ensure mobile-stats-body is shown if container is expanded?
+    // Currently "mobile-widgets-toggle" expands the container. 
+    // Let's explicitly hook expanding stats inside mobile container.
+    const mobileGoalHeader = document.getElementById('mobile-daily-goal');
+    const mobileStatsBody = document.getElementById('mobile-stats-body');
+    if (mobileGoalHeader && mobileStatsBody) {
+        // Allow clicking the goal header to toggle the extra stats details
+        mobileGoalHeader.addEventListener('click', () => {
+            if (mobileStatsBody.style.display === 'none') {
+                mobileStatsBody.style.display = 'block';
+            } else {
+                mobileStatsBody.style.display = 'none';
+            }
+        });
+        // Make it pointer
+        mobileGoalHeader.style.cursor = "pointer";
     }
 
     // Initialize Sidebar
