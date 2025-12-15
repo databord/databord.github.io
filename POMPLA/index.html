@@ -849,12 +849,29 @@
                     <div class="settings-section"
                         style="margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid var(--glass-border);">
                         <h4 style="margin-bottom: 10px; color: var(--accent-color); font-size: 0.9rem;">TAREAS</h4>
+
+                        <!-- NEW: Date Range for Export -->
+                        <div style="margin-bottom: 10px; display: flex; gap: 10px; align-items: center;">
+                            <div style="flex: 1;">
+                                <label
+                                    style="display: block; font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 2px;">Desde:</label>
+                                <input type="date" id="export-date-start"
+                                    style="width: 100%; background: var(--bg-dark); border: 1px solid var(--glass-border); color: var(--text-primary); border-radius: 4px; padding: 5px;">
+                            </div>
+                            <div style="flex: 1;">
+                                <label
+                                    style="display: block; font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 2px;">Hasta:</label>
+                                <input type="date" id="export-date-end"
+                                    style="width: 100%; background: var(--bg-dark); border: 1px solid var(--glass-border); color: var(--text-primary); border-radius: 4px; padding: 5px;">
+                            </div>
+                        </div>
+
                         <div class="form-group" style="display: flex; gap: 10px; flex-direction: column;">
                             <button class="btn-primary" onclick="exportTasksToExcel()"
                                 style="width: 100%; justify-content: center; gap: 10px;">
                                 <i class="fa-solid fa-file-excel"></i> Descargar tareas (.xls)
                             </button>
-                            <button class="btn-secondary" onclick="exportTasksToCSV()"
+                            <button class="btn-primary" onclick="exportTasksToCSV()"
                                 style="width: 100%; justify-content: center; gap: 10px;">
                                 <i class="fa-solid fa-file-csv"></i> Descargar tareas (.csv)
                             </button>

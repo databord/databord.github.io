@@ -2918,6 +2918,7 @@ function renderCalendar() {
         dayEl.className = 'calendar-day';
         const currentDayDate = new Date(year, month, i);
         const today = new Date();
+        const currentDayDateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
         if (i === today.getDate() && month === today.getMonth() && year === today.getFullYear()) { dayEl.classList.add('today'); }
         dayEl.innerHTML = `<div class="day-number">${i}</div>`;
         dayEl.addEventListener('click', () => { openDayDetails(currentDayDateStr); });

@@ -3,11 +3,22 @@ function getTasksData() {
     if (!tasks || tasks.length === 0) return null;
 
     // Filter: Include only tasks (no comments, no notes)
-    const tasksToExport = tasks.filter(t =>
+    let tasksToExport = tasks.filter(t =>
         !t.isTimelineComment &&
         t.category !== 'comment' &&
         t.category !== 'note'
     );
+
+    // Filter by Date Range (if selected)
+    const exportStartEl = document.getElementById('export-date-start');
+    const exportEndEl = document.getElementById('export-date-end');
+
+    if (exportStartEl && exportStartEl.value) {
+        tasksToExport = tasksToExport.filter(t => t.date >= exportStartEl.value);
+    }
+    if (exportEndEl && exportEndEl.value) {
+        tasksToExport = tasksToExport.filter(t => t.date <= exportEndEl.value);
+    }
 
     if (tasksToExport.length === 0) return null;
 
