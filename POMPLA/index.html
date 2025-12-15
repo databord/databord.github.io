@@ -843,7 +843,23 @@
                 </div>
                 <div id="tab-data" class="settings-tab-content" style="display: none;">
                     <!-- Data Settings -->
-                    <p style="color: var(--text-secondary);">Opciones de datos...</p>
+                    <p style="color: var(--text-secondary); margin-bottom: 15px;">Gestiona tus datos:</p>
+
+                    <!-- SECTION: TAREAS -->
+                    <div class="settings-section"
+                        style="margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid var(--glass-border);">
+                        <h4 style="margin-bottom: 10px; color: var(--accent-color); font-size: 0.9rem;">TAREAS</h4>
+                        <div class="form-group" style="display: flex; gap: 10px; flex-direction: column;">
+                            <button class="btn-primary" onclick="exportTasksToExcel()"
+                                style="width: 100%; justify-content: center; gap: 10px;">
+                                <i class="fa-solid fa-file-excel"></i> Descargar tareas (.xls)
+                            </button>
+                            <button class="btn-secondary" onclick="exportTasksToCSV()"
+                                style="width: 100%; justify-content: center; gap: 10px;">
+                                <i class="fa-solid fa-file-csv"></i> Descargar tareas (.csv)
+                            </button>
+                        </div>
+                    </div>
                 </div>
                 <div id="tab-security" class="settings-tab-content" style="display: none;">
                     <!-- Security Settings -->
@@ -874,7 +890,14 @@
     </nav>
 
     <canvas id="confetti-canvas"></canvas>
+
+    <!-- LIBRARIES -->
+    <!-- SheetJS for Excel Export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+    <!-- APP SCRIPTS -->
     <script src="frases.js"></script>
+    <script src="export_logic.js"></script>
     <script src="script.js"></script>
 </body>
 
