@@ -2863,20 +2863,32 @@ function renderNotes(dateObj) {
             }
         }
 
+        const isCollapsed = note.isCollapsed; // Preserve state or default to false
+
         div.innerHTML = `
-            <div style="padding-right: 30px;">
-                ${dateBadge}
-                <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 5px;">${note.title}</div>
-                <div style="font-size: 0.9rem; color: var(--text-secondary); white-space: pre-wrap;">${note.desc || ''}</div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+                <div style="display: flex; align-items: center; gap: 5px; flex: 1;">
+                    ${dateBadge}
+                    <div style="font-weight: 600; color: var(--text-primary); cursor: pointer;" onclick="toggleNoteCollapse('${note.id}')">
+                        ${note.title}
+                    </div>
+                </div>
+                <div style="display: flex; gap: 5px; align-items: center;">
+                     <button onclick="editNote('${note.id}')" 
+                        style="background: transparent; border: none; color: var(--text-secondary); cursor: pointer;">
+                        <i class="fa-solid fa-pen"></i>
+                    </button>
+                    <button onclick="deleteNote('${note.id}')" 
+                        style="background: transparent; border: none; color: var(--text-secondary); cursor: pointer;">
+                        <i class="fa-solid fa-trash"></i>
+                    </button>
+                    <i class="fa-solid fa-chevron-down note-chevron" 
+                       onclick="toggleNoteCollapse('${note.id}')"
+                       style="font-size: 0.8rem; color: var(--text-secondary); cursor: pointer; transition: transform 0.2s; transform: ${isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)'}; margin-left: 5px;"></i>
+                </div>
             </div>
-            <button onclick="editNote('${note.id}')" 
-                style="position: absolute; top: 10px; right: 35px; background: transparent; border: none; color: var(--text-secondary); cursor: pointer;">
-                <i class="fa-solid fa-pen"></i>
-            </button>
-            <button onclick="deleteNote('${note.id}')" 
-                style="position: absolute; top: 10px; right: 10px; background: transparent; border: none; color: var(--text-secondary); cursor: pointer;">
-                <i class="fa-solid fa-trash"></i>
-            </button>
+            
+            <div id="note-content-${note.id}" style="font-size: 0.9rem; color: var(--text-secondary); white-space: pre-wrap; display: ${isCollapsed ? 'none' : 'block'}; padding-left: 0px; margin-top: 5px;">${note.desc || ''}</div>
         `;
         container.appendChild(div);
     });
@@ -4348,3 +4360,11 @@ function toggleMobileDailyGoalWidget() {
     }
 }
 window.toggleMobileDailyGoalWidget = toggleMobileDailyGoalWidget;
+
+function toggleNoteCollapse(id) {
+    const note = tasks.find(t => t.id === id);
+    if (!note) return;
+    note.isCollapsed = !note.isCollapsed;
+    renderNotes(currentDate);
+}
+window.toggleNoteCollapse = toggleNoteCollapse;
