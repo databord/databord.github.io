@@ -2917,8 +2917,8 @@ function renderCalendar() {
         const dayEl = document.createElement('div');
         dayEl.className = 'calendar-day';
         const currentDayDate = new Date(year, month, i);
-        const currentDayDateStr = currentDayDate.toISOString().split('T')[0];
-        if (currentDayDateStr === new Date().toISOString().split('T')[0]) { dayEl.classList.add('today'); }
+        const today = new Date();
+        if (i === today.getDate() && month === today.getMonth() && year === today.getFullYear()) { dayEl.classList.add('today'); }
         dayEl.innerHTML = `<div class="day-number">${i}</div>`;
         dayEl.addEventListener('click', () => { openDayDetails(currentDayDateStr); });
 
