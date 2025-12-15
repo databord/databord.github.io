@@ -2,6 +2,15 @@
 function getTasksData() {
     if (!tasks || tasks.length === 0) return null;
 
+    // Filter: Include only tasks (no comments, no notes)
+    const tasksToExport = tasks.filter(t =>
+        !t.isTimelineComment &&
+        t.category !== 'comment' &&
+        t.category !== 'note'
+    );
+
+    if (tasksToExport.length === 0) return null;
+
     const formatDate = (dateStr) => dateStr || "";
 
     const formatReminder = (t) => {
@@ -11,17 +20,38 @@ function getTasksData() {
 
     const formatTags = (t) => {
         let labels = [];
-        if (t.category) labels.push(t.category);
+        if (t.category && t.category !== 'general' && t.category !== 'note' && t.category !== 'comment') labels.push(t.category);
         if (t.tags && Array.isArray(t.tags)) labels.push(...t.tags);
-        return labels.join(", "); // For CSV we might need to be careful with commas if separator is comma, but user asked for ; separator so this is safeish, though usually quotes are better.
+        return labels.join(", ");
     };
 
-    return tasks.map(t => ({
+    // Recurrence Helpers
+    const formatRecurrence = (r) => {
+        const map = {
+            'daily': 'Diariamente',
+            'weekly': 'Semanalmente',
+            'monthly': 'Mensualmente',
+            'custom': 'Personalizado',
+            'none': 'No'
+        };
+        return map[r] || 'No';
+    };
+
+    const formatRecurrenceDays = (t) => {
+        if (t.recurrence !== 'custom' || !t.recurrenceDays || t.recurrenceDays.length === 0) return "";
+        const daysMap = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
+        // Ensure values are integers and map them
+        return t.recurrenceDays.map(d => daysMap[d]).filter(Boolean).join(", ");
+    };
+
+    return tasksToExport.map(t => ({
         "Fecha inicio": formatDate(t.date),
         "Fecha fin": formatDate(t.endDate),
         "Tarea": t.title,
         "Descripción": t.desc || "",
         "Prioridad": t.priority || "none",
+        "Se repite": formatRecurrence(t.recurrence),
+        "Días que repite": formatRecurrenceDays(t),
         "Etiquetas": formatTags(t),
         "Completada": t.status === 'completed' ? "Sí" : "No",
         "Recordatorio": formatReminder(t)
@@ -36,7 +66,8 @@ function exportTasksToExcel() {
 
     const wscols = [
         { wch: 12 }, { wch: 12 }, { wch: 30 }, { wch: 40 },
-        { wch: 10 }, { wch: 15 }, { wch: 10 }, { wch: 10 }
+        { wch: 10 }, { wch: 15 }, { wch: 20 }, { wch: 15 },
+        { wch: 10 }, { wch: 10 }
     ];
     ws['!cols'] = wscols;
 
