@@ -586,7 +586,9 @@
                     <div class="form-row">
                         <div class="form-group">
                             <label for="task-category">Categoría</label>
-                            <input type="text" id="task-category" placeholder="Ej. Trabajo, Casa">
+                            <input type="text" id="task-category" placeholder="Ej. Trabajo, Casa" autocomplete="off">
+                            <div id="category-suggestions"
+                                style="display: flex; flex-wrap: wrap; gap: 5px; margin-top: 5px;"></div>
                         </div>
                         <div class="form-group">
                             <label for="task-icon">Ícono</label>

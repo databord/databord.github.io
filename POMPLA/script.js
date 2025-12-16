@@ -88,7 +88,8 @@ function applyFilters() {
     // 3. Filter Tasks (Sidebar Only)
     const filteredTasks = tasks.filter(task => {
         // Exclude Timeline Comments from Main List
-        if (task.isTimelineComment || task.category === 'comment') return false;
+        if (task.isTimelineComment || task.category === 'comment' || task.category === '|||comment|||') return false;
+        if (task.isTimelineNote || task.category === 'note' || task.category === '|||note|||') return false;
 
         // Tag Filter (OR logic)
         if (activeFilters.tags.size > 0) {
@@ -542,8 +543,9 @@ function renderCategoryTags() {
 
     const tagCounts = {};
     const visibleTasksContext = tasks.filter(task => {
-        // Exclude Timeline Comments
-        if (task.isTimelineComment || task.category === 'comment') return false;
+        // Exclude Timeline Comments and Notes (Legacy and New)
+        if (task.isTimelineComment || task.category === 'comment' || task.category === '|||comment|||') return false;
+        if (task.isTimelineNote || task.category === 'note' || task.category === '|||note|||') return false;
 
         // Status Filter
         if (activeFilters.status === 'completed' && !task.completed) return false;
@@ -970,6 +972,40 @@ function setupCustomSelect() {
 }
 
 function setupEventListeners() {
+    // Prevent "|||" in Task Category (Reserved for system tags)
+    const categoryInput = document.getElementById('task-category');
+    if (categoryInput) {
+        categoryInput.addEventListener('input', (e) => {
+            if (e.target.value.includes('|||')) {
+                e.target.value = e.target.value.replace(/\|\|\|/g, '');
+
+                // Visual Feedback
+                let errorMsg = categoryInput.parentNode.querySelector('.input-error-msg');
+                if (!errorMsg) {
+                    errorMsg = document.createElement('span');
+                    errorMsg.className = 'input-error-msg';
+                    errorMsg.style.color = 'var(--priority-high)';
+                    errorMsg.style.fontSize = '0.75rem';
+                    errorMsg.style.marginTop = '5px';
+                    errorMsg.style.display = 'block';
+                    errorMsg.textContent = 'Las etiquetas no pueden contener |||';
+                    categoryInput.parentNode.appendChild(errorMsg);
+                }
+
+                if (categoryInput.errorTimeout) clearTimeout(categoryInput.errorTimeout);
+                categoryInput.errorTimeout = setTimeout(() => {
+                    if (errorMsg) errorMsg.remove();
+                }, 3000);
+            }
+            updateTagSuggestions(e.target.value);
+        });
+
+        // Also update on focus to show top 5 defaults
+        categoryInput.addEventListener('focus', (e) => {
+            updateTagSuggestions(e.target.value);
+        });
+    }
+
     document.getElementById('add-task-btn').addEventListener('click', () => openModal());
     document.getElementById('close-modal').addEventListener('click', closeModal);
     document.getElementById('cancel-task').addEventListener('click', closeModal);
@@ -1708,7 +1744,7 @@ function handleTaskSubmit(e) {
         recurrenceDays = Array.from(checks).map(c => parseInt(c.value));
     }
     const parentId = document.getElementById('task-parent').value;
-    const category = document.getElementById('task-category').value;
+    const category = document.getElementById('task-category').value.replace(/\|\|\|/g, '');
     const iconSelect = document.getElementById('task-icon-select');
     let icon = iconSelect.value;
     if (icon === 'custom') icon = document.getElementById('task-icon-custom').value;
@@ -1916,7 +1952,12 @@ function openDayDetails(date) {
     title.textContent = dateObj.toLocaleDateString('es-ES', options);
     body.innerHTML = '';
 
-    let dayTasks = tasks.filter(t => isTaskOnDate(t, dateObj));
+    let dayTasks = tasks.filter(t => {
+        if (!isTaskOnDate(t, dateObj)) return false;
+        if (t.category === 'comment' || t.category === '|||comment|||') return false;
+        if (t.category === 'note' || t.category === '|||note|||') return false;
+        return true;
+    });
     // Apply Folder Filter to Day Details
     if (activeFilters.folderId) {
         dayTasks = dayTasks.filter(t => t.parentId === activeFilters.folderId);
@@ -2753,7 +2794,7 @@ function saveNoteFromModal() {
         title: titleVal || 'Nota sin título',
         desc: contentVal,
         isTimelineNote: true,
-        category: 'note',
+        category: '|||note|||',
         status: 'pending',
         createdAt: new Date().toISOString()
     };
@@ -2820,7 +2861,7 @@ function renderNotes(dateObj) {
     const viewDateStr = dateObj.toISOString().split('T')[0];
 
     const notes = tasks.filter(t => {
-        if (!t.isTimelineNote && t.category !== 'note') return false;
+        if (!t.isTimelineNote && t.category !== 'note' && t.category !== '|||note|||') return false;
 
         // 1. Permanent Notes OR No Date (Always Visible)
         if (t.isPermanent || (!t.date && !t.startDate)) return true;
@@ -3843,7 +3884,7 @@ function deleteSession(taskId, sessionIndex) {
     const task = tasks.find(t => t.id == taskId);
 
     // IF COMMENT -> Delete Task entirely
-    if (task && (task.isTimelineComment || task.category === 'comment')) {
+    if (task && (task.isTimelineComment || task.category === 'comment' || task.category === '|||comment|||')) {
         if (window.deleteTaskFromFirebase) {
             window.deleteTaskFromFirebase(task.id);
             // Remove locally for immediate feedback
@@ -3993,7 +4034,7 @@ function saveComment() {
         // CREATE
         const newComment = {
             title: text,
-            category: 'comment',
+            category: '|||comment|||',
             commentType: type,
             isTimelineComment: true,
             date: datePart,
@@ -4152,7 +4193,7 @@ function saveComment() {
         // CREATE
         const newComment = {
             title: text,
-            category: 'comment',
+            category: '|||comment|||',
             commentType: type,
             isTimelineComment: true,
             date: datePart,
@@ -4367,4 +4408,86 @@ function toggleNoteCollapse(id) {
     note.isCollapsed = !note.isCollapsed;
     renderNotes(currentDate);
 }
+
 window.toggleNoteCollapse = toggleNoteCollapse;
+
+function updateTagSuggestions(inputValue) {
+    const container = document.getElementById('category-suggestions');
+    if (!container) return;
+    container.innerHTML = '';
+
+    // 1. Get all unique tags and counts
+    const tagCounts = {};
+    tasks.forEach(task => {
+        if (!task.category) return;
+        if (task.category.includes('|||')) return; // Ignore system tags in suggestions
+        if (task.category === 'comment' || task.category === 'note') return; // Ignore legacy system tags
+
+        task.category.split(',').forEach(t => {
+            const tag = t.trim();
+            if (tag) tagCounts[tag] = (tagCounts[tag] || 0) + 1;
+        });
+    });
+
+    // 2. Determine Scope (Current tag being typed)
+    const tags = inputValue.split(',');
+    const currentTagIndex = tags.length - 1;
+    let currentSegment = tags[currentTagIndex];
+    if (currentSegment) currentSegment = currentSegment.trim();
+    else currentSegment = '';
+
+    const existingInputTags = new Set(tags.map(t => t.trim().toLowerCase()).filter((t, i) => i !== currentTagIndex && t !== ''));
+
+    // 3. Filter Candidates
+    let candidates = Object.keys(tagCounts);
+
+    if (currentSegment === '') {
+        // Show Top 5
+        candidates.sort((a, b) => tagCounts[b] - tagCounts[a]);
+        candidates = candidates.slice(0, 5);
+    } else {
+        // Search
+        const lowerSeg = currentSegment.toLowerCase();
+        candidates = candidates.filter(tag => tag.toLowerCase().includes(lowerSeg));
+
+        candidates.sort((a, b) => {
+            const aStarts = a.toLowerCase().startsWith(lowerSeg);
+            const bStarts = b.toLowerCase().startsWith(lowerSeg);
+            if (aStarts && !bStarts) return -1;
+            if (!aStarts && bStarts) return 1;
+            return tagCounts[b] - tagCounts[a];
+        });
+    }
+
+    // Filter out already used
+    candidates = candidates.filter(tag => !existingInputTags.has(tag.toLowerCase()));
+
+    // 4. Render
+    if (candidates.length === 0) return;
+
+    candidates.forEach(tag => {
+        const btn = document.createElement('button');
+        btn.className = 'tag-chip';
+        btn.style.fontSize = '0.75rem';
+        btn.style.padding = '2px 8px';
+        btn.style.cursor = 'pointer';
+        btn.type = 'button';
+        btn.textContent = tag;
+
+        btn.onclick = () => {
+            // Replace current segment with tag
+            // Preserve previous tags
+            tags[currentTagIndex] = ' ' + tag;
+            const newValue = tags.join(',') + ', ';
+            const input = document.getElementById('task-category');
+            if (input) {
+                input.value = newValue;
+                input.focus();
+                // Trigger update again to show defaults or next suggestion
+                updateTagSuggestions(newValue);
+            }
+        };
+        container.appendChild(btn);
+    });
+}
+window.updateTagSuggestions = updateTagSuggestions;
