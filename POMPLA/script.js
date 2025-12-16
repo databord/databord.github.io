@@ -4398,6 +4398,9 @@ function setupSidebar() {
     if (settingsBtn && settingsModal && closeSettingsBtn) {
         settingsBtn.addEventListener('click', () => {
             settingsModal.classList.add('active');
+            if (typeof populateExportFilters === 'function') {
+                populateExportFilters();
+            }
         });
 
         closeSettingsBtn.addEventListener('click', () => {
