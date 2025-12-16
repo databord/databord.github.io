@@ -91,11 +91,12 @@ function applyFilters() {
         if (task.isTimelineComment || task.category === 'comment' || task.category === '|||comment|||') return false;
         if (task.isTimelineNote || task.category === 'note' || task.category === '|||note|||') return false;
 
-        // Tag Filter (OR logic)
+        // Tag Filter (AND logic)
         if (activeFilters.tags.size > 0) {
             if (!task.category) return false;
             const taskTags = task.category.split(',').map(t => t.trim());
-            if (![...activeFilters.tags].some(tag => taskTags.includes(tag))) return false;
+            // AND: Task must contain ALL tags in activeFilters.tags
+            if (![...activeFilters.tags].every(tag => taskTags.includes(tag))) return false;
         }
 
         // Folder Check: Always show folders (Unless filtered out by specific folder above)
@@ -2002,7 +2003,8 @@ function openDayDetails(date) {
         dayTasks = dayTasks.filter(t => {
             if (!t.category) return false;
             const taskTags = t.category.split(',').map(tag => tag.trim());
-            return taskTags.some(tag => activeFilters.mainTags.has(tag));
+            // AND logic: Task must have ALL selected tags
+            return [...activeFilters.mainTags].every(tag => taskTags.includes(tag));
         });
     }
 
@@ -3023,7 +3025,7 @@ function renderCalendar() {
             dayTasks = dayTasks.filter(t => {
                 if (!t.category) return false;
                 const taskTags = t.category.split(',').map(tag => tag.trim());
-                return taskTags.some(tag => activeFilters.mainTags.has(tag));
+                return [...activeFilters.mainTags].every(tag => taskTags.includes(tag));
             });
         }
 
@@ -3194,7 +3196,7 @@ function renderListView(rangeType = 'month', startDate = null, endDate = null) {
             if (activeFilters.mainTags && activeFilters.mainTags.size > 0) {
                 if (!t.category) return false;
                 const taskTags = t.category.split(',').map(tag => tag.trim());
-                if (!taskTags.some(tag => activeFilters.mainTags.has(tag))) return false;
+                if (![...activeFilters.mainTags].every(tag => taskTags.includes(tag))) return false;
             }
 
             // Standard Task Date Check
@@ -3369,7 +3371,7 @@ function renderTimeline(rangeType = 'today', startDate = null, endDate = null) {
             if (allActiveTags.size > 0) {
                 if (!task.category) return;
                 const taskTags = task.category.split(',').map(t => t.trim());
-                if (![...allActiveTags].some(tag => taskTags.includes(tag))) return;
+                if (![...allActiveTags].every(tag => taskTags.includes(tag))) return;
             }
 
             // 2. Folder Filter
