@@ -771,11 +771,44 @@ function updateMainTagFilterOptions() {
 
     // 1. Calculate Frequency
     const tagCounts = {};
-    tasks.forEach(task => {
+
+    // Determine Tasks to Count
+    let tasksToCount = tasks;
+    if (currentView === 'timeline') {
+        const timelineDate = new Date(currentDate);
+        timelineDate.setHours(0, 0, 0, 0);
+        // We use checkDate helper or direct comparison if checkDate is not easily accessible here?
+        // Let's use isTaskOnDate helper if available, or reproduce basic logic.
+        // isTaskOnDate is available in scope (script.js global).
+        // Timeline shows tasks on a specific date (usually currentDate).
+        tasksToCount = tasks.filter(task => {
+            // Also need sessions check for timeline? 
+            // renderTimeline iterates tasks and checks sessions OR direct date.
+            // Let's mirror renderTimeline logic for "Does this task appear?"
+
+            // Check direct date
+            if (isTaskOnDate(task, timelineDate)) return true;
+
+            // Check sessions
+            if (task.sessions && Array.isArray(task.sessions)) {
+                return task.sessions.some(s => {
+                    if (!s.start) return false;
+                    const sDate = new Date(s.start);
+                    return sDate.getFullYear() === timelineDate.getFullYear() &&
+                        sDate.getMonth() === timelineDate.getMonth() &&
+                        sDate.getDate() === timelineDate.getDate();
+                });
+            }
+            return false;
+        });
+    }
+
+    tasksToCount.forEach(task => {
         if (task.category && task.category.trim() !== '') {
             task.category.split(',').forEach(t => {
                 const tag = t.trim();
-                if (tag) {
+                // Exclude system tags
+                if (tag && tag !== 'comment' && tag !== 'note' && !tag.startsWith('|||')) {
                     tagCounts[tag] = (tagCounts[tag] || 0) + 1;
                 }
             });
@@ -1539,15 +1572,16 @@ function switchView(view) {
     if (folderContainer && tagContainer) {
         if (view === 'timeline') {
             folderContainer.style.display = 'none';
-            tagContainer.style.display = 'none';
-        } else {
-            folderContainer.style.display = 'block'; // Or revert to original logic references if needed, but 'block' works for divs
             tagContainer.style.display = 'block';
-            // Specifically, inline styles might need 'margin-left' adjustment, but 'block' keeps them visible.
-            // Original inline style: style="margin-left: 10px;" was preserved in HTML
-            // Setting display='block' respects other inline styles usually unless display was inline.
-            // Div default is block.
+        } else {
+            folderContainer.style.display = 'block';
+            tagContainer.style.display = 'block';
         }
+    }
+
+    // Refresh Filter Tag Counts based on View Context
+    if (typeof updateMainTagFilterOptions === 'function') {
+        updateMainTagFilterOptions();
     }
 }
 
@@ -3326,6 +3360,23 @@ function renderTimeline(rangeType = 'today', startDate = null, endDate = null) {
         const dayEvents = [];
 
         tasks.forEach(task => {
+            // Apply Filters
+            // 1. Tag Filter (Sidebar & Main Top Filter)
+            // Combine both sets effectively for OR logic or AND logic?
+            // Usually, if multiple filters types are active, it's AND across types.
+            // Inside tags, it depends. Let's assume OR within tags, but check both sets.
+            const allActiveTags = new Set([...activeFilters.tags, ...activeFilters.mainTags]);
+            if (allActiveTags.size > 0) {
+                if (!task.category) return;
+                const taskTags = task.category.split(',').map(t => t.trim());
+                if (![...allActiveTags].some(tag => taskTags.includes(tag))) return;
+            }
+
+            // 2. Folder Filter
+            if (activeFilters.folderId) {
+                if (task.id !== activeFilters.folderId && task.parentId !== activeFilters.folderId) return;
+            }
+
             if (task.sessions && Array.isArray(task.sessions)) {
                 task.sessions.forEach((session, index) => { // Capture index
                     if (!session.start) return;
@@ -3499,6 +3550,34 @@ function renderTimeline(rangeType = 'today', startDate = null, endDate = null) {
                 contentCol.appendChild(meta);
             }
 
+            // Render Tags
+            if (event.task.category) {
+                const parts = event.task.category.split(',').map(t => t.trim());
+                const userTags = parts.filter(t => t !== 'comment' && t !== '|||comment|||' && t !== 'note' && t !== '|||note|||' && !t.includes('|||') && t !== '');
+
+                if (userTags.length > 0) {
+                    const tagsContainer = document.createElement('div');
+                    tagsContainer.className = 'timeline-event-tags';
+                    tagsContainer.style.marginTop = '4px';
+                    tagsContainer.style.display = 'flex';
+                    tagsContainer.style.flexWrap = 'wrap';
+                    tagsContainer.style.gap = '4px';
+
+                    userTags.forEach(tag => {
+                        const chip = document.createElement('span');
+                        chip.style.fontSize = '0.7rem';
+                        chip.style.padding = '2px 6px';
+                        chip.style.borderRadius = '10px';
+                        chip.style.background = 'var(--hover-bg)';
+                        chip.style.color = 'var(--text-secondary)';
+                        chip.style.border = '1px solid var(--glass-border)';
+                        chip.textContent = tag;
+                        tagsContainer.appendChild(chip);
+                    });
+                    contentCol.appendChild(tagsContainer);
+                }
+            }
+
             item.appendChild(timeCol);
             item.appendChild(dotCol);
             item.appendChild(contentCol);
@@ -3512,6 +3591,11 @@ function renderTimeline(rangeType = 'today', startDate = null, endDate = null) {
 
     if (!hasActivity) {
         timelineViewEl.innerHTML = '<div class="empty-state" style="text-align:center; padding:40px; color:var(--text-secondary);">No hay actividad registrada en este periodo</div>';
+    }
+
+    // Update Tag Counts for Timeline Context
+    if (typeof updateMainTagFilterOptions === 'function') {
+        updateMainTagFilterOptions();
     }
 }
 
@@ -3968,6 +4052,8 @@ function openCommentModal(dateStr) {
 
     document.getElementById('comment-time').value = defaultTime;
     document.getElementById('comment-text').value = '';
+    const tagsInput = document.getElementById('comment-tags');
+    if (tagsInput) tagsInput.value = ''; // Reset tags
     document.getElementById('comment-modal').classList.add('active');
 
     document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
@@ -3995,6 +4081,20 @@ function openCommentEditModal(taskId) {
         timeVal = (new Date(d - offset)).toISOString().slice(0, 16);
     }
     document.getElementById('comment-time').value = timeVal;
+
+    // Extract User Tags
+    const tagsInput = document.getElementById('comment-tags');
+    if (tagsInput) {
+        let userTags = '';
+        if (task.category) {
+            // Remove system tags
+            const parts = task.category.split(',').map(t => t.trim());
+            const filtered = parts.filter(t => t !== 'comment' && t !== '|||comment|||' && t !== 'note' && t !== '|||note|||' && !t.includes('|||'));
+            userTags = filtered.join(', ');
+        }
+        tagsInput.value = userTags;
+    }
+
     document.getElementById('comment-modal').classList.add('active');
 }
 
@@ -4013,9 +4113,19 @@ function saveComment() {
     const type = document.getElementById('comment-type').value;
     const timeVal = document.getElementById('comment-time').value;
     const editId = document.getElementById('comment-edit-id').value;
+    const tagsInput = document.getElementById('comment-tags');
 
     if (!text) return alert('Escribe un comentario');
     if (!timeVal) return alert('Selecciona una hora');
+
+    // Combine Tags
+    let finalCategory = '|||comment|||';
+    if (tagsInput && tagsInput.value.trim() !== '') {
+        const userTags = tagsInput.value.replace(/\|\|\|/g, '').split(',').map(t => t.trim()).filter(t => t !== '');
+        if (userTags.length > 0) {
+            finalCategory += ', ' + userTags.join(', ');
+        }
+    }
 
     const datePart = timeVal.split('T')[0];
 
@@ -4023,6 +4133,7 @@ function saveComment() {
         // UPDATE
         const updateData = {
             title: text,
+            category: finalCategory,
             commentType: type,
             date: datePart,
             sessions: [{ start: new Date(timeVal).toISOString(), end: null }]
@@ -4034,7 +4145,7 @@ function saveComment() {
         // CREATE
         const newComment = {
             title: text,
-            category: '|||comment|||',
+            category: finalCategory,
             commentType: type,
             isTimelineComment: true,
             date: datePart,
