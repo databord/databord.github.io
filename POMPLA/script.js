@@ -1470,6 +1470,11 @@ function setupEventListeners() {
     document.getElementById('day-details-modal').addEventListener('click', (e) => {
         if (e.target === document.getElementById('day-details-modal')) closeDayDetails();
     });
+    // Prevent clicks inside modal content from closing the modal
+    const dayDetailsContent = document.querySelector('#day-details-modal .modal-content');
+    if (dayDetailsContent) {
+        dayDetailsContent.addEventListener('click', (e) => e.stopPropagation());
+    }
     taskListEl.addEventListener('dragover', handleDragOver);
     taskListEl.addEventListener('drop', handleDrop);
 
@@ -1978,10 +1983,14 @@ function isTaskOnDate(task, targetDateObj) {
 }
 
 function openDayDetails(date) {
+    console.log('[DEBUG] openDayDetails called for date:', date);
     const modal = document.getElementById('day-details-modal');
     const title = document.getElementById('day-details-title');
     const body = document.getElementById('day-details-body');
     const btnAdd = document.getElementById('btn-add-task-on-day');
+
+    console.log('[DEBUG] day-details-modal element:', modal);
+    console.log('[DEBUG] day-details-body element:', body);
 
     const dateObj = new Date(date + 'T00:00:00');
     const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
@@ -2025,9 +2034,51 @@ function openDayDetails(date) {
 
     btnAdd.onclick = () => { closeDayDetails(); openModal(); document.getElementById('task-date').value = date; };
     modal.classList.add('active');
+
+    // FIX: Force ALL critical styles via JavaScript to bypass CSS issues
+    modal.style.setProperty('display', 'flex', 'important');
+    modal.style.setProperty('opacity', '1', 'important');
+
+    // CRITICAL FIX: Temporarily disable pointer events to prevent calendar click from bubbling
+    // and immediately closing the modal. Re-enable after a short delay.
+    modal.style.setProperty('pointer-events', 'none', 'important');
+    setTimeout(() => {
+        modal.style.setProperty('pointer-events', 'all', 'important');
+        console.log('[DEBUG] Pointer events re-enabled after delay');
+    }, 100);
+
+    console.log('[DEBUG] AFTER setting all styles, values are:', {
+        display: modal.style.display,
+        opacity: modal.style.opacity,
+        pointerEvents: modal.style.pointerEvents
+    });
+
+    console.log('[DEBUG] modal classList after add:', modal.classList.toString());
+    console.log('[DEBUG] modal computed styles:', {
+        display: window.getComputedStyle(modal).display,
+        opacity: window.getComputedStyle(modal).opacity,
+        zIndex: window.getComputedStyle(modal).zIndex,
+        pointerEvents: window.getComputedStyle(modal).pointerEvents
+    });
+
+    const modalContent = modal.querySelector('.modal-content');
+    if (modalContent) {
+        console.log('[DEBUG] modal-content computed styles:', {
+            display: window.getComputedStyle(modalContent).display,
+            opacity: window.getComputedStyle(modalContent).opacity,
+            visibility: window.getComputedStyle(modalContent).visibility
+        });
+    }
 }
 
-function closeDayDetails() { document.getElementById('day-details-modal').classList.remove('active'); }
+function closeDayDetails() {
+    const modal = document.getElementById('day-details-modal');
+    modal.classList.remove('active');
+    // Reset all inline styles to let CSS handle it
+    modal.style.display = '';
+    modal.style.opacity = '';
+    modal.style.pointerEvents = '';
+}
 
 function toggleTaskStatus(id) {
     const task = tasks.find(t => t.id === id);
@@ -4178,8 +4229,12 @@ window.selectCommentType = selectCommentType;
 window.saveComment = saveComment;
 
 function openSessionEditModal(taskId, sessionIndex) {
+    console.log('[DEBUG] openSessionEditModal called for taskId:', taskId, 'sessionIndex:', sessionIndex);
     const task = tasks.find(t => t.id == taskId);
-    if (!task || !task.sessions[sessionIndex]) return;
+    if (!task || !task.sessions[sessionIndex]) {
+        console.log('[DEBUG] Task or session not found');
+        return;
+    }
 
     const session = task.sessions[sessionIndex];
     document.getElementById('edit-session-task-id').value = task.id;
@@ -4197,11 +4252,47 @@ function openSessionEditModal(taskId, sessionIndex) {
     document.getElementById('edit-session-start').value = toLocalISO(session.start);
     document.getElementById('edit-session-end').value = session.end ? toLocalISO(session.end) : '';
 
-    document.getElementById('session-edit-modal').classList.add('active');
+    const modal = document.getElementById('session-edit-modal');
+    console.log('[DEBUG] session-edit-modal element:', modal);
+
+    modal.classList.add('active');
+
+    // FIX: Force ALL critical styles via JavaScript to bypass CSS issues
+    modal.style.setProperty('display', 'flex', 'important');
+    modal.style.setProperty('opacity', '1', 'important');
+    modal.style.setProperty('pointer-events', 'all', 'important');
+
+    console.log('[DEBUG] AFTER setting all styles, values are:', {
+        display: modal.style.display,
+        opacity: modal.style.opacity,
+        pointerEvents: modal.style.pointerEvents
+    });
+
+    console.log('[DEBUG] modal classList after add:', modal.classList.toString());
+    console.log('[DEBUG] modal computed styles:', {
+        display: window.getComputedStyle(modal).display,
+        opacity: window.getComputedStyle(modal).opacity,
+        zIndex: window.getComputedStyle(modal).zIndex,
+        pointerEvents: window.getComputedStyle(modal).pointerEvents
+    });
+
+    const modalContent = modal.querySelector('.modal-content');
+    if (modalContent) {
+        console.log('[DEBUG] modal-content computed styles:', {
+            display: window.getComputedStyle(modalContent).display,
+            opacity: window.getComputedStyle(modalContent).opacity,
+            visibility: window.getComputedStyle(modalContent).visibility
+        });
+    }
 }
 
 function closeSessionEditModal() {
-    document.getElementById('session-edit-modal').classList.remove('active');
+    const modal = document.getElementById('session-edit-modal');
+    modal.classList.remove('active');
+    // Reset all inline styles to let CSS handle it
+    modal.style.display = '';
+    modal.style.opacity = '';
+    modal.style.pointerEvents = '';
 }
 
 function saveSessionEdit() {
