@@ -3665,7 +3665,7 @@ function updateTimerDisplay() {
     const miniBtn = document.getElementById('mini-timer-toggle');
     if (miniBtn) { miniBtn.innerHTML = timerInterval ? '<i class="fa-solid fa-pause"></i>' : '<i class="fa-solid fa-play"></i>'; }
     checkMiniTimerVisibility();
-    document.title = `${timeStr} - Planner Pro`;
+    document.title = `${timeStr} - Ceibo`;
     const circle = document.querySelector('.progress-ring__circle');
     const totalTime = pomodoroState.isBreak ? pomodoroState.breakTime * 60 : pomodoroState.workTime * 60;
     const radius = circle.r.baseVal.value;

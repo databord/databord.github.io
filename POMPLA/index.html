@@ -90,7 +90,7 @@
             <div class="sidebar-header">
                 <div style="display: flex; align-items: center; gap: 10px;">
                     <img src="https://i.imgur.com/5mBsegi.png" alt="Logo" style="height: 32px; width: auto;">
-                    <h1 style="color: #E95354; font-weight: bolder;">HIJOD EPUTA</h1>
+                    <h1 style="color: #E95354; font-weight: bolder;">Ceibo</h1>
                 </div>
                 <div style="display:flex; gap:5px;">
                     <button id="settings-btn" class="icon-btn" title="Configuración" style="font-size: 1rem;">
@@ -274,6 +274,7 @@
                             style="padding: 2px 8px; font-size: 0.8rem; border-radius: 4px; border: none; background: var(--accent-color); color: white; cursor: pointer;">Aplicar</button>
                     </div>
                 </div>
+                <!--End of Custom Date Picker Mobile -->
 
                 <div id="mobile-category-tags-container" class="tags-container hidden" style="margin-bottom: 10px;">
                 </div>
@@ -291,8 +292,9 @@
                 style="display:none; width:100%; margin: -5px 10px 10px 10px; width: calc(100% - 20px); background:var(--sidebar-bg); justify-content:center; padding: 4px;">
                 <i class="fa-solid fa-chevron-up"></i>
             </button>
+            <!-- End of Mobile Widgets Toggle Moved Below Container -->
 
-
+            <!-- Task Filters -->
             <div class="task-filters">
                 <button class="filter-btn" id="filter-completed" title="Ver tareas completadas"><i
                         class="fa-solid fa-check-double"></i></button>
@@ -339,6 +341,7 @@
                         style="padding: 2px 8px; font-size: 0.8rem; border-radius: 4px; border: none; background: var(--accent-color); color: white; cursor: pointer;">Aplicar</button>
                 </div>
             </div>
+            <!-- End of Custom Date Picker -->
 
             <div id="category-tags-container" class="tags-container hidden">
                 <!-- Tags injected by JS -->
@@ -358,7 +361,7 @@
             <div id="resizer" class="sidebar-resizer"></div>
         </aside>
 
-        <!-- Main Content: Calendar -->
+        <!-- Main View-->
         <main class="main-content">
             <header class="top-bar">
                 <button id="sidebar-expand-btn" class="sidebar-expand-btn" title="Expandir Barra Lateral">
@@ -370,6 +373,7 @@
                         <button id="view-list" class="view-btn"><i class="fa-solid fa-list"></i></button>
                         <button id="view-timeline" class="view-btn"><i class="fa-solid fa-timeline"></i></button>
                     </div>
+
 
                     <!-- Folder Filter (Main View Only) -->
                     <div id="filter-folder-container" style="margin-left: 10px; position:relative;">
@@ -463,6 +467,7 @@
                 </div>
             </div>
         </main>
+        <!-- End of Main View -->
 
         <audio id="timer-sound" src="data/rec/ring.ogg"></audio>
 
@@ -506,6 +511,7 @@
             </div>
         </div>
     </div>
+    <!-- End of Floating Pomodoro Panel -->
 
     <!-- Modal for Adding/Editing Tasks -->
     <div class="modal-overlay" id="task-modal">
@@ -567,94 +573,95 @@
                                 <label class="day-check"><input type="checkbox" value="6"> Sáb</label>
                             </div>
                         </div>
-                        <div class="form-group">
-                            <label for="task-parent">Subtarea de (Opcional)</label>
-                            <select id="task-parent">
-                                <option value="">Ninguna (Tarea Principal)</option>
-                            </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="task-parent">Subtarea de (Opcional)</label>
+                        <select id="task-parent">
+                            <option value="">Ninguna (Tarea Principal)</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="display:flex; align-items:center; gap:10px; margin-bottom:15px;">
+                        <div style="display:flex; align-items:center; gap:5px;">
+                            <input type="checkbox" id="task-is-folder">
+                            <label for="task-is-folder" style="font-weight:600; margin:0;">Es carpeta</label>
                         </div>
-                        <div class="form-group" style="display:flex; align-items:center; gap:10px; margin-bottom:15px;">
-                            <div style="display:flex; align-items:center; gap:5px;">
-                                <input type="checkbox" id="task-is-folder">
-                                <label for="task-is-folder" style="font-weight:600; margin:0;">Es carpeta</label>
-                            </div>
-                            <input type="color" id="task-color" value="#3b82f6"
-                                style="display:none; height:30px; width:50px; border:none; background:transparent; cursor:pointer;">
-                        </div>
+                        <input type="color" id="task-color" value="#3b82f6"
+                            style="display:none; height:30px; width:50px; border:none; background:transparent; cursor:pointer;">
+                    </div>
 
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="task-category">Categoría</label>
-                                <input type="text" id="task-category" placeholder="Ej. Trabajo, Casa"
-                                    autocomplete="off">
-                                <div id="category-suggestions"
-                                    style="display: flex; flex-wrap: wrap; gap: 5px; margin-top: 5px;"></div>
-                            </div>
-                            <div class="form-group">
-                                <label for="task-icon">Ícono</label>
-                                <select id="task-icon-select">
-                                    <option value="">Seleccionar...</option>
-                                    <option value="fa-solid fa-house">Casa</option>
-                                    <option value="fa-solid fa-truck">Camión</option>
-                                    <option value="fa-solid fa-eye">Ojo</option>
-                                    <option value="fa-solid fa-phone">Teléfono</option>
-                                    <option value="fa-solid fa-bolt">Rayo</option>
-                                    <option value="fa-solid fa-car">Auto</option>
-                                    <option value="fa-solid fa-gift">Regalo</option>
-                                    <option value="fa-solid fa-pen">Lápiz</option>
-                                    <option value="fa-solid fa-book">Libro</option>
-                                    <option value="fa-solid fa-gears">Engranajes</option>
-                                    <option value="fa-solid fa-ghost">Fantasma</option>
-                                    <option value="fa-solid fa-cloud">Nube</option>
-                                    <option value="fa-solid fa-business-time">Negocios</option>
-                                    <option value="fa-solid fa-clock">Reloj</option>
-                                    <option value="fa-solid fa-message">Mensaje</option>
-                                    <option value="fa-solid fa-hand-holding-dollar">Pago</option>
-                                    <option value="fa-solid fa-map-location">Mapa</option>
-                                    <option value="fa-solid fa-heart">Corazón</option>
-                                    <option value="fa-solid fa-star">Estrella</option>
-                                    <option value="custom">Otro...</option>
-                                </select>
-                                <input type="text" id="task-icon-custom" placeholder="fa-solid fa-..."
-                                    style="display: none; margin-top: 5px;">
-                            </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="task-category">Categoría</label>
+                            <input type="text" id="task-category" placeholder="Ej. Trabajo, Casa" autocomplete="off">
+                            <div id="category-suggestions"
+                                style="display: flex; flex-wrap: wrap; gap: 5px; margin-top: 5px;"></div>
                         </div>
                         <div class="form-group">
-                            <label>Recordatorio</label>
-                            <div style="display:flex; align-items:center; gap:15px;">
-                                <div style="display:flex; align-items:center; gap:5px;">
-                                    <input type="checkbox" id="task-reminder-active" style="width:auto;">
-                                    <label for="task-reminder-active" style="margin:0;">Activar recordatorio</label>
-                                </div>
-                                <input type="time" id="task-reminder-time" style="display:none;">
+                            <label for="task-icon">Ícono</label>
+                            <select id="task-icon-select">
+                                <option value="">Seleccionar...</option>
+                                <option value="fa-solid fa-house">Casa</option>
+                                <option value="fa-solid fa-truck">Camión</option>
+                                <option value="fa-solid fa-eye">Ojo</option>
+                                <option value="fa-solid fa-phone">Teléfono</option>
+                                <option value="fa-solid fa-bolt">Rayo</option>
+                                <option value="fa-solid fa-car">Auto</option>
+                                <option value="fa-solid fa-gift">Regalo</option>
+                                <option value="fa-solid fa-pen">Lápiz</option>
+                                <option value="fa-solid fa-book">Libro</option>
+                                <option value="fa-solid fa-gears">Engranajes</option>
+                                <option value="fa-solid fa-ghost">Fantasma</option>
+                                <option value="fa-solid fa-cloud">Nube</option>
+                                <option value="fa-solid fa-business-time">Negocios</option>
+                                <option value="fa-solid fa-clock">Reloj</option>
+                                <option value="fa-solid fa-message">Mensaje</option>
+                                <option value="fa-solid fa-hand-holding-dollar">Pago</option>
+                                <option value="fa-solid fa-map-location">Mapa</option>
+                                <option value="fa-solid fa-heart">Corazón</option>
+                                <option value="fa-solid fa-star">Estrella</option>
+                                <option value="custom">Otro...</option>
+                            </select>
+                            <input type="text" id="task-icon-custom" placeholder="fa-solid fa-..."
+                                style="display: none; margin-top: 5px;">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Recordatorio</label>
+                        <div style="display:flex; align-items:center; gap:15px;">
+                            <div style="display:flex; align-items:center; gap:5px;">
+                                <input type="checkbox" id="task-reminder-active" style="width:auto;">
+                                <label for="task-reminder-active" style="margin:0;">Activar recordatorio</label>
+                            </div>
+                            <input type="time" id="task-reminder-time" style="display:none;">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Pomodoro</label>
+                        <div class="pomodoro-settings">
+                            <div class="setting-item">
+                                <label>Ciclos</label>
+                                <input type="number" id="pomo-cycles" value="1" min="1" max="10">
+                            </div>
+                            <div class="setting-item">
+                                <label>Trabajo</label>
+                                <input type="number" id="pomo-work" value="25" min="1">
+                            </div>
+                            <div class="setting-item">
+                                <label>Descanso</label>
+                                <input type="number" id="pomo-break" value="5" min="1">
                             </div>
                         </div>
-                        <div class="form-group">
-                            <label>Pomodoro</label>
-                            <div class="pomodoro-settings">
-                                <div class="setting-item">
-                                    <label>Ciclos</label>
-                                    <input type="number" id="pomo-cycles" value="1" min="1" max="10">
-                                </div>
-                                <div class="setting-item">
-                                    <label>Trabajo</label>
-                                    <input type="number" id="pomo-work" value="25" min="1">
-                                </div>
-                                <div class="setting-item">
-                                    <label>Descanso</label>
-                                    <input type="number" id="pomo-break" value="5" min="1">
-                                </div>
-                            </div>
-                        </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn-secondary" id="cancel-task">Cancelar</button>
-                            <button type="submit" class="btn-primary">Guardar</button>
-                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn-secondary" id="cancel-task">Cancelar</button>
+                        <button type="submit" class="btn-primary">Guardar</button>
+                    </div>
                 </form>
             </div>
         </div>
     </div>
     </div>
+    <!-- End of Modal for Adding/Editing Tasks -->
 
     <!-- Modal for Day Details (Calendar View) -->
     <div class="modal-overlay" id="day-details-modal" style="z-index: 1500;">
@@ -673,6 +680,7 @@
             </div>
         </div>
     </div>
+    <!-- End of Modal for Day Details (Calendar View) -->
 
     <!-- Modal for Reminder Alert -->
     <div class="modal-overlay" id="reminder-modal" style="z-index: 10000;">
@@ -701,6 +709,7 @@
             </div>
         </div>
     </div>
+    <!-- End of Modal for Reminder Alert -->
 
     <!-- Modal for Session Editing -->
     <div class="modal-overlay" id="session-edit-modal" style="z-index: 1600;">
@@ -781,6 +790,7 @@
             </div>
         </div>
     </div>
+    <!-- End of Modal for Timeline Comments -->
 
 
     <!-- Modal for Notes -->
@@ -849,7 +859,7 @@
                             <option value="argentina_dark">Argentina Dark</option>
                             <option value="eye_care_light">Descanso Visual (Claro)</option>
                             <option value="eye_care_dark">Descanso Visual (Oscuro)</option>
-                            <option value="purple_dark">Violeta Oscuro</option>
+                            <option value="purple_dark">Kore</option>
                         </select>
                     </div>
                 </div>
@@ -927,6 +937,7 @@
             </div>
         </div>
     </div>
+    <!-- End of Settings Modal -->
 
     <!-- MOBILE BOTTOM NAVIGATION -->
     <nav class="mobile-bottom-nav">
@@ -947,6 +958,7 @@
             <span>Pomodoro</span>
         </button>
     </nav>
+    <!-- End of Mobile Bottom Navigation -->
 
     <canvas id="confetti-canvas"></canvas>
 

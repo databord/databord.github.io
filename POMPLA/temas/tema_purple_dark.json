@@ -4,8 +4,8 @@
     "--card-bg": "#2a2638",
     "--text-primary": "#e6e1f0",
     "--text-secondary": "#9d96b0",
-    "--accent-color": "#8c7ae6",
-    "--accent-hover": "#a29bfe",
+    "--accent-color": "#7833b1",
+    "--accent-hover": "#321956",
     "--glass-bg": "rgba(42, 38, 56, 0.8)",
     "--glass-border": "rgba(140, 122, 230, 0.15)"
 }
