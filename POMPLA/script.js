@@ -3627,12 +3627,13 @@ function renderTimeline(rangeType = 'today', startDate = null, endDate = null) {
                     }
                 });
             } else if (task.isTimelineComment && task.date === dateStr) {
-                // Handle Timeline Comments
+                // Handle Timeline Comments (fallback for old structure)
                 const startStr = (task.sessions && task.sessions[0]) ? task.sessions[0].start : task.date + 'T12:00:00';
+                const endStr = (task.sessions && task.sessions[0] && task.sessions[0].end) ? task.sessions[0].end : null;
                 dayEvents.push({
                     type: 'comment',
                     start: new Date(startStr),
-                    end: null,
+                    end: endStr ? new Date(endStr) : null,
                     task: task
                 });
             }
@@ -3685,13 +3686,13 @@ function renderTimeline(rangeType = 'today', startDate = null, endDate = null) {
             const startStr = event.start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
             let timeHtml = `<div>${startStr}</div>`;
-            if (event.type === 'session') {
-                if (event.end) {
-                    const endStr = event.end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                    timeHtml += `<div class="time-end-wrapper"><div class="time-end-dot"></div> <span>${endStr}</span></div>`;
-                } else {
-                    timeHtml += `<div class="time-end-wrapper" style="opacity:0.5"><div class="time-end-dot" style="background:var(--text-secondary)"></div> <span>...</span></div>`;
-                }
+            // Show end time for both sessions and comments
+            if (event.end) {
+                const endStr = event.end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                timeHtml += `<div class="time-end-wrapper"><div class="time-end-dot"></div> <span>${endStr}</span></div>`;
+            } else if (event.type === 'session') {
+                // Only show "..." for sessions without end time (ongoing sessions)
+                timeHtml += `<div class="time-end-wrapper" style="opacity:0.5"><div class="time-end-dot" style="background:var(--text-secondary)"></div> <span>...</span></div>`;
             }
             timeCol.innerHTML = timeHtml;
 
@@ -3743,7 +3744,15 @@ function renderTimeline(rangeType = 'today', startDate = null, endDate = null) {
                 const meta = document.createElement('div');
                 meta.className = 'timeline-event-meta';
                 meta.style.fontSize = '0.75rem'; meta.style.opacity = '0.7'; meta.style.marginTop = '2px';
-                meta.textContent = typeLabels[event.task.commentType] || 'Comentario';
+
+                // Show duration if end time exists
+                if (event.end) {
+                    const diffMs = event.end - event.start;
+                    const diffMins = Math.max(1, Math.round(diffMs / 60000));
+                    meta.textContent = `${typeLabels[event.task.commentType] || 'Comentario'} - Duración: ${diffMins} min`;
+                } else {
+                    meta.textContent = typeLabels[event.task.commentType] || 'Comentario';
+                }
                 contentCol.appendChild(meta);
             } else {
                 // Session Content
@@ -3778,6 +3787,18 @@ function renderTimeline(rangeType = 'today', startDate = null, endDate = null) {
                     meta.style.fontWeight = '600';
                 }
                 contentCol.appendChild(meta);
+
+                // Conclusiones
+                if (event.task.comment_after_end) {
+                    const conclusion = document.createElement('div');
+                    conclusion.className = 'timeline-conclusion';
+                    conclusion.style.fontSize = '0.75rem';
+                    conclusion.style.color = 'var(--text-secondary)';
+                    conclusion.style.fontStyle = 'italic';
+                    conclusion.style.marginTop = '4px';
+                    conclusion.textContent = event.task.comment_after_end;
+                    contentCol.appendChild(conclusion);
+                }
             }
 
             // Render Tags
@@ -4265,144 +4286,12 @@ function saveSessionEdit() {
     }
 }
 
-// --- TIMELINE COMMENTS ---
-function openCommentModal(dateStr) {
-    document.getElementById('comment-date-ref').value = dateStr;
-    document.getElementById('comment-edit-id').value = ''; // Ensure new
-
-    const now = new Date();
-    const todayStr = now.toISOString().split('T')[0];
-    let defaultTime;
-    if (dateStr === todayStr) {
-        const offset = now.getTimezoneOffset() * 60000;
-        defaultTime = (new Date(now - offset)).toISOString().slice(0, 16);
-    } else {
-        defaultTime = dateStr + 'T09:00';
-    }
-
-    document.getElementById('comment-time').value = defaultTime;
-    document.getElementById('comment-text').value = '';
-    const tagsInput = document.getElementById('comment-tags');
-    if (tagsInput) tagsInput.value = ''; // Reset tags
-    document.getElementById('comment-modal').classList.add('active');
-
-    document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
-    document.querySelector('.type-btn[data-type="comment"]').classList.add('active');
-    document.getElementById('comment-type').value = 'comment';
-}
-
-function openCommentEditModal(taskId) {
-    const task = tasks.find(t => t.id === taskId);
-    if (!task) return;
-
-    document.getElementById('comment-edit-id').value = task.id;
-    document.getElementById('comment-text').value = task.title;
-    document.getElementById('comment-type').value = task.commentType || 'comment';
-
-    document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
-    let type = task.commentType || 'comment';
-    const btn = document.querySelector(`.type-btn[data-type="${type}"]`);
-    if (btn) btn.classList.add('active');
-
-    let timeVal = '';
-    if (task.sessions && task.sessions.length > 0) {
-        const d = new Date(task.sessions[0].start);
-        const offset = d.getTimezoneOffset() * 60000;
-        timeVal = (new Date(d - offset)).toISOString().slice(0, 16);
-    }
-    document.getElementById('comment-time').value = timeVal;
-
-    // Extract User Tags
-    const tagsInput = document.getElementById('comment-tags');
-    if (tagsInput) {
-        let userTags = '';
-        if (task.category) {
-            // Remove system tags
-            const parts = task.category.split(',').map(t => t.trim());
-            const filtered = parts.filter(t => t !== 'comment' && t !== '|||comment|||' && t !== 'note' && t !== '|||note|||' && !t.includes('|||'));
-            userTags = filtered.join(', ');
-        }
-        tagsInput.value = userTags;
-    }
-
-    document.getElementById('comment-modal').classList.add('active');
-}
-
-function closeCommentModal() {
-    document.getElementById('comment-modal').classList.remove('active');
-}
-
-function selectCommentType(btn, type) {
-    document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    document.getElementById('comment-type').value = type;
-}
-
-function saveComment() {
-    const text = document.getElementById('comment-text').value;
-    const type = document.getElementById('comment-type').value;
-    const timeVal = document.getElementById('comment-time').value;
-    const editId = document.getElementById('comment-edit-id').value;
-    const tagsInput = document.getElementById('comment-tags');
-
-    if (!text) return alert('Escribe un comentario');
-    if (!timeVal) return alert('Selecciona una hora');
-
-    // Combine Tags
-    let finalCategory = '|||comment|||';
-    if (tagsInput && tagsInput.value.trim() !== '') {
-        const userTags = tagsInput.value.replace(/\|\|\|/g, '').split(',').map(t => t.trim()).filter(t => t !== '');
-        if (userTags.length > 0) {
-            finalCategory += ', ' + userTags.join(', ');
-        }
-    }
-
-    const datePart = timeVal.split('T')[0];
-
-    if (editId) {
-        // UPDATE
-        const updateData = {
-            title: text,
-            category: finalCategory,
-            commentType: type,
-            date: datePart,
-            sessions: [{ start: new Date(timeVal).toISOString(), end: null }]
-        };
-        if (window.updateTaskInFirebase) {
-            window.updateTaskInFirebase(editId, updateData);
-        }
-    } else {
-        // CREATE
-        const newComment = {
-            title: text,
-            category: finalCategory,
-            commentType: type,
-            isTimelineComment: true,
-            date: datePart,
-            status: 'completed',
-            sessions: [{ start: new Date(timeVal).toISOString(), end: null }],
-            createdAt: new Date().toISOString()
-        };
-
-        if (window.addTaskToFirebase) {
-            window.addTaskToFirebase(newComment);
-        }
-    }
-    closeCommentModal();
-    // Refresh with full state
-    setTimeout(() => applyFilters(), 500);
-}
 
 // Expose
 window.deleteSession = deleteSession;
 window.openSessionEditModal = openSessionEditModal;
 window.closeSessionEditModal = closeSessionEditModal;
 window.saveSessionEdit = saveSessionEdit;
-window.openCommentModal = openCommentModal;
-window.openCommentEditModal = openCommentEditModal;
-window.closeCommentModal = closeCommentModal;
-window.selectCommentType = selectCommentType;
-window.saveComment = saveComment;
 
 function openSessionEditModal(taskId, sessionIndex) {
     console.log('[DEBUG] openSessionEditModal called for taskId:', taskId, 'sessionIndex:', sessionIndex);
@@ -4427,6 +4316,7 @@ function openSessionEditModal(taskId, sessionIndex) {
 
     document.getElementById('edit-session-start').value = toLocalISO(session.start);
     document.getElementById('edit-session-end').value = session.end ? toLocalISO(session.end) : '';
+    document.getElementById('edit-session-conclusion').value = task.comment_after_end || '';
 
     const modal = document.getElementById('session-edit-modal');
     console.log('[DEBUG] session-edit-modal element:', modal);
@@ -4476,6 +4366,7 @@ function saveSessionEdit() {
     const idx = parseInt(document.getElementById('edit-session-index').value);
     const startVal = document.getElementById('edit-session-start').value;
     const endVal = document.getElementById('edit-session-end').value;
+    const conclusionVal = document.getElementById('edit-session-conclusion').value;
 
     const task = tasks.find(t => t.id == taskId);
     if (task && task.sessions && task.sessions[idx]) {
@@ -4483,8 +4374,13 @@ function saveSessionEdit() {
         if (endVal) task.sessions[idx].end = new Date(endVal).toISOString();
         else task.sessions[idx].end = null;
 
+        task.comment_after_end = conclusionVal;
+
         if (window.updateTaskInFirebase) {
-            window.updateTaskInFirebase(task.id, { sessions: task.sessions });
+            window.updateTaskInFirebase(task.id, {
+                sessions: task.sessions,
+                comment_after_end: conclusionVal
+            });
         }
         closeSessionEditModal();
         if (currentView === 'timeline') renderTimeline(activeFilters.dateRange);
@@ -4529,12 +4425,34 @@ function openCommentEditModal(taskId) {
     if (btn) btn.classList.add('active');
 
     let timeVal = '';
+    let endTimeVal = '';
     if (task.sessions && task.sessions.length > 0) {
         const d = new Date(task.sessions[0].start);
         const offset = d.getTimezoneOffset() * 60000;
         timeVal = (new Date(d - offset)).toISOString().slice(0, 16);
+
+        // Load end time if exists
+        if (task.sessions[0].end) {
+            const dEnd = new Date(task.sessions[0].end);
+            endTimeVal = (new Date(dEnd - offset)).toISOString().slice(0, 16);
+        }
     }
     document.getElementById('comment-time').value = timeVal;
+    document.getElementById('comment-end-time').value = endTimeVal;
+
+    // Extract User Tags
+    const tagsInput = document.getElementById('comment-tags');
+    if (tagsInput) {
+        let userTags = '';
+        if (task.category) {
+            // Remove system tags
+            const parts = task.category.split(',').map(t => t.trim());
+            const filtered = parts.filter(t => t !== 'comment' && t !== '|||comment|||' && t !== 'note' && t !== '|||note|||' && !t.includes('|||'));
+            userTags = filtered.join(', ');
+        }
+        tagsInput.value = userTags;
+    }
+
     document.getElementById('comment-modal').classList.add('active');
 }
 
@@ -4552,20 +4470,38 @@ function saveComment() {
     const text = document.getElementById('comment-text').value;
     const type = document.getElementById('comment-type').value;
     const timeVal = document.getElementById('comment-time').value;
+    const endTimeVal = document.getElementById('comment-end-time').value;
     const editId = document.getElementById('comment-edit-id').value;
+    const tagsInput = document.getElementById('comment-tags');
 
     if (!text) return alert('Escribe un comentario');
     if (!timeVal) return alert('Selecciona una hora');
 
+    // Combine Tags
+    let finalCategory = '|||comment|||';
+    if (tagsInput && tagsInput.value.trim() !== '') {
+        const userTags = tagsInput.value.replace(/\|\|\|/g, '').split(',').map(t => t.trim()).filter(t => t !== '');
+        if (userTags.length > 0) {
+            finalCategory += ', ' + userTags.join(', ');
+        }
+    }
+
     const datePart = timeVal.split('T')[0];
+
+    // Build session object with end time if provided
+    const sessionObj = {
+        start: new Date(timeVal).toISOString(),
+        end: endTimeVal ? new Date(endTimeVal).toISOString() : null
+    };
 
     if (editId) {
         // UPDATE
         const updateData = {
             title: text,
+            category: finalCategory,
             commentType: type,
             date: datePart,
-            sessions: [{ start: new Date(timeVal).toISOString(), end: null }]
+            sessions: [sessionObj]
         };
         if (window.updateTaskInFirebase) {
             window.updateTaskInFirebase(editId, updateData);
@@ -4574,12 +4510,12 @@ function saveComment() {
         // CREATE
         const newComment = {
             title: text,
-            category: '|||comment|||',
+            category: finalCategory,
             commentType: type,
             isTimelineComment: true,
             date: datePart,
             status: 'completed',
-            sessions: [{ start: new Date(timeVal).toISOString(), end: null }],
+            sessions: [sessionObj],
             createdAt: new Date().toISOString()
         };
 

@@ -1138,6 +1138,13 @@ body {
     transform: rotate(-45deg);
 }
 
+/* Comment Type Selector Active State */
+.type-btn.active {
+    background-color: var(--accent-hover) !important;
+    border-color: var(--accent-hover) !important;
+    color: white !important;
+}
+
 /* Task Category Badge */
 .task-category-badge {
     display: inline-block;

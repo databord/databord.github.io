@@ -183,6 +183,9 @@ window.addTaskToFirebase = async (taskObj) => {
             sessions: taskObj.sessions || [],
             isTimelineComment: !!taskObj.isTimelineComment,
             commentType: taskObj.commentType || "",
+            isFolder: !!taskObj.isFolder,
+            color: taskObj.color || "",
+            comment_after_end: taskObj.comment_after_end || "",
             createdAt: new Date().toISOString()
         };
         await addDoc(collection(db, TASK_COLLECTION), dataToSave);
