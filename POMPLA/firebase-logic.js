@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, query, where, onSnapshot, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, updatePassword, reauthenticateWithCredential, EmailAuthProvider } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, query, where, onSnapshot, orderBy, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 const firebaseConfig = {
     apiKey: "AIzaSyBycm4N9nCTrsajbmt3VoWeoc62IP0usn4",
@@ -111,6 +111,48 @@ window.authLogout = async () => {
         await signOut(auth);
     } catch (error) {
         console.error("Error logout:", error);
+    }
+};
+
+window.checkInvitationCode = async (code) => {
+    try {
+        // Assume collection is 'invitation_codes' and doc ID is the code
+        const docRef = doc(db, "invitation_codes", code);
+        const docSnap = await getDoc(docRef);
+
+        if (docSnap.exists()) {
+            // Optional: Check if code is active or has usage limit
+            const data = docSnap.data();
+            if (data.active === false) return { valid: false, message: "Código inactivo." };
+            return { valid: true };
+        } else {
+            return { valid: false, message: "Código inválido." };
+        }
+    } catch (error) {
+        console.error("Error verificando código:", error);
+        return { valid: false, message: "Error verificando código. Intente más tarde." };
+    }
+};
+
+window.changeUserPassword = async (oldPassword, newPassword) => {
+    const user = auth.currentUser;
+    if (!user) return { success: false, message: "No hay usuario autenticado." };
+
+    try {
+        // 1. Re-authenticate
+        const credential = EmailAuthProvider.credential(user.email, oldPassword);
+        await reauthenticateWithCredential(user, credential);
+
+        // 2. Update Password
+        await updatePassword(user, newPassword);
+        return { success: true };
+    } catch (error) {
+        console.error("Error cambiando contraseña:", error.code);
+        let msg = "Error al actualizar la contraseña.";
+        if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password') msg = "La contraseña actual es incorrecta.";
+        if (error.code === 'auth/weak-password') msg = "La nueva contraseña es muy débil.";
+        if (error.code === 'auth/requires-recent-login') msg = "Por seguridad, inicia sesión nuevamente antes de cambiar la contraseña.";
+        return { success: false, message: msg };
     }
 };
 

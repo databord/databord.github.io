@@ -896,53 +896,229 @@ function updateMainTagFilterOptions() {
 }
 
 function setupAuthListeners() {
-    const loginForm = document.getElementById('login-form');
-    // ... same as before
-    const emailInput = document.getElementById('login-email');
-    const passInput = document.getElementById('login-password');
-    const errorMsg = document.getElementById('login-error');
-    const btnRegister = document.getElementById('btn-register');
+    // Auth Elements
+    const authForm = document.getElementById('auth-form');
+    const authTitle = document.getElementById('auth-title');
+    const emailInput = document.getElementById('auth-email');
+    const passInput = document.getElementById('auth-password');
+    const passConfirmInput = document.getElementById('auth-password-confirm'); // New
+    const inviteInput = document.getElementById('auth-invite-code'); // New
+    const grpConfirm = document.getElementById('grp-auth-confirm'); // New
+    const grpInvite = document.getElementById('grp-auth-invite'); // New
+    const errorMsg = document.getElementById('auth-error');
+    const btnSubmit = document.getElementById('btn-auth-submit');
+    const btnToggle = document.getElementById('btn-toggle-auth');
+    const switchText = document.getElementById('auth-switch-text');
+
+    // Logout
     const btnLogout = document.getElementById('logout-btn');
 
-    if (loginForm) {
-        loginForm.addEventListener('submit', async (e) => {
+    let isLoginMode = true;
+
+    // Toggle Mode Logic
+    if (btnToggle) {
+        btnToggle.addEventListener('click', () => {
+            isLoginMode = !isLoginMode;
+            errorMsg.style.display = 'none';
+
+            if (isLoginMode) {
+                // LOGIN MODE
+                authTitle.textContent = "Iniciar Sesión";
+                btnSubmit.textContent = "Iniciar Sesión";
+                switchText.textContent = "¿No tienes cuenta?";
+                btnToggle.textContent = "Registrarse";
+                // Hide extra fields
+                grpConfirm.style.display = 'none';
+                grpInvite.style.display = 'none';
+                // Remove required attribute just in case
+                passConfirmInput.required = false;
+                inviteInput.required = false;
+            } else {
+                // REGISTER MODE
+                authTitle.textContent = "Crear Cuenta";
+                btnSubmit.textContent = "Registrarse";
+                switchText.textContent = "¿Ya tienes cuenta?";
+                btnToggle.textContent = "Iniciar Sesión";
+                // Show extra fields
+                grpConfirm.style.display = 'block';
+                grpInvite.style.display = 'block';
+                passConfirmInput.required = true;
+                inviteInput.required = true;
+            }
+        });
+    }
+
+    // Submit Handler
+    if (authForm) {
+        authForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             errorMsg.style.display = 'none';
-            if (window.authLogin) {
-                const result = await window.authLogin(emailInput.value, passInput.value);
-                if (!result.success) {
-                    errorMsg.textContent = result.message;
-                    errorMsg.style.display = 'block';
-                } else {
-                    emailInput.value = ''; passInput.value = '';
-                }
-            }
-        });
-    }
-    if (btnRegister) {
-        btnRegister.addEventListener('click', async () => {
-            errorMsg.style.display = 'none';
-            if (passInput.value.length < 6) {
+
+            const email = emailInput.value;
+            const password = passInput.value;
+
+            if (!email || !password) return;
+
+            if (password.length < 6) {
                 errorMsg.textContent = "La contraseña debe tener al menos 6 caracteres.";
-                errorMsg.style.display = 'block'; return;
+                errorMsg.style.display = 'block';
+                return;
             }
-            if (window.authRegister) {
-                const result = await window.authRegister(emailInput.value, passInput.value);
+
+            let result;
+            if (isLoginMode) {
+                if (window.authLogin) {
+                    btnSubmit.textContent = "Iniciando...";
+                    btnSubmit.disabled = true;
+                    result = await window.authLogin(email, password);
+                }
+            } else {
+                // REGISTRATION VALIDATIONS
+                const passConfirm = passConfirmInput.value;
+                const inviteCode = inviteInput.value.trim();
+
+                if (password !== passConfirm) {
+                    errorMsg.textContent = "Las contraseñas no coinciden.";
+                    errorMsg.style.display = 'block';
+                    return;
+                }
+
+                if (!inviteCode) {
+                    errorMsg.textContent = "Debes ingresar un código de invitación.";
+                    errorMsg.style.display = 'block';
+                    return;
+                }
+
+                // Verify Code
+                btnSubmit.textContent = "Verificando código...";
+                btnSubmit.disabled = true;
+
+                if (window.checkInvitationCode) {
+                    const codeCheck = await window.checkInvitationCode(inviteCode);
+                    if (!codeCheck.valid) {
+                        errorMsg.textContent = codeCheck.message || "Código inválido.";
+                        errorMsg.style.display = 'block';
+                        btnSubmit.textContent = "Registrarse";
+                        btnSubmit.disabled = false;
+                        return;
+                    }
+                } else {
+                    console.warn("Función checkInvitationCode no encontrada. Saltando verificación (DEV MODE).");
+                }
+
+                if (window.authRegister) {
+                    btnSubmit.textContent = "Registrando...";
+                    result = await window.authRegister(email, password);
+                }
+            }
+
+            btnSubmit.disabled = false;
+
+            if (result) {
                 if (!result.success) {
                     errorMsg.textContent = result.message;
                     errorMsg.style.display = 'block';
+                    // Reset button text
+                    btnSubmit.textContent = isLoginMode ? "Iniciar Sesión" : "Registrarse";
                 } else {
-                    alert("Cuenta creada. Iniciando sesión...");
-                    emailInput.value = ''; passInput.value = '';
+                    // Success
+                    emailInput.value = '';
+                    passInput.value = '';
+                    if (!isLoginMode) {
+                        alert("Cuenta creada con éxito.");
+                        // Clean
+                        passConfirmInput.value = '';
+                        inviteInput.value = '';
+                    }
+                    btnSubmit.textContent = isLoginMode ? "Iniciar Sesión" : "Registrarse";
                 }
             }
         });
     }
+
+    // Logout Logic
     if (btnLogout) {
         btnLogout.addEventListener('click', () => {
             if (confirm("¿Cerrar sesión?")) {
                 if (window.authLogout) window.authLogout();
             }
+        });
+    }
+
+    // --- Change Password Logic (Settings) ---
+    const btnChangePass = document.getElementById('btn-change-pass');
+    const oldPassInput = document.getElementById('sec-old-pass');
+    const newPassInput = document.getElementById('sec-new-pass');
+    const confirmPassInput = document.getElementById('sec-confirm-pass');
+    const secMsg = document.getElementById('sec-msg');
+
+    if (btnChangePass) {
+        btnChangePass.addEventListener('click', async () => {
+            // UI Reset
+            secMsg.style.display = 'none';
+            secMsg.style.color = 'var(--text-secondary)';
+
+            const oldPass = oldPassInput.value;
+            const newPass = newPassInput.value;
+            const confirmPass = confirmPassInput.value;
+
+            // Validations
+            if (!oldPass || !newPass || !confirmPass) {
+                secMsg.textContent = "Por favor completa todos los campos.";
+                secMsg.style.color = "var(--danger-color)";
+                secMsg.style.display = 'block';
+                return;
+            }
+
+            if (newPass.length < 6) {
+                secMsg.textContent = "La nueva contraseña debe tener al menos 6 caracteres.";
+                secMsg.style.color = "var(--danger-color)";
+                secMsg.style.display = 'block';
+                return;
+            }
+
+            if (newPass !== confirmPass) {
+                secMsg.textContent = "Las nuevas contraseñas no coinciden.";
+                secMsg.style.color = "var(--danger-color)";
+                secMsg.style.display = 'block';
+                return;
+            }
+
+            if (oldPass === newPass) {
+                secMsg.textContent = "La nueva contraseña no puede ser igual a la anterior.";
+                secMsg.style.color = "var(--danger-color)";
+                secMsg.style.display = 'block';
+                return;
+            }
+
+            // Action
+            btnChangePass.disabled = true;
+            btnChangePass.textContent = "Actualizando...";
+
+            if (window.changeUserPassword) {
+                const result = await window.changeUserPassword(oldPass, newPass);
+
+                if (result.success) {
+                    secMsg.textContent = "¡Contraseña actualizada con éxito!";
+                    secMsg.style.color = "var(--success-color)"; // Ensure this var exists or use green
+                    if (!getComputedStyle(document.documentElement).getPropertyValue('--success-color')) {
+                        secMsg.style.color = "#4CAF50";
+                    }
+                    secMsg.style.display = 'block';
+
+                    // Clear inputs
+                    oldPassInput.value = '';
+                    newPassInput.value = '';
+                    confirmPassInput.value = '';
+                } else {
+                    secMsg.textContent = result.message;
+                    secMsg.style.color = "var(--danger-color)";
+                    secMsg.style.display = 'block';
+                }
+            }
+
+            btnChangePass.disabled = false;
+            btnChangePass.textContent = "Actualizar Contraseña";
         });
     }
 }
