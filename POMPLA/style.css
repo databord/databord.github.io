@@ -133,6 +133,12 @@ body {
     font-weight: 600;
 }
 
+/* Hide mobile header on desktop */
+#mobile-sidebar-header {
+    display: none;
+}
+
+
 .btn-primary {
     background-color: var(--accent-color);
     color: var(--text-primary);
@@ -1286,8 +1292,8 @@ body {
         overflow: hidden;
         padding-bottom: 60px;
         /* Space for Bottom Nav */
-        padding-top: 50px;
-        /* Space for Mini Timer (Always visible) */
+        padding-top: 100px;
+        /* Space for Mini Timer (50px) + Sidebar Header (50px) */
     }
 
     /* 1. VIEW VISIBILITY LOGIC (Strict Separation) */
@@ -1346,7 +1352,6 @@ body {
     }
 
     /* In Timer Tab: Hide unnecessary sidebar elements */
-    body.tab-timer .sidebar .sidebar-header,
     body.tab-timer .sidebar .task-filters {
         display: none;
     }
@@ -1615,18 +1620,35 @@ body {
     .sidebar {
         padding: 10px 0 !important;
         gap: 5px !important;
-        /* Ensure header is visible */
         display: flex;
         flex-direction: column;
     }
 
-    .sidebar .sidebar-header {
-        display: flex !important;
-        padding: 0 10px;
+    /* Hide desktop sidebar header in mobile */
+    #desktop-sidebar-header {
+        display: none !important;
     }
 
-    /* Hide collapse button on mobile, keep settings/logout */
-    #sidebar-collapse-btn {
+    /* MOBILE SIDEBAR HEADER - Always visible, positioned below mini-timer */
+    #mobile-sidebar-header {
+        position: fixed;
+        top: 50px;
+        /* Below mobile-mini-timer */
+        left: 0;
+        width: 100%;
+        z-index: 1900;
+        /* Below mini-timer (2000) but above content */
+        background-color: var(--sidebar-bg);
+        border-bottom: 1px solid var(--glass-border);
+        padding: 8px 10px !important;
+        display: flex !important;
+        justify-content: space-between;
+        align-items: center;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    }
+
+    /* Hide collapse button on mobile sidebar header */
+    #mobile-sidebar-header #sidebar-collapse-btn {
         display: none !important;
     }
 

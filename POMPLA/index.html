@@ -104,21 +104,40 @@
     </div>
 
     <div class="app-container" id="app-container">
+        <!-- Mobile Sidebar Header (Independent from sidebar) -->
+        <div class="sidebar-header" id="mobile-sidebar-header">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <img src="https://i.imgur.com/5mBsegi.png" alt="Logo" style="height: 32px; width: auto;">
+                <h1 style="color: #E95354; font-weight: bolder;">Ceibo</h1>
+            </div>
+            <div style="display:flex; gap:5px;">
+                <button id="settings-btn" class="icon-btn" title="Configuración" style="font-size: 1rem;">
+                    <i class="fa-solid fa-gear"></i>
+                </button>
+                <button id="logout-btn" class="icon-btn" title="Cerrar Sesión" style="font-size: 1rem;">
+                    <i class="fa-solid fa-right-from-bracket"></i>
+                </button>
+                <button id="sidebar-collapse-btn" class="sidebar-collapse-btn" title="Contraer Barra Lateral">
+                    <i class="fa-solid fa-angles-left"></i>
+                </button>
+            </div>
+        </div>
+
         <!-- Sidebar: Task List -->
         <aside class="sidebar">
-            <div class="sidebar-header">
+            <div class="sidebar-header" id="desktop-sidebar-header">
                 <div style="display: flex; align-items: center; gap: 10px;">
                     <img src="https://i.imgur.com/5mBsegi.png" alt="Logo" style="height: 32px; width: auto;">
                     <h1 style="color: #E95354; font-weight: bolder;">Ceibo</h1>
                 </div>
                 <div style="display:flex; gap:5px;">
-                    <button id="settings-btn" class="icon-btn" title="Configuración" style="font-size: 1rem;">
+                    <button class="icon-btn settings-btn-dup" title="Configuración" style="font-size: 1rem;">
                         <i class="fa-solid fa-gear"></i>
                     </button>
-                    <button id="logout-btn" class="icon-btn" title="Cerrar Sesión" style="font-size: 1rem;">
+                    <button class="icon-btn logout-btn-dup" title="Cerrar Sesión" style="font-size: 1rem;">
                         <i class="fa-solid fa-right-from-bracket"></i>
                     </button>
-                    <button id="sidebar-collapse-btn" class="sidebar-collapse-btn" title="Contraer Barra Lateral">
+                    <button class="sidebar-collapse-btn" title="Contraer Barra Lateral">
                         <i class="fa-solid fa-angles-left"></i>
                     </button>
                 </div>
@@ -843,7 +862,7 @@
                         style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--glass-border); background: var(--bg-dark); color: var(--text-primary);">
                     <div style="display: flex; align-items: center; gap: 5px; margin-top: 5px;">
                         <input type="checkbox" id="note-no-date">
-                        <label for="note-no-date" style="margin: 0; font-size: 0.9rem;">Sin fecha</label>
+                        <label for="note-no-date" style="margin: 0; font-size: 0.9rem;">Siempre visible</label>
                     </div>
                 </div>
                 <div class="form-group">

@@ -36,7 +36,31 @@ const ICONS = {
 
 const expandedTasks = new Set();
 
+// --- HELPER FUNCTIONS ---
+// esto esta ok - helper reutilizable para formatear tiempo
+function formatTime(totalSeconds) {
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+}
+
+// esto esta ok - sincroniza todos los botones de play/pause
+function updatePlayPauseButtons(isPlaying) {
+    const icon = isPlaying ? '<i class="fa-solid fa-pause"></i>' : ICONS.play;
+    document.getElementById('pomodoro-start').innerHTML = icon;
+    document.getElementById('mini-play-btn').innerHTML = icon;
+    const mobileToggle = document.getElementById('mini-timer-toggle');
+    if (mobileToggle) mobileToggle.innerHTML = icon;
+}
+
+// esto esta ok - obtiene fecha de hoy sin hora
+function getTodayDate() {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+}
+
 // --- FILTERING LOGIC ---
+// esto esta ok - centralizador de filtros para sidebar
 function applyFilters() {
     // 1. Update UI Elements State (Desktop & Mobile Sync)
     const dateSelect = document.getElementById('filter-date-range');
@@ -57,7 +81,7 @@ function applyFilters() {
     // 2. Determine Sidebar Date Range (Based on SYSTEM TIME, not Navigation)
     let start = null, end = null;
     const now = new Date(); // System Time
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const today = getTodayDate(); // esto esta ok - usa helper
 
     if (activeFilters.dateRange === 'today') {
         start = new Date(today); end = new Date(today);
@@ -157,6 +181,7 @@ function applyFilters() {
     }
 }
 
+// esto esta ok - actualiza la vista principal independientemente de filtros laterales
 function refreshMainView() {
     // 2. Determine Main View Date Range (Based on NAVIGABLE currentDate)
     let start = null, end = null;
@@ -236,13 +261,12 @@ window.switchMobileTab = function (tab) {
 };
 
 // --- DAILY GOAL LOGIC ---
+// esto esta ok - calcula el progreso hacia la meta diaria
 function updateDailyGoalUI() {
-    // MATCH FILTER LOGIC EXACTLY
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    // MATCH FILTER LOGIC EXACTLY - esto esta ok - usa helper para fecha consistente
+    const today = getTodayDate();
 
     // Helper: Check if task is valid for 'Today' (scheduled or recurring on today)
-    // Matches behavior of: activeFilters.dateRange === 'today'
     const isToday = (t) => isTaskOnDate(t, today);
 
     // Completed Today (Filter: Status=Completed AND Date=Today AND Not Comment)
@@ -300,8 +324,8 @@ function updateDailyGoalUI() {
 }
 
 function updateDailyStatsUI(totalToday, pendingTodayCount, todayRef) {
-    // Use passed reference or fallback for robustness
-    const today = todayRef || new Date(new Date().setHours(0, 0, 0, 0));
+    // Use passed reference or fallback for robustness - esto esta ok
+    const today = todayRef || getTodayDate();
 
     // Pending Tasks Today breakdown
     const pendingTasks = tasks.filter(t =>
@@ -523,8 +547,7 @@ window.recibirTareasDeFirebase = (tareasDescargadas) => {
     if (currentView === 'calendar') renderCalendar();
     applyFilters();
 
-    updateParentSelect();
-    renderCategoryTags();
+    // esto esta ok - llamadas de actualización sin duplicar
     updateParentSelect();
     renderCategoryTags();
     updateFolderFilterOptions(); // Update Folder Dropdown
@@ -532,6 +555,7 @@ window.recibirTareasDeFirebase = (tareasDescargadas) => {
     updateDailyGoalUI();
 };
 
+// esto podria hacerse con memoization para mejorar rendimiento si hay muchas etiquetas
 function renderCategoryTags() {
     // Desktop Container
     const desktopContainer = document.getElementById('category-tags-container');
@@ -554,8 +578,7 @@ function renderCategoryTags() {
 
         // Date Range Filter
         if (activeFilters.dateRange !== 'all') {
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
+            const today = getTodayDate(); // esto esta ok
 
             // Helper for single date match
             const checkDate = (d) => {
@@ -1043,6 +1066,16 @@ function setupAuthListeners() {
                 if (window.authLogout) window.authLogout();
             }
         });
+
+        // Duplicate logout button for mobile header
+        const btnLogoutDup = document.querySelector('.logout-btn-dup');
+        if (btnLogoutDup) {
+            btnLogoutDup.addEventListener('click', () => {
+                if (confirm("¿Cerrar sesión?")) {
+                    if (window.authLogout) window.authLogout();
+                }
+            });
+        }
     }
 
     // --- Change Password Logic (Settings) ---
@@ -1893,6 +1926,7 @@ function openModal(editId = null) {
 
 function closeModal() { modal.classList.remove('active'); }
 
+// esto esta ok - actualiza opciones de padre según contexto
 function updateParentSelect() {
     const editId = taskForm.dataset.editId;
     const dateVal = document.getElementById('task-date').value;
@@ -3589,23 +3623,11 @@ function renderTimeline(rangeType = 'today', startDate = null, endDate = null) {
         // Gather Sessions for this day
         const dayEvents = [];
 
-        tasks.forEach(task => {
-            // Apply Filters
-            // 1. Tag Filter (Sidebar & Main Top Filter)
-            // Combine both sets effectively for OR logic or AND logic?
-            // Usually, if multiple filters types are active, it's AND across types.
-            // Inside tags, it depends. Let's assume OR within tags, but check both sets.
-            const allActiveTags = new Set([...activeFilters.tags, ...activeFilters.mainTags]);
-            if (allActiveTags.size > 0) {
-                if (!task.category) return;
-                const taskTags = task.category.split(',').map(t => t.trim());
-                if (![...allActiveTags].every(tag => taskTags.includes(tag))) return;
-            }
 
-            // 2. Folder Filter
-            if (activeFilters.folderId) {
-                if (task.id !== activeFilters.folderId && task.parentId !== activeFilters.folderId) return;
-            }
+        tasks.forEach(task => {
+            // CRITICAL: Timeline NO debe filtrar por tags ni carpetas
+            // Los filtros solo afectan a task-list (sidebar), NO al timeline
+            // El timeline muestra TODAS las sesiones del día actual
 
             if (task.sessions && Array.isArray(task.sessions)) {
                 task.sessions.forEach((session, index) => { // Capture index
@@ -3850,10 +3872,9 @@ function renderTimeline(rangeType = 'today', startDate = null, endDate = null) {
     }
 }
 
+// esto esta ok - actualiza todos los displays del timer
 function updateTimerDisplay() {
-    const minutes = Math.floor(timeLeft / 60);
-    const seconds = timeLeft % 60;
-    const timeStr = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+    const timeStr = formatTime(timeLeft);
     document.getElementById('main-timer').textContent = timeStr;
     const miniTimerTime = document.getElementById('mini-timer-time');
     if (miniTimerTime) miniTimerTime.textContent = timeStr;
@@ -3873,36 +3894,29 @@ function updateTimerDisplay() {
     if (cycleDisplay && pomodoroState) { cycleDisplay.textContent = `${pomodoroState.cycle}/${pomodoroState.totalCycles} - ${pomodoroState.isBreak ? 'Descanso' : 'Trabajo'}`; }
 }
 
+// esto esta ok - control de play/pause del timer
 function toggleTimer() {
     if (Notification.permission === 'default') Notification.requestPermission();
     if (isTimerRunning) {
         clearInterval(timerInterval);
         timerInterval = null;
         isTimerRunning = false;
-        document.getElementById('pomodoro-start').innerHTML = ICONS.play;
-        document.getElementById('mini-play-btn').innerHTML = ICONS.play;
-        const mobileToggle = document.getElementById('mini-timer-toggle');
-        if (mobileToggle) mobileToggle.innerHTML = '<i class="fa-solid fa-play"></i>';
+        updatePlayPauseButtons(false);
     } else {
         isTimerRunning = true;
-        document.getElementById('pomodoro-start').innerHTML = '<i class="fa-solid fa-pause"></i>';
-        document.getElementById('mini-play-btn').innerHTML = '<i class="fa-solid fa-pause"></i>';
-        const mobileToggle = document.getElementById('mini-timer-toggle');
-        if (mobileToggle) mobileToggle.innerHTML = '<i class="fa-solid fa-pause"></i>';
+        updatePlayPauseButtons(true);
         timerInterval = setInterval(() => { if (timeLeft > 0) { timeLeft--; updateTimerDisplay(); } else completeCycle(); }, 1000);
     }
 }
 
+// esto esta ok - reinicia el timer al estado inicial
 function resetTimer() {
     clearInterval(timerInterval);
     timerInterval = null;
     isTimerRunning = false;
     timeLeft = (pomodoroState.isBreak ? pomodoroState.breakTime : pomodoroState.workTime) * 60;
     updateTimerDisplay();
-    document.getElementById('pomodoro-start').innerHTML = ICONS.play;
-    document.getElementById('mini-play-btn').innerHTML = ICONS.play;
-    const mobileToggle = document.getElementById('mini-timer-toggle');
-    if (mobileToggle) mobileToggle.innerHTML = '<i class="fa-solid fa-play"></i>';
+    updatePlayPauseButtons(false);
 }
 
 function adjustTimer(minutes) { timeLeft += minutes * 60; if (timeLeft < 0) timeLeft = 0; updateTimerDisplay(); }
@@ -3936,6 +3950,7 @@ function startPomodoroForTask(id) {
     toggleTimer();
 }
 
+// esto esta ok - cambia entre ciclos de trabajo y descanso
 function changeCycle(direction) {
     if (!pomodoroState) return;
     let totalPhases = pomodoroState.totalCycles * 2;
@@ -3943,7 +3958,7 @@ function changeCycle(direction) {
     let nextPhaseIndex = currentPhaseIndex + direction;
     if (nextPhaseIndex < 0) { nextPhaseIndex = 0; } else if (nextPhaseIndex >= totalPhases) { return; }
     const wasRunning = isTimerRunning;
-    if (isTimerRunning) { clearInterval(timerInterval); isTimerRunning = false; document.getElementById('pomodoro-start').innerHTML = ICONS.play; document.getElementById('mini-play-btn').innerHTML = ICONS.play; }
+    if (isTimerRunning) { clearInterval(timerInterval); isTimerRunning = false; updatePlayPauseButtons(false); }
     pomodoroState.cycle = Math.floor(nextPhaseIndex / 2) + 1;
     pomodoroState.isBreak = (nextPhaseIndex % 2) === 1;
     timeLeft = (pomodoroState.isBreak ? pomodoroState.breakTime : pomodoroState.workTime) * 60;
@@ -3962,8 +3977,7 @@ function completeCycle() {
             clearInterval(timerInterval);
             timerInterval = null;
             isTimerRunning = false;
-            document.getElementById('pomodoro-start').innerHTML = ICONS.play;
-            document.getElementById('mini-play-btn').innerHTML = ICONS.play;
+            updatePlayPauseButtons(false);
 
             if (activeTaskId && window.updateTaskInFirebase) { const task = tasks.find(t => t.id === activeTaskId); if (task) window.updateTaskInFirebase(task.id, { pomodoros: (task.pomodoros || 0) + pomodoroState.totalCycles }); }
             resetTimer();
@@ -3972,10 +3986,7 @@ function completeCycle() {
         } else {
             // Auto-start Work Phase
             timeLeft = pomodoroState.workTime * 60;
-            // Format time for message
-            const m = Math.floor(timeLeft / 60);
-            const s = timeLeft % 60;
-            const timeStr = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+            const timeStr = formatTime(timeLeft);
             // Message: "XXXX terminado! A continuación 00:00 de XXXXX"
             notifyCompletion(`¡Descanso terminado! A continuación ${timeStr} de Trabajo`);
         }
@@ -3983,11 +3994,7 @@ function completeCycle() {
         // Auto-start Break Phase
         pomodoroState.isBreak = true;
         timeLeft = pomodoroState.breakTime * 60;
-        // Format time for message
-        const m = Math.floor(timeLeft / 60);
-        const s = timeLeft % 60;
-        const timeStr = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-        // Message
+        const timeStr = formatTime(timeLeft);
         notifyCompletion(`¡Trabajo terminado! A continuación ${timeStr} de Descanso`);
     }
     updateTimerDisplay();
@@ -4609,6 +4616,17 @@ function setupSidebar() {
             }
         });
 
+        // Duplicate settings button for mobile header
+        const settingsBtnDup = document.querySelector('.settings-btn-dup');
+        if (settingsBtnDup) {
+            settingsBtnDup.addEventListener('click', () => {
+                settingsModal.classList.add('active');
+                if (typeof populateExportFilters === 'function') {
+                    populateExportFilters();
+                }
+            });
+        }
+
         closeSettingsBtn.addEventListener('click', () => {
             settingsModal.classList.remove('active');
         });
@@ -4673,54 +4691,36 @@ async function loadTheme(themeName) {
     }
 }
 
-function toggleNotesSection() {
-    const content = document.getElementById('notes-collapsible-content');
-    const chevron = document.getElementById('notes-chevron');
-    const container = document.getElementById('timeline-container'); // Notes container
+// esto esta ok - función unificada para todos los toggles colapsables
+function toggleCollapsible(contentId, chevronId, containerId = null) {
+    const content = document.getElementById(contentId);
+    const chevron = document.getElementById(chevronId);
+    const container = containerId ? document.getElementById(containerId) : null;
 
     if (!content || !chevron) return;
 
-    if (content.style.display === 'none') {
-        content.style.display = 'block';
-        if (container) container.style.display = 'block';
-        chevron.style.transform = 'rotate(0deg)';
-    } else {
-        content.style.display = 'none';
-        if (container) container.style.display = 'none';
-        chevron.style.transform = 'rotate(-90deg)';
-    }
+    const isHidden = content.style.display === 'none';
+    content.style.display = isHidden ? 'block' : 'none';
+    if (container) container.style.display = isHidden ? 'block' : 'none';
+    chevron.style.transform = isHidden ? 'rotate(0deg)' : 'rotate(-90deg)';
+}
+
+// Wrappers para compatibilidad - esto esta ok
+function toggleNotesSection() {
+    toggleCollapsible('notes-collapsible-content', 'notes-chevron', 'timeline-container');
 }
 window.toggleNotesSection = toggleNotesSection;
 
 function toggleDailyGoalWidget() {
-    const content = document.getElementById('daily-goal-content');
-    const chevron = document.getElementById('daily-goal-chevron');
-    if (!content || !chevron) return;
-
-    if (content.style.display === 'none') {
-        content.style.display = 'block';
-        chevron.style.transform = 'rotate(0deg)';
-    } else {
-        content.style.display = 'none';
-        chevron.style.transform = 'rotate(-90deg)';
-    }
+    toggleCollapsible('daily-goal-content', 'daily-goal-chevron');
 }
 window.toggleDailyGoalWidget = toggleDailyGoalWidget;
 
 function toggleMobileDailyGoalWidget() {
-    const content = document.getElementById('mobile-daily-goal-content');
-    const chevron = document.getElementById('mobile-daily-goal-chevron');
-    if (!content || !chevron) return;
-
-    if (content.style.display === 'none') {
-        content.style.display = 'block';
-        chevron.style.transform = 'rotate(0deg)';
-    } else {
-        content.style.display = 'none';
-        chevron.style.transform = 'rotate(-90deg)';
-    }
+    toggleCollapsible('mobile-daily-goal-content', 'mobile-daily-goal-chevron');
 }
 window.toggleMobileDailyGoalWidget = toggleMobileDailyGoalWidget;
+
 
 function toggleNoteCollapse(id) {
     const note = tasks.find(t => t.id === id);

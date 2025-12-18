@@ -1,3 +1,4 @@
 const FRASES_MOTIVACIONALES = [
-    "Es muy fácil amarte incluso en los días de caos - Ro",
+    "No hay días difíciles para este amor porque incluso en el caos es fácil quererte - Ro",
+    "Eres merecedor de este amor. Eres importante en esta familia. Eres valioso - Ro",
 ];
