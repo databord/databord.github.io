@@ -3025,8 +3025,6 @@ function getDragAfterElement(container, y) {
 
 // --- TIMELINE NOTES LOGIC ---
 
-// --- TIMELINE NOTES LOGIC ---
-
 // --- NEW NOTE MODAL LOGIC ---
 function openNoteModal() {
     document.getElementById('note-modal').classList.add('active');
@@ -4254,71 +4252,12 @@ function openSessionEditModal(taskId, sessionIndex) {
     document.getElementById('edit-session-task-id').value = task.id;
     document.getElementById('edit-session-index').value = sessionIndex;
 
-    // Format for datetime-local: YYYY-MM-DDTHH:mm handling timezone offset
+    // Formatea para datetime-local: YYYY-MM-DDTHH:mm manejando el offset de timezone
     const toLocalISO = (isoStr) => {
         if (!isoStr) return '';
         const d = new Date(isoStr);
         const offset = d.getTimezoneOffset() * 60000;
-        const localISOTime = (new Date(d - offset)).toISOString().slice(0, 16);
-        return localISOTime;
-    };
-
-    document.getElementById('edit-session-start').value = toLocalISO(session.start);
-    document.getElementById('edit-session-end').value = session.end ? toLocalISO(session.end) : '';
-
-    document.getElementById('session-edit-modal').classList.add('active');
-}
-
-function closeSessionEditModal() {
-    document.getElementById('session-edit-modal').classList.remove('active');
-}
-
-function saveSessionEdit() {
-    const taskId = document.getElementById('edit-session-task-id').value;
-    const idx = parseInt(document.getElementById('edit-session-index').value);
-    const startVal = document.getElementById('edit-session-start').value;
-    const endVal = document.getElementById('edit-session-end').value;
-
-    const task = tasks.find(t => t.id == taskId);
-    if (task && task.sessions && task.sessions[idx]) {
-        if (startVal) task.sessions[idx].start = new Date(startVal).toISOString();
-        if (endVal) task.sessions[idx].end = new Date(endVal).toISOString();
-        else task.sessions[idx].end = null;
-
-        if (window.updateTaskInFirebase) {
-            window.updateTaskInFirebase(task.id, { sessions: task.sessions });
-        }
-        closeSessionEditModal();
-        applyFilters();
-    }
-}
-
-
-// Expose
-window.deleteSession = deleteSession;
-window.openSessionEditModal = openSessionEditModal;
-window.closeSessionEditModal = closeSessionEditModal;
-window.saveSessionEdit = saveSessionEdit;
-
-function openSessionEditModal(taskId, sessionIndex) {
-    console.log('[DEBUG] openSessionEditModal called for taskId:', taskId, 'sessionIndex:', sessionIndex);
-    const task = tasks.find(t => t.id == taskId);
-    if (!task || !task.sessions[sessionIndex]) {
-        console.log('[DEBUG] Task or session not found');
-        return;
-    }
-
-    const session = task.sessions[sessionIndex];
-    document.getElementById('edit-session-task-id').value = task.id;
-    document.getElementById('edit-session-index').value = sessionIndex;
-
-    // Format for datetime-local: YYYY-MM-DDTHH:mm handling timezone offset
-    const toLocalISO = (isoStr) => {
-        if (!isoStr) return '';
-        const d = new Date(isoStr);
-        const offset = d.getTimezoneOffset() * 60000;
-        const localISOTime = (new Date(d - offset)).toISOString().slice(0, 16);
-        return localISOTime;
+        return (new Date(d - offset)).toISOString().slice(0, 16);
     };
 
     document.getElementById('edit-session-start').value = toLocalISO(session.start);
@@ -4326,37 +4265,12 @@ function openSessionEditModal(taskId, sessionIndex) {
     document.getElementById('edit-session-conclusion').value = task.comment_after_end || '';
 
     const modal = document.getElementById('session-edit-modal');
-    console.log('[DEBUG] session-edit-modal element:', modal);
-
     modal.classList.add('active');
 
-    // FIX: Force ALL critical styles via JavaScript to bypass CSS issues
+    // Forzar estilos para asegurar visibilidad del modal
     modal.style.setProperty('display', 'flex', 'important');
     modal.style.setProperty('opacity', '1', 'important');
     modal.style.setProperty('pointer-events', 'all', 'important');
-
-    console.log('[DEBUG] AFTER setting all styles, values are:', {
-        display: modal.style.display,
-        opacity: modal.style.opacity,
-        pointerEvents: modal.style.pointerEvents
-    });
-
-    console.log('[DEBUG] modal classList after add:', modal.classList.toString());
-    console.log('[DEBUG] modal computed styles:', {
-        display: window.getComputedStyle(modal).display,
-        opacity: window.getComputedStyle(modal).opacity,
-        zIndex: window.getComputedStyle(modal).zIndex,
-        pointerEvents: window.getComputedStyle(modal).pointerEvents
-    });
-
-    const modalContent = modal.querySelector('.modal-content');
-    if (modalContent) {
-        console.log('[DEBUG] modal-content computed styles:', {
-            display: window.getComputedStyle(modalContent).display,
-            opacity: window.getComputedStyle(modalContent).opacity,
-            visibility: window.getComputedStyle(modalContent).visibility
-        });
-    }
 }
 
 function closeSessionEditModal() {

@@ -9,18 +9,16 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="css/scrollbar.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="icon" href="https://i.imgur.com/wMx638E.png">
 
-    <!-- FRASES -->
-    <script src="frases.js"></script>
 
     <!-- FIREBASE LOGIC (Módulo) -->
     <script type="module" src="firebase-logic.js?v=2"></script>
 </head>
 
 <body>
-    <!-- MOBILE MINI TIMER (Top Bar) -->
     <!-- MOBILE MINI TIMER (Top Bar) -->
     <div id="mobile-mini-timer" class="mobile-mini-timer hidden">
         <div class="mini-timer-content">
@@ -102,6 +100,10 @@
             </div>
         </div>
     </div>
+
+    <!-- Confetti Canvas -->
+    <canvas id="confetti-canvas"
+        style="position: fixed; top: 0; left: 0; pointer-events: none; z-index: 9999;"></canvas>
 
     <div class="app-container" id="app-container">
         <!-- Mobile Sidebar Header (Independent from sidebar) -->
@@ -273,7 +275,7 @@
                 </div>
 
                 <!-- MOBILE FILTERS SECTION -->
-                <div class="mobile-filters-section" style="display:none; margin-bottom: 5px;">
+                <div class="mobile-filters-section task-filters" style="display:none; margin-bottom: 5px;">
                     <button class="filter-btn" id="mobile-filter-completed" title="Ver completadas"><i
                             class="fa-solid fa-check-double"></i></button>
                     <button class="filter-btn" id="mobile-btn-view-density"><i class="fa-solid fa-bars"></i></button>
@@ -1054,9 +1056,10 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
     <!-- APP SCRIPTS -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <script src="frases.js"></script>
     <script src="export_logic.js"></script>
-    <script src="script.js"></script>
+    <script type="module" src="js/main.js"></script>
 </body>
 
 </html>

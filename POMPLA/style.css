@@ -2018,3 +2018,96 @@ body {
     color: var(--danger-color);
     background: rgba(239, 68, 68, 0.1);
 }
+
+/* --- MINI CALENDAR (TIMELINE) --- */
+.mini-calendar-popup {
+    position: absolute;
+    top: 50px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: var(--sidebar-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-md);
+    padding: 15px;
+    z-index: 2000;
+    box-shadow: var(--shadow-lg);
+    width: 320px;
+    display: none;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.mini-calendar-popup.active {
+    display: flex;
+}
+
+.mini-calendar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    padding-bottom: 5px;
+    border-bottom: 1px solid var(--glass-border);
+}
+
+.mini-calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 5px;
+    text-align: center;
+}
+
+.mini-calendar-day-name {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    font-weight: 600;
+    margin-bottom: 5px;
+}
+
+.mini-calendar-day {
+    padding: 8px;
+    font-size: 0.9rem;
+    border-radius: 6px;
+    cursor: pointer;
+    position: relative;
+    color: var(--text-primary);
+    transition: background 0.2s;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.mini-calendar-day:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.mini-calendar-day.selected {
+    background-color: var(--accent-color);
+    color: white;
+    font-weight: 600;
+}
+
+.mini-calendar-day.empty {
+    pointer-events: none;
+}
+
+.mini-calendar-dot {
+    width: 5px;
+    height: 5px;
+    background-color: var(--accent-color);
+    border-radius: 50%;
+    position: absolute;
+    bottom: 4px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: none;
+}
+
+.mini-calendar-day.has-note .mini-calendar-dot {
+    display: block;
+}
+
+.mini-calendar-day.selected .mini-calendar-dot {
+    background-color: white;
+}
