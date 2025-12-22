@@ -8,6 +8,8 @@ export function closeSessionEditModal() {
     if (modal) {
         modal.classList.remove('active');
         modal.style.display = ''; // Reset inline styles if any
+        modal.style.opacity = '';
+        modal.style.pointerEvents = '';
     }
 }
 

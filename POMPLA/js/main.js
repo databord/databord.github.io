@@ -351,6 +351,29 @@ function setupEventListeners() {
 
     // Inicializar Select Custom
     setupCustomSelect();
+    // Daily Goal Input
+    const goalInput = document.getElementById('daily-goal-input');
+    if (goalInput) {
+        goalInput.value = state.dailyGoal; // Init value
+        goalInput.addEventListener('change', (e) => {
+            state.dailyGoal = parseInt(e.target.value) || 5;
+            localStorage.setItem('planner_daily_goal', state.dailyGoal);
+            import('./data.js').then(m => m.updateDailyGoalUI());
+        });
+    }
+
+    // Dynamic Header Font Size
+    const headerTitle = document.getElementById('current-month-year');
+    if (headerTitle) {
+        const observer = new MutationObserver(() => {
+            if (headerTitle.textContent.length > 20) {
+                headerTitle.style.fontSize = '1.1rem';
+            } else {
+                headerTitle.style.fontSize = '';
+            }
+        });
+        observer.observe(headerTitle, { childList: true, characterData: true, subtree: true });
+    }
 }
 
 function setupSidebarFilters() {

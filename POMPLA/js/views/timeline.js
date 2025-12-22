@@ -31,7 +31,7 @@ export function renderTimeline(rangeType = 'today') {
             </div>
         </div>
         <div id="list-date-header" class="list-header" style="margin-bottom: 15px; text-align: center;"></div>
-        <div id="timeline-container" class="timeline-container"></div>
+        <div id="timeline-container"></div>
     `;
 
     // 1. Configurar Fecha
@@ -610,7 +610,7 @@ export function saveSessionEdit() {
                 comment_after_end: conclusionVal
             });
         }
-        document.getElementById('session-edit-modal').classList.remove('active');
+        closeSessionEditModal();
         if (state.currentView === 'timeline') renderTimeline();
     }
 }

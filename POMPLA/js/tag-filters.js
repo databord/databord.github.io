@@ -83,3 +83,7 @@ export function setupTagFilters() {
         });
     }
 }
+// Helper to identify folder tasks (always visible regardless of date)
+export function isTaskFolder(task) {
+    return !!task.isFolder || (!task.date && !!task.color);
+}

@@ -8,7 +8,8 @@ import { renderTasks } from './views/sidebar.js';
 import { renderCalendar } from './views/calendar.js';
 import { renderListView } from './views/list.js';
 import { renderTimeline } from './views/timeline.js';
-import { updateParentSelect } from './views/ui-helpers.js'; //
+import { updateParentSelect } from './views/ui-helpers.js';
+import { isTaskFolder } from './tag-filters.js';
 
 // --- LOGICA PRINCIPAL DE DATOS ---
 
@@ -91,16 +92,20 @@ export function applyFilters() {
             if (![...filters.tags].every(tag => taskTags.includes(tag))) return false;
         }
 
-        // Filtro Carpeta (Folder)
-        const isFolder = !!task.isFolder || (!task.date && !!task.color);
-        // Si hay filtro de carpeta activo
+        // Filtro Carpeta (Folder) -> Using imported helper
+        const isFolder = isTaskFolder(task);
+
+        // Si hay sub-filtro de carpeta activo (navegando dentro de una carpeta)
         if (filters.folderId && task.parentId !== filters.folderId && task.id !== filters.folderId) return false;
 
         // Filtro Status
         if (filters.status === 'completed' && task.status !== 'completed') return false;
         if (filters.status === 'pending' && task.status === 'completed') return false;
 
-        // Filtro Fechas (Solo si no es 'all')
+        // Filtro Fechas (Solo si no es 'all' Y NO es folder)
+        // Folders are always shown regardless of date filter (unless Status filters out)
+        if (isFolder) return true;
+
         if (filters.dateRange === 'all') return true;
         if (filters.dateRange === 'custom' && (!start || !end)) return true;
 
@@ -120,6 +125,7 @@ export function applyFilters() {
 
         return true;
     });
+
 
     // Renderizar Sidebar
     renderTasks(filteredTasks);
@@ -216,24 +222,12 @@ export function updateDailyGoalUI() {
     if (progressBar) progressBar.style.width = `${percentage}%`;
 
     // Textos
-    setSafeText('goal-progress-text', `${completedTodayCount}/${state.dailyGoal} completadas`);
-    setSafeText('today-total-text', `${totalToday} total hoy`);
-    setSafeText('pending-tasks-count', `${pendingTodayCount} pendientes`);
-    setSafeText('mobile-pending-tasks-count', `${pendingTodayCount} pendientes`);
-    setSafeText('mobile-goal-progress', `${completedTodayCount}/${state.dailyGoal}`);
-
-    const mobBar = document.getElementById('mobile-goal-bar');
-    if (mobBar) mobBar.style.width = `${percentage}%`;
-
-    // Confetti
-    if (completedTodayCount >= state.dailyGoal && !state.confettiTriggeredToday && completedTodayCount > 0) {
-        import('./views/ui-helpers.js').then(module => {
-            if (module.triggerConfetti) module.triggerConfetti();
-        }).catch(e => console.log("Confetti module not loaded yet"));
-        state.confettiTriggeredToday = true;
-    } else if (completedTodayCount < state.dailyGoal) {
-        state.confettiTriggeredToday = false;
-    }
+    // Confetti & UI Text Logic (Delegated to utils.js)
+    import('./utils.js').then(module => {
+        if (module.handleDailyGoalLogic) {
+            state.confettiTriggeredToday = module.handleDailyGoalLogic(completedTodayCount, state.dailyGoal, state.confettiTriggeredToday);
+        }
+    }).catch(e => console.log("Utils module error", e));
 
     updateDailyStatsUI(totalToday, pendingTodayCount, today);
 }
