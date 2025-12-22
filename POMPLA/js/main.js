@@ -389,12 +389,17 @@ function setupEventListeners() {
 function setupSidebarFilters() {
     // Reset
     const resetBtn = document.getElementById('filter-reset');
-    if (resetBtn) resetBtn.addEventListener('click', () => {
+    const mobResetBtn = document.getElementById('mobile-filter-reset');
+
+    const resetHandler = () => {
         state.activeFilters = { dateRange: 'today', tags: new Set(), status: 'all', folderId: null, mainTags: new Set(), customStart: null, customEnd: null };
         updateFolderFilterOptions();
         updateMainTagFilterOptions();
         applyFilters();
-    });
+    };
+
+    if (resetBtn) resetBtn.addEventListener('click', resetHandler);
+    if (mobResetBtn) mobResetBtn.addEventListener('click', resetHandler);
 
     // Completed Toggle
     const handleStatusToggle = () => {
@@ -410,39 +415,71 @@ function setupSidebarFilters() {
     if (mobCompletedBtn) mobCompletedBtn.addEventListener('click', handleStatusToggle);
 
     // Date Range Logic
+    // Date Range Logic
     const dateRangeSelect = document.getElementById('filter-date-range');
+    const mobileDateSelect = document.getElementById('mobile-filter-date-range');
+
     const customPicker = document.getElementById('custom-date-picker');
-    if (dateRangeSelect) {
-        dateRangeSelect.addEventListener('change', (e) => {
-            if (e.target.value === 'custom') {
-                if (customPicker) {
-                    customPicker.style.display = 'flex';
-                    if (state.activeFilters.customStart) document.getElementById('custom-date-start').value = state.activeFilters.customStart;
-                    if (state.activeFilters.customEnd) document.getElementById('custom-date-end').value = state.activeFilters.customEnd;
-                }
-            } else {
-                if (customPicker) customPicker.style.display = 'none';
-                state.activeFilters.dateRange = e.target.value;
-                applyFilters();
+    const mobCustomPicker = document.getElementById('mobile-custom-date-picker');
+
+    const handleDateChange = (e, pickerEl) => {
+        if (e.target.value === 'custom') {
+            if (pickerEl) {
+                pickerEl.style.display = 'flex';
+                // IDs dependen de si es mobile o desktop... un poco sucio pero funcional
+                const isMobile = pickerEl.id.includes('mobile');
+                const startId = isMobile ? 'mobile-custom-date-start' : 'custom-date-start';
+                const endId = isMobile ? 'mobile-custom-date-end' : 'custom-date-end';
+
+                if (state.activeFilters.customStart) document.getElementById(startId).value = state.activeFilters.customStart;
+                if (state.activeFilters.customEnd) document.getElementById(endId).value = state.activeFilters.customEnd;
             }
-        });
+        } else {
+            if (pickerEl) pickerEl.style.display = 'none';
+            state.activeFilters.dateRange = e.target.value;
+            applyFilters();
+        }
+    };
+
+    if (dateRangeSelect) {
+        dateRangeSelect.addEventListener('change', (e) => handleDateChange(e, customPicker));
+    }
+    if (mobileDateSelect) {
+        mobileDateSelect.addEventListener('change', (e) => handleDateChange(e, mobCustomPicker));
     }
 
     // Botones Custom Date
-    const btnApplyCustom = document.getElementById('btn-apply-custom-date');
-    if (btnApplyCustom) {
-        btnApplyCustom.addEventListener('click', () => {
-            const s = document.getElementById('custom-date-start').value;
-            const e = document.getElementById('custom-date-end').value;
-            if (s && e) {
-                state.activeFilters.dateRange = 'custom';
-                state.activeFilters.customStart = s;
-                state.activeFilters.customEnd = e;
-                if (customPicker) customPicker.style.display = 'none';
-                applyFilters();
-            }
-        });
-    }
+    // Botones Custom Date
+    const setupCustomApply = (btnId, startId, endId, pickerId) => {
+        const btn = document.getElementById(btnId);
+        if (btn) {
+            btn.addEventListener('click', () => {
+                const s = document.getElementById(startId).value;
+                const e = document.getElementById(endId).value;
+                if (s && e) {
+                    state.activeFilters.dateRange = 'custom';
+                    state.activeFilters.customStart = s;
+                    state.activeFilters.customEnd = e;
+                    const p = document.getElementById(pickerId);
+                    if (p) p.style.display = 'none';
+                    applyFilters();
+                }
+            });
+        }
+    };
+
+    // Desktop
+    setupCustomApply('btn-apply-custom-date', 'custom-date-start', 'custom-date-end', 'custom-date-picker');
+
+    // Mobile
+    setupCustomApply('mobile-btn-apply-custom-date', 'mobile-custom-date-start', 'mobile-custom-date-end', 'mobile-custom-date-picker');
+
+    // Cancel buttons
+    const btnCancelCustom = document.getElementById('btn-cancel-custom-date');
+    if (btnCancelCustom) btnCancelCustom.onclick = () => { document.getElementById('custom-date-picker').style.display = 'none'; };
+
+    const mobBtnCancelCustom = document.getElementById('mobile-btn-cancel-custom-date');
+    if (mobBtnCancelCustom) mobBtnCancelCustom.onclick = () => { document.getElementById('mobile-custom-date-picker').style.display = 'none'; };
 }
 
 
