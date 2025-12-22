@@ -620,3 +620,160 @@ export function selectCommentType(btn, type) {
     btn.classList.add('active');
     document.getElementById('comment-type').value = type;
 }
+
+// --- MINI CALENDAR ---
+
+let miniCalendarDate = new Date();
+
+export function toggleMiniCalendar() {
+    // Buscar o crear el popup
+    let popup = document.getElementById('mini-calendar-popup');
+
+    // Si no existe, lo creamos dinámicamente y lo insertamos en el main content
+    if (!popup) {
+        // Buscamos el contenedor padre adecuado, idealmente cerca del header o en timeline-view
+        // Pero para posicionarlo absolute respecto al header, mejor ponerlo en .calendar-nav o .top-bar si tienen relative
+        // O simplemente en body y calculamos posición.
+        // El user pidió: "debajo de current-month-year".
+
+        const container = document.querySelector('.month-nav-controls');
+        if (!container) return; // No hay header
+
+        // Asegurar relative positioning
+        container.style.position = 'relative';
+
+        popup = document.createElement('div');
+        popup.id = 'mini-calendar-popup';
+        popup.className = 'mini-calendar-popup';
+
+        // Estructura interna
+        popup.innerHTML = `
+            <div class="mini-calendar-header">
+                <button class="icon-btn" id="mini-prev"><i class="fa-solid fa-chevron-left"></i></button>
+                <span id="mini-month-year" style="font-weight:600; font-size: 0.9rem;"></span>
+                <button class="icon-btn" id="mini-next"><i class="fa-solid fa-chevron-right"></i></button>
+            </div>
+            <div class="mini-calendar-grid" id="mini-calendar-grid"></div>
+        `;
+
+        container.appendChild(popup);
+
+        // Listeners internos del mini calendar
+        popup.querySelector('#mini-prev').onclick = (e) => {
+            e.stopPropagation();
+            miniCalendarDate.setMonth(miniCalendarDate.getMonth() - 1);
+            renderMiniCalendar();
+        };
+        popup.querySelector('#mini-next').onclick = (e) => {
+            e.stopPropagation();
+            miniCalendarDate.setMonth(miniCalendarDate.getMonth() + 1);
+            renderMiniCalendar();
+        };
+
+        // Cerrar al hacer click fuera (se maneja con un listener global o en el botón toggle)
+        document.addEventListener('click', (e) => {
+            const toggleBtn = document.getElementById('current-month-year');
+            if (popup.classList.contains('active') && !popup.contains(e.target) && e.target !== toggleBtn) {
+                popup.classList.remove('active');
+            }
+        });
+    }
+
+    const isActive = popup.classList.contains('active');
+
+    if (isActive) {
+        popup.classList.remove('active');
+    } else {
+        // Sincronizar fecha al abrir
+        miniCalendarDate = new Date(state.currentDate);
+        renderMiniCalendar();
+        popup.classList.add('active');
+    }
+}
+
+function renderMiniCalendar() {
+    const grid = document.getElementById('mini-calendar-grid');
+    const title = document.getElementById('mini-month-year');
+    if (!grid) return;
+
+    // Título
+    const monthName = miniCalendarDate.toLocaleString('es-ES', { month: 'long', year: 'numeric' });
+    title.textContent = monthName.charAt(0).toUpperCase() + monthName.slice(1);
+
+    grid.innerHTML = '';
+
+    // Días de la semana
+    const days = ['D', 'L', 'M', 'M', 'J', 'V', 'S'];
+    days.forEach(d => {
+        const span = document.createElement('div');
+        span.className = 'mini-calendar-day-name';
+        span.textContent = d;
+        grid.appendChild(span);
+    });
+
+    const year = miniCalendarDate.getFullYear();
+    const month = miniCalendarDate.getMonth();
+
+    const firstDay = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+    // Espacios vacíos
+    for (let i = 0; i < firstDay; i++) {
+        const empty = document.createElement('div');
+        empty.className = 'mini-calendar-day empty';
+        grid.appendChild(empty);
+    }
+
+    // Días
+    for (let day = 1; day <= daysInMonth; day++) {
+        const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        const dayEl = document.createElement('div');
+        dayEl.className = 'mini-calendar-day';
+        dayEl.textContent = day;
+
+        // Verificar si es el día seleccionado actualmente en timeline
+        const currentStr = state.currentDate.toISOString().split('T')[0];
+        if (dateStr === currentStr) {
+            dayEl.classList.add('selected');
+        }
+
+        // Verificar si tiene notas (Excluyendo permanentes/sin fecha)
+        const hasNotes = state.tasks.some(t => {
+            // Debe ser nota
+            if (!t.isTimelineNote && (t.category !== 'note' && t.category !== '|||note|||')) return false;
+
+            // Excluir permanentes
+            if (t.isPermanent || (!t.date && !t.startDate)) return false;
+
+            // Verificar fecha exacta
+            if (t.startDate) {
+                // Si es rango
+                return dateStr >= t.startDate && dateStr <= (t.endDate || t.startDate);
+            } else if (t.date) {
+                // Si es fecha simple
+                return t.date === dateStr;
+            }
+            return false;
+        });
+
+        if (hasNotes) {
+            dayEl.classList.add('has-note');
+            const dot = document.createElement('div');
+            dot.className = 'mini-calendar-dot';
+            dayEl.appendChild(dot);
+        }
+
+        // Click: Ir a ese día
+        dayEl.onclick = (e) => {
+            e.stopPropagation();
+            state.currentDate = new Date(year, month, day);
+            if (state.currentView === 'timeline') {
+                renderTimeline(); // Esto actualiza el header y notas
+            }
+            // Cerrar popup
+            document.getElementById('mini-calendar-popup').classList.remove('active');
+        };
+
+        grid.appendChild(dayEl);
+    }
+}

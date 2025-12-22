@@ -6,7 +6,7 @@ import { renderListView } from './views/list.js';
 import {
     renderTimeline, toggleNotesSection, openNoteModal, saveNoteFromModal, editNote, deleteNote, toggleNoteCollapse,
     deleteSession, openSessionEditModal, saveSessionEdit,
-    openCommentModal, openCommentEditModal, selectCommentType, saveComment
+    openCommentModal, openCommentEditModal, selectCommentType, saveComment, toggleMiniCalendar
 } from './views/timeline.js';
 import {
     closeNoteModal, closeSessionEditModal, closeCommentModal, closeDayDetails, closeModal, setupTaskModalInteractions
@@ -365,6 +365,16 @@ function setupEventListeners() {
     // Dynamic Header Font Size
     const headerTitle = document.getElementById('current-month-year');
     if (headerTitle) {
+        // Toggle Mini Calendar on Header Click
+        headerTitle.style.cursor = 'pointer';
+        headerTitle.addEventListener('click', (e) => {
+            // Solo activar en vista Timeline
+            if (state.currentView === 'timeline') {
+                e.stopPropagation(); // Evitar cierres inmediatos
+                toggleMiniCalendar();
+            }
+        });
+
         const observer = new MutationObserver(() => {
             if (headerTitle.textContent.length > 20) {
                 headerTitle.style.fontSize = '1.1rem';
@@ -552,6 +562,7 @@ window.closeCommentModal = closeCommentModal;
 window.selectCommentType = selectCommentType;
 window.saveComment = saveComment;
 window.togglePiP = togglePiP;
+window.toggleMiniCalendar = toggleMiniCalendar;
 
 // Wrappers legacy
 window.toggleDailyGoalWidget = () => {
