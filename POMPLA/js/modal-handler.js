@@ -67,3 +67,28 @@ export function setupTaskModalInteractions() {
         });
     }
 }
+
+
+export function snoozeReminder(minutes) {
+    const modal = document.getElementById('reminder-modal');
+    if (!modal) return;
+
+    const taskId = modal.dataset.taskId;
+    if (!taskId) {
+        modal.classList.remove('active');
+        return;
+    }
+
+    const now = new Date();
+    now.setMinutes(now.getMinutes() + minutes);
+
+    const hours = String(now.getHours()).padStart(2, '0');
+    const mins = String(now.getMinutes()).padStart(2, '0');
+    const newTime = `${hours}:${mins}`;
+
+    if (window.updateTaskInFirebase) {
+        window.updateTaskInFirebase(taskId, { reminderTime: newTime });
+    }
+
+    modal.classList.remove('active');
+}

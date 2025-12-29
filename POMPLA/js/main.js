@@ -9,14 +9,14 @@ import {
     openCommentModal, openCommentEditModal, selectCommentType, saveComment, toggleMiniCalendar
 } from './views/timeline.js';
 import {
-    closeNoteModal, closeSessionEditModal, closeCommentModal, closeDayDetails, closeModal, setupTaskModalInteractions
+    closeNoteModal, closeSessionEditModal, closeCommentModal, closeDayDetails, closeModal, setupTaskModalInteractions, snoozeReminder
 } from './modal-handler.js';
 import {
     openModal, toggleSubtasks, updateParentSelect,
     handleTouchStart, handleTouchMove, handleTouchEnd
 } from './views/ui-helpers.js';
 import {
-    updateTimerDisplay, toggleTimer, resetTimer, adjustTimer, startPomodoroForTask, changeCycle, togglePiP
+    updateTimerDisplay, toggleTimer, resetTimer, adjustTimer, startPomodoroForTask, changeCycle, togglePiP, setupPomodoroEventListeners
 } from './pomodoro.js';
 import { setupAuthListeners, setupSidebar, loadTheme, setupCustomSelect, setupSettings } from './settings.js';
 import { setupTagFilters } from './tag-filters.js';
@@ -287,30 +287,8 @@ function setupEventListeners() {
     document.getElementById('view-timeline').addEventListener('click', () => window.switchView('timeline'));
 
     // Pomodoro
-    document.getElementById('pomodoro-start').addEventListener('click', toggleTimer);
-    document.getElementById('pomodoro-reset').addEventListener('click', resetTimer);
-    document.getElementById('mini-play-btn').addEventListener('click', toggleTimer);
-    document.getElementById('close-pomodoro').addEventListener('click', () => {
-        document.getElementById('pomodoro-panel').style.display = 'none';
-        checkMiniTimerVisibility();
-    });
-
-    // PiP Button
-    const pipBtn = document.getElementById('pip-pomodoro');
-    if (pipBtn) pipBtn.addEventListener('click', togglePiP);
-
-    document.querySelectorAll('.btn-adjust').forEach(btn => {
-        btn.addEventListener('click', (e) => adjustTimer(parseInt(e.target.dataset.time)));
-    });
-
-    document.getElementById('prev-cycle').addEventListener('click', () => changeCycle(-1));
-    document.getElementById('next-cycle').addEventListener('click', () => changeCycle(1));
-
-    // Mobile/Mini Pomodoro
-    const deskMiniExpand = document.getElementById('desk-mini-expand-btn');
-    if (deskMiniExpand) deskMiniExpand.addEventListener('click', () => { document.getElementById('pomodoro-panel').style.display = 'flex'; checkMiniTimerVisibility(); });
-    const miniTimerToggle = document.getElementById('mini-timer-toggle');
-    if (miniTimerToggle) miniTimerToggle.addEventListener('click', toggleTimer);
+    // Pomodoro (Refactored to pomodoro.js)
+    setupPomodoroEventListeners();
 
     // Sidebar Filtros
     setupSidebarFilters();
@@ -600,6 +578,7 @@ window.selectCommentType = selectCommentType;
 window.saveComment = saveComment;
 window.togglePiP = togglePiP;
 window.toggleMiniCalendar = toggleMiniCalendar;
+window.snoozeReminder = snoozeReminder;
 
 // Wrappers legacy
 window.toggleDailyGoalWidget = () => {
