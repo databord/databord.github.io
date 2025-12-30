@@ -17,9 +17,86 @@ pipVideo.muted = true;
 pipVideo.style.position = 'fixed';
 pipVideo.style.opacity = '0';
 pipVideo.style.pointerEvents = 'none';
-pipVideo.style.height = '0';
 pipVideo.style.width = '0';
 document.body.appendChild(pipVideo); // Requerido para Firefox
+
+export function setupPomodoroEventListeners() {
+    // Pomodoro Controls
+    const startBtn = document.getElementById('pomodoro-start');
+    if (startBtn) startBtn.addEventListener('click', toggleTimer);
+
+    const resetBtn = document.getElementById('pomodoro-reset');
+    if (resetBtn) resetBtn.addEventListener('click', resetTimer);
+
+    const miniPlayBtn = document.getElementById('mini-play-btn');
+    if (miniPlayBtn) miniPlayBtn.addEventListener('click', toggleTimer);
+
+    const closeBtn = document.getElementById('close-pomodoro');
+    if (closeBtn) {
+        closeBtn.addEventListener('click', () => {
+            document.getElementById('pomodoro-panel').style.display = 'none';
+            checkMiniTimerVisibility();
+        });
+    }
+
+    // PiP Button
+    const pipBtn = document.getElementById('pip-pomodoro');
+    if (pipBtn) pipBtn.addEventListener('click', togglePiP);
+
+    // Standard Adjustment Buttons
+    document.querySelectorAll('.btn-adjust').forEach(btn => {
+        btn.addEventListener('click', (e) => adjustTimer(parseInt(e.target.dataset.time)));
+    });
+
+    // Mini Widget Adjustment Buttons (NEW)
+    document.querySelectorAll('.btn-adjust-mini').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            // Algunas veces el click es en el icono si lo hubiera, aseguramos target
+            const target = e.target.tagName === 'BUTTON' ? e.target : e.target.closest('button');
+            if (target && target.dataset.time) {
+                adjustTimer(parseInt(target.dataset.time));
+            }
+        });
+    });
+
+
+    // Cycle Controls
+    const prevCycle = document.getElementById('prev-cycle');
+    if (prevCycle) prevCycle.addEventListener('click', () => changeCycle(-1));
+
+    const nextCycle = document.getElementById('next-cycle');
+    if (nextCycle) nextCycle.addEventListener('click', () => changeCycle(1));
+
+    const deskMiniPrev = document.getElementById('desk-mini-prev-cycle');
+    if (deskMiniPrev) deskMiniPrev.addEventListener('click', () => changeCycle(-1));
+
+    const deskMiniNext = document.getElementById('desk-mini-next-cycle');
+    if (deskMiniNext) deskMiniNext.addEventListener('click', () => changeCycle(1));
+
+    const miniPrev = document.getElementById('mini-prev-cycle');
+    if (miniPrev) miniPrev.addEventListener('click', () => changeCycle(-1));
+
+    const miniNext = document.getElementById('mini-next-cycle');
+    if (miniNext) miniNext.addEventListener('click', () => changeCycle(1));
+
+
+    // Mobile/Mini Pomodoro Toggles
+    const deskMiniExpand = document.getElementById('desk-mini-expand-btn');
+    if (deskMiniExpand) deskMiniExpand.addEventListener('click', () => {
+        document.getElementById('pomodoro-panel').style.display = 'flex';
+        checkMiniTimerVisibility();
+    });
+
+    const miniExpand = document.getElementById('mini-expand-btn');
+    if (miniExpand) miniExpand.addEventListener('click', () => {
+        document.getElementById('pomodoro-panel').style.display = 'flex';
+        checkMiniTimerVisibility();
+    });
+
+    const miniTimerToggle = document.getElementById('mini-timer-toggle');
+    if (miniTimerToggle) miniTimerToggle.addEventListener('click', toggleTimer);
+}
+
 
 export function updateTimerDisplay() {
     const timeStr = formatTime(state.timeLeft);

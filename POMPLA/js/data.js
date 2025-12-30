@@ -8,6 +8,7 @@ import { renderTasks } from './views/sidebar.js';
 import { renderCalendar } from './views/calendar.js';
 import { renderListView } from './views/list.js';
 import { renderTimeline } from './views/timeline.js';
+import { renderGantt } from './views/gantt.js';
 import { updateParentSelect } from './views/ui-helpers.js';
 import { isTaskFolder } from './tag-filters.js';
 
@@ -163,6 +164,8 @@ export function refreshMainView() {
         }
     } else if (state.currentView === 'calendar') {
         renderCalendar();
+    } else if (state.currentView === 'gantt') {
+        renderGantt();
     }
 }
 
