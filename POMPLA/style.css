@@ -2111,3 +2111,35 @@ body {
 .mini-calendar-day.selected .mini-calendar-dot {
     background-color: white;
 }
+
+/* --- GANNT VIEW --- */
+.gantt-view {
+    padding: 10px;
+}
+
+.gantt-chart-container {
+    /* Custom scrollbar for gantt */
+    scrollbar-width: thin;
+    scrollbar-color: var(--glass-border) var(--card-bg);
+}
+
+.gantt-chart-container::-webkit-scrollbar {
+    height: 8px;
+}
+
+.gantt-chart-container::-webkit-scrollbar-track {
+    background: var(--card-bg);
+}
+
+.gantt-chart-container::-webkit-scrollbar-thumb {
+    background-color: var(--glass-border);
+    border-radius: 4px;
+}
+
+#gantt-header>div {
+    color: var(--text-secondary);
+}
+
+#gantt-body>div:hover {
+    background-color: var(--hover-bg);
+}

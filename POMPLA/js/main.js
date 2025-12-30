@@ -8,6 +8,7 @@ import {
     deleteSession, openSessionEditModal, saveSessionEdit,
     openCommentModal, openCommentEditModal, selectCommentType, saveComment, toggleMiniCalendar
 } from './views/timeline.js';
+import { renderGantt } from './views/gantt.js';
 import {
     closeNoteModal, closeSessionEditModal, closeCommentModal, closeDayDetails, closeModal, setupTaskModalInteractions, snoozeReminder
 } from './modal-handler.js';
@@ -27,22 +28,27 @@ window.switchView = function (view) {
     state.currentView = view;
     document.getElementById('view-calendar').classList.toggle('active', view === 'calendar');
     document.getElementById('view-list').classList.toggle('active', view === 'list');
+    document.getElementById('view-list').classList.toggle('active', view === 'list');
     document.getElementById('view-timeline').classList.toggle('active', view === 'timeline');
+    document.getElementById('view-gantt').classList.toggle('active', view === 'gantt');
 
     const calendarGridEl = document.getElementById('calendar-grid');
     const listViewEl = document.getElementById('list-view');
     const timelineViewEl = document.getElementById('timeline-view');
+    const ganttViewEl = document.getElementById('gantt-view');
 
     if (view === 'calendar') {
         calendarGridEl.style.display = 'grid';
         listViewEl.style.display = 'none';
         timelineViewEl.style.display = 'none';
+        if (ganttViewEl) ganttViewEl.style.display = 'none';
         state.mainViewRange = 'month';
         renderCalendar();
     } else if (view === 'list') {
         calendarGridEl.style.display = 'none';
         listViewEl.style.display = 'flex';
         timelineViewEl.style.display = 'none';
+        if (ganttViewEl) ganttViewEl.style.display = 'none';
         // Forzar vista semanal por defecto al cambiar a lista
         state.mainViewRange = 'week';
         refreshMainView();
@@ -50,8 +56,16 @@ window.switchView = function (view) {
         calendarGridEl.style.display = 'none';
         listViewEl.style.display = 'none';
         timelineViewEl.style.display = 'block';
+        if (ganttViewEl) ganttViewEl.style.display = 'none';
         state.mainViewRange = 'today';
         refreshMainView();
+    } else if (view === 'gantt') {
+        calendarGridEl.style.display = 'none';
+        listViewEl.style.display = 'none';
+        timelineViewEl.style.display = 'none';
+        if (ganttViewEl) ganttViewEl.style.display = 'block';
+        state.mainViewRange = 'month';
+        renderGantt();
     }
 
     // Visibilidad de filtros
@@ -92,6 +106,8 @@ function changeMonth(delta) {
     } else if (state.currentView === 'list') {
         state.currentDate.setDate(state.currentDate.getDate() + (delta * 7));
         state.mainViewRange = 'week';
+    } else if (state.currentView === 'gantt') {
+        state.currentDate.setDate(state.currentDate.getDate() + (delta * 7));
     } else {
         state.currentDate.setMonth(state.currentDate.getMonth() + delta);
         if (state.currentView !== 'calendar') state.mainViewRange = 'month';
@@ -285,6 +301,8 @@ function setupEventListeners() {
     document.getElementById('view-calendar').addEventListener('click', () => window.switchView('calendar'));
     document.getElementById('view-list').addEventListener('click', () => window.switchView('list'));
     document.getElementById('view-timeline').addEventListener('click', () => window.switchView('timeline'));
+    const btnGantt = document.getElementById('view-gantt');
+    if (btnGantt) btnGantt.addEventListener('click', () => window.switchView('gantt'));
 
     // Pomodoro
     // Pomodoro (Refactored to pomodoro.js)
