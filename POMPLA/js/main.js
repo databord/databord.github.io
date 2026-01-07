@@ -10,7 +10,7 @@ import {
 } from './views/timeline.js';
 import { renderGantt } from './views/gantt.js';
 import {
-    closeNoteModal, closeSessionEditModal, closeCommentModal, closeDayDetails, closeModal, setupTaskModalInteractions, snoozeReminder
+    closeNoteModal, closeSessionEditModal, closeCommentModal, closeDayDetails, closeModal, setupTaskModalInteractions, snoozeReminder, setupCategorySuggestions
 } from './modal-handler.js';
 import {
     openModal, toggleSubtasks, updateParentSelect,
@@ -286,14 +286,7 @@ function setupEventListeners() {
     document.getElementById('task-end-date').addEventListener('change', updateParentSelect);
 
     // Filtro Categorías Input
-    const categoryInput = document.getElementById('task-category');
-    if (categoryInput) {
-        categoryInput.addEventListener('input', (e) => {
-            if (e.target.value.includes('|||')) e.target.value = e.target.value.replace(/\|\|\|/g, '');
-            updateTagSuggestions(e.target.value);
-        });
-        categoryInput.addEventListener('focus', (e) => updateTagSuggestions(e.target.value));
-    }
+    setupCategorySuggestions();
 
     // Navegación
     document.getElementById('prev-month').addEventListener('click', () => changeMonth(-1));
@@ -531,46 +524,7 @@ function checkReminders() {
 }
 setInterval(checkReminders, 30000);
 
-// --- SUGERENCIAS DE TAGS ---
-window.updateTagSuggestions = function (inputValue) {
-    const container = document.getElementById('category-suggestions');
-    if (!container) return;
-    container.innerHTML = '';
-
-    const tagCounts = {};
-    state.tasks.forEach(task => {
-        if (!task.category || task.category.includes('|||')) return;
-        task.category.split(',').forEach(t => {
-            const tag = t.trim();
-            if (tag) tagCounts[tag] = (tagCounts[tag] || 0) + 1;
-        });
-    });
-
-    const tags = inputValue.split(',');
-    const currentSegment = tags[tags.length - 1].trim();
-
-    let candidates = Object.keys(tagCounts);
-    if (currentSegment) {
-        const lowerSeg = currentSegment.toLowerCase();
-        candidates = candidates.filter(tag => tag.toLowerCase().includes(lowerSeg));
-    }
-    candidates = candidates.sort((a, b) => tagCounts[b] - tagCounts[a]).slice(0, 5);
-
-    candidates.forEach(tag => {
-        const btn = document.createElement('button');
-        btn.className = 'tag-chip';
-        btn.style.fontSize = '0.75rem';
-        btn.textContent = tag;
-        btn.type = 'button';
-        btn.onclick = () => {
-            tags[tags.length - 1] = ' ' + tag;
-            const input = document.getElementById('task-category');
-            input.value = tags.join(',') + ', ';
-            input.focus();
-        };
-        container.appendChild(btn);
-    });
-};
+// --- SUGERENCIAS DE TAGS (Refactored to modal-handler.js) ---
 
 // --- EXPOSICIÓN GLOBAL (CRÍTICO) ---
 window.recibirTareasDeFirebase = receiveTasks;

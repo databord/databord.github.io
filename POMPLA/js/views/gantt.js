@@ -45,7 +45,7 @@ export function renderGantt() {
                 ${weekStart.toLocaleDateString()} - ${weekEnd.toLocaleDateString()}
             </div>
         </div>
-        <div class="gantt-chart-container" style="overflow-x: auto; border: 1px solid var(--glass-border); border-radius: 8px; background: var(--card-bg);">
+        <div class="gantt-chart-container" style="overflow-x: auto; overflow-y: auto; max-height: calc(100vh - 180px); border: 1px solid var(--glass-border); border-radius: 8px; background: var(--card-bg);">
             <div id="gantt-header" style="display: flex; border-bottom: 1px solid var(--glass-border); min-width: max-content;">
                 <!-- Days header injected here -->
             </div>
@@ -219,8 +219,17 @@ export function renderGantt() {
         nameCol.style.height = '100%';
         nameCol.title = task.title;
         nameCol.innerHTML = `
-            <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:${task.color || 'var(--accent-color)'}; margin-right:5px;"></span>
-            ${task.title}
+            <div style="display:flex; align-items:center;">
+                <input type="checkbox" 
+                    ${task.status === 'completed' ? 'checked' : ''} 
+                    onclick="window.toggleTaskStatus('${task.id}')"
+                    style="margin-right: 8px; cursor: pointer;"
+                >
+                <div style="display:flex; align-items:center; ${task.status === 'completed' ? 'text-decoration: line-through; opacity: 0.6;' : ''}">
+                    <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:${task.color || 'var(--accent-color)'}; margin-right:5px;"></span>
+                    ${task.title}
+                </div>
+            </div>
         `;
         row.appendChild(nameCol);
 
