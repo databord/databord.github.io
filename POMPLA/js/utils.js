@@ -144,3 +144,43 @@ export function handleDailyGoalLogic(completedCount, dailyGoal, isAlreadyTrigger
 
     return isAlreadyTriggered; // No change
 }
+
+/**
+ * Calculates suggested tags based on existing tasks and current input.
+ * @param {Array} tasks - List of task objects
+ * @param {string} inputValue - Current value of the input field
+ * @returns {Array} - List of suggested tag strings
+ */
+export function getSuggestedTags(tasks, inputValue) {
+    const tagCounts = {};
+    tasks.forEach(task => {
+        if (!task.category || task.category.includes('|||')) return;
+        task.category.split(',').forEach(t => {
+            const tag = t.trim();
+            if (tag) tagCounts[tag] = (tagCounts[tag] || 0) + 1;
+        });
+    });
+
+    const tags = inputValue.split(',').map(t => t.trim());
+    const currentSegment = tags[tags.length - 1]; // Raw segment (no trim) to check if we are typing it? No, we trimmed in map
+    // Better: split and trim to identify "locked" tags
+
+    // Identified tags that are "completed" (all except the last one if it's being typed)
+    const existingTags = new Set(tags.slice(0, -1).map(t => t.toLowerCase()).filter(t => t));
+
+    // If the user typed "Work, " then "Work" is in existingTags.
+    // If the user typed "Work, De", then "Work" is in existingTags. "De" is currentSegment.
+
+    let candidates = Object.keys(tagCounts);
+
+    // Filter out existing tags
+    candidates = candidates.filter(t => !existingTags.has(t.toLowerCase()));
+
+    if (currentSegment) {
+        const lowerSeg = currentSegment.toLowerCase();
+        candidates = candidates.filter(tag => tag.toLowerCase().includes(lowerSeg));
+    }
+
+    // Sort by frequency
+    return candidates.sort((a, b) => tagCounts[b] - tagCounts[a]).slice(0, 5);
+}
