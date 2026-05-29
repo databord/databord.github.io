@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Mapa de Conversaciones Vinculares</title>
+
+<style>
+    * {
+        box-sizing: border-box;
+    }
+
+    body {
+        margin: 0;
+        padding: 40px;
+        font-family: Arial, sans-serif;
+        background: #f4f4f4;
+        color: #222;
+    }
+
+    .container {
+        max-width: 1000px;
+        margin: auto;
+        background: white;
+        padding: 40px;
+        border-radius: 12px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    }
+
+    h1 {
+        margin-top: 0;
+        font-size: 2rem;
+    }
+
+    .intro {
+        background: #fff8d6;
+        padding: 16px;
+        border-radius: 8px;
+        margin-bottom: 30px;
+        line-height: 1.5;
+    }
+
+    .section {
+        margin-bottom: 40px;
+        padding-bottom: 20px;
+        border-bottom: 1px solid #ddd;
+    }
+
+    .section h2 {
+        margin-bottom: 20px;
+        color: #444;
+    }
+
+    .question {
+        margin-bottom: 24px;
+    }
+
+    .question label {
+        display: block;
+        font-weight: bold;
+        margin-bottom: 8px;
+    }
+
+    textarea {
+        width: 100%;
+        min-height: 90px;
+        resize: vertical;
+        padding: 12px;
+        border: 1px solid #ccc;
+        border-radius: 8px;
+        font-size: 15px;
+        font-family: inherit;
+    }
+
+    .actions {
+        display: flex;
+        gap: 12px;
+        margin-top: 40px;
+        flex-wrap: wrap;
+    }
+
+    button {
+        border: none;
+        padding: 14px 20px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 15px;
+        font-weight: bold;
+    }
+
+    .save-btn {
+        background: #111;
+        color: white;
+    }
+
+    .print-btn {
+        background: #1976d2;
+        color: white;
+    }
+
+    .clear-btn {
+        background: #c62828;
+        color: white;
+    }
+
+    .tip {
+        margin-top: 30px;
+        background: #eef6ff;
+        padding: 16px;
+        border-radius: 8px;
+        line-height: 1.5;
+    }
+
+    @media print {
+        body {
+            background: white;
+            padding: 0;
+        }
+
+        .container {
+            box-shadow: none;
+            padding: 0;
+        }
+
+        .actions {
+            display: none;
+        }
+
+        textarea {
+            border: 1px solid #999;
+        }
+    }
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <h1>🟡 Mapa de Conversaciones Vinculares</h1>
+
+    <div class="intro">
+        Preguntas para conocer, cuidar y construir vínculos no monogámicos.<br>
+        No es un checklist. Es un mapa.
+    </div>
+
+    <form id="formulario"></form>
+
+    <div class="actions">
+        <button type="button" class="save-btn" onclick="guardar()">Guardar</button>
+        <button type="button" class="print-btn" onclick="window.print()">Imprimir / Exportar PDF</button>
+        <button type="button" class="clear-btn" onclick="borrarTodo()">Borrar respuestas</button>
+    </div>
+
+    <div class="tip">
+        <strong>Tips de uso:</strong><br><br>
+        No es para hacer todo junto. Elegí las que te sirvan en cada momento.
+        También podés responderlas vos para invitar a la reciprocidad.
+        Es tu brújula para construir con conciencia y sin suposiciones.
+    </div>
+
+</div>
+
+<script>
+
+const data = [
+{
+title: "🧩 1. Conociéndonos en lo cotidiano",
+questions: [
+"¿Cómo es un día común en tu vida?",
+"¿Qué cosas te hacen sentir paz?",
+"¿Qué cosas te encienden la cabeza o el cuerpo?",
+"¿Qué tipo de cuidados te gustan cuando estás mal?",
+"¿Cómo te gusta que te escuchen?",
+"¿Qué estás aprendiendo últimamente sobre vos?",
+"¿Qué tipo de vínculos priorizás hoy?",
+"¿Tenés red de apoyo emocional?",
+"¿Hay algo que necesite saber para tratarte con respeto?"
+]
+},
+{
+title: "💬 2. Sobre este vínculo",
+questions: [
+"¿Qué te gustaría construir conmigo?",
+"¿Tenés un ritmo ideal de encuentros o contacto?",
+"¿Qué cosas te hacen sentir cuidado?",
+"¿Qué no te gustaría que pase en este vínculo?",
+"¿Qué esperás de alguien que estás conociendo?",
+"¿Te gustaría hablar abiertamente de cómo nos sentimos?",
+"¿Cómo preferís resolver malentendidos?",
+"¿Qué cosas te hacen dejar un vínculo?",
+"¿Cómo vivís los momentos en que necesitás espacio?"
+]
+},
+{
+title: "❤️ 3. Sobre tu forma de vivir la no monogamia",
+questions: [
+"¿Cómo describís tu forma de vincularte?",
+"¿Estás en otros vínculos? ¿Hay acuerdos importantes?",
+"¿Tus vínculos son jerárquicos?",
+"¿Compartís sobre nuevas conexiones con tus vínculos?",
+"¿Cómo vivís los celos?",
+"¿Qué acuerdos te funcionan?",
+"¿Qué es fundamental en tu red no monogámica?",
+"¿Usás la palabra 'pareja'? ¿Qué significa para vos?",
+"¿Construís comunidad o preferís vínculos más separados?"
+]
+},
+{
+title: "🔥 4. Sobre intimidad, deseo y salud sexual",
+questions: [
+"¿Qué te gusta mucho y querés compartir?",
+"¿Cómo hablás de lo que te gusta sexualmente?",
+"¿Tenés cosas que querés explorar?",
+"¿Cómo manejás el consentimiento?",
+"¿Cómo cuidás tu salud sexual?",
+"¿Qué cosas te desconectan?",
+"¿Tenés límites firmes o zonas no negociables?"
+]
+},
+{
+title: "🧷 5. Si hay dinámica kinky o BDSM",
+questions: [
+"¿Cómo vivís tu rol sumiso o dominante?",
+"¿Qué tipo de dinámicas te interesan?",
+"¿Usás contratos o acuerdos escritos?",
+"¿Qué prácticas te hacen sentir cuidado?",
+"¿Cómo conversás sobre límites?",
+"¿Qué prácticas no te interesan?",
+"¿Cómo vivís el aftercare?",
+"¿Qué necesitás para sentir seguridad emocional?"
+]
+},
+{
+title: "🔄 6. Sobre cuidado mutuo y sostenimiento",
+questions: [
+"¿Te interesa cuidar a las personas con las que te vinculás?",
+"¿Cómo sostenés vínculos con diferencias?",
+"¿Cómo nutrís vínculos sin encuentros físicos?",
+"¿Qué gestos de afecto das o te gustan?",
+"¿Cómo notás que te estás involucrando?",
+"¿Seguís en contacto con vínculos pasados?"
+]
+},
+{
+title: "🧠 7. Sobre proyección y visión a futuro",
+questions: [
+"¿Qué te gustaría vivir a nivel vincular en unos años?",
+"¿Cómo imaginás tu red afectiva ideal?",
+"¿Convivencia o mucha autonomía?",
+"¿Querés compartir espacios con personas no sexoafectivas?",
+"¿Cómo equilibrás trabajo, vínculos y tiempo personal?"
+]
+}
+];
+
+const form = document.getElementById("formulario");
+
+function crearFormulario() {
+
+    data.forEach((section, sIndex) => {
+
+        const sectionDiv = document.createElement("div");
+        sectionDiv.className = "section";
+
+        const title = document.createElement("h2");
+        title.textContent = section.title;
+
+        sectionDiv.appendChild(title);
+
+        section.questions.forEach((question, qIndex) => {
+
+            const id = `s${sIndex}_q${qIndex}`;
+
+            const wrapper = document.createElement("div");
+            wrapper.className = "question";
+
+            const label = document.createElement("label");
+            label.setAttribute("for", id);
+            label.textContent = question;
+
+            const textarea = document.createElement("textarea");
+            textarea.id = id;
+
+            textarea.value = localStorage.getItem(id) || "";
+
+            textarea.addEventListener("input", () => {
+                localStorage.setItem(id, textarea.value);
+            });
+
+            wrapper.appendChild(label);
+            wrapper.appendChild(textarea);
+
+            sectionDiv.appendChild(wrapper);
+
+        });
+
+        form.appendChild(sectionDiv);
+
+    });
+
+}
+
+function guardar() {
+
+    const textareas = document.querySelectorAll("textarea");
+
+    textareas.forEach(textarea => {
+        localStorage.setItem(textarea.id, textarea.value);
+    });
+
+    alert("Respuestas guardadas en localStorage.");
+
+}
+
+function borrarTodo() {
+
+    if (!confirm("¿Seguro que querés borrar todas las respuestas?")) {
+        return;
+    }
+
+    const textareas = document.querySelectorAll("textarea");
+
+    textareas.forEach(textarea => {
+        textarea.value = "";
+        localStorage.removeItem(textarea.id);
+    });
+
+}
+
+crearFormulario();
+
+</script>
+
+</body>
+</html>
